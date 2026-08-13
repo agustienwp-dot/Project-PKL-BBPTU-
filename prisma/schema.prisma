@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("STAFF") // ADMIN / STAFF
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Cage {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  type        String   // Sapi / Kambing / Domba / Campuran
+  capacity    Int      @default(10)
+  location    String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  animals       Animal[]
+  fromMovements CageMovement[] @relation("FromCageRelation")
+  toMovements   CageMovement[] @relation("ToCageRelation")
+
+  @@map("cages")
+}
+
+model Animal {
+  id                    String   @id @default(uuid())
+  code                  String   @unique // e.g. SAPI-001
+  name                  String
+  type                  String   // Sapi / Kambing / Domba
+  breed                 String   // e.g. Limosin / Etawa / Garut
+  gender                String   // Jantan / Betina
+  birthDate             DateTime?
+  weight                Float    // Weight in kg
+  healthStatus          String   @default("Sehat")
+  purchasePrice         Float
+  estimatedSellingPrice Float?
+  entryDate             DateTime @default(now())
+  status                String   @default("AVAILABLE") // AVAILABLE, SOLD, DECEASED, TRANSFERRED
+  origin                String?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  cageId String
+  cage   Cage   @relation(fields: [cageId], references: [id])
+
+  weightHistories WeightHistory[]
+  movements       CageMovement[]
+  sale            Sale?
+
+  @@map("animals")
+}
+
+model WeightHistory {
+  id         String   @id @default(uuid())
+  animalId   String
+  animal     Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  weight     Float
+  recordedAt DateTime @default(now())
+  notes      String?
+
+  @@map("weight_histories")
+}
+
+model CageMovement {
+  id         String   @id @default(uuid())
+  animalId   String
+  animal     Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  fromCageId String?
+  fromCage   Cage?    @relation("FromCageRelation", fields: [fromCageId], references: [id])
+  toCageId   String
+  toCage     Cage     @relation("ToCageRelation", fields: [toCageId], references: [id])
+  movedAt    DateTime @default(now())
+  notes      String?
+
+  @@map("cage_movements")
+}
+
+model Buyer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  address   String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  @@map("buyers")
+}
+
+model Sale {
+  id            String   @id @default(uuid())
+  animalId      String   @unique
+  animal        Animal   @relation(fields: [animalId], references: [id])
+  buyerId       String
+  buyer         Buyer    @relation(fields: [buyerId], references: [id])
+  saleDate      DateTime @default(now())
+  sellingPrice  Float
+  weightAtSale  Float
+  paymentMethod String   @default("TRANSFER") // CASH / TRANSFER
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@map("sales")
+}
