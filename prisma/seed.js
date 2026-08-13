@@ -4,162 +4,108 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding Next.js Prisma Database...');
+  console.log('🧹 Clearing & Resetting Database Stok (Clean State = 0)...');
 
-  // 1. Seed Users
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const staffPassword = await bcrypt.hash('staff123', 10);
+  const defaultPassword = await bcrypt.hash('admin123', 10);
+  const farmPassword = await bcrypt.hash('farm123', 10);
+  const pemasaranPassword = await bcrypt.hash('pemasaran123', 10);
 
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@farm.com' },
-    update: {},
+  // Clear existing transaction data
+  await prisma.milkOutflow.deleteMany({});
+  await prisma.milkProduction.deleteMany({});
+  await prisma.systemLog.deleteMany({});
+  await prisma.milkCategory.deleteMany({});
+
+  // 1. Users (3 Roles Utama)
+  const superadmin = await prisma.user.upsert({
+    where: { email: 'superadmin@susu.com' },
+    update: { name: 'Superadmin Pengelola', role: 'SUPERADMIN', password: defaultPassword, isActive: true },
     create: {
-      name: 'Admin Peternakan',
-      email: 'admin@farm.com',
-      password: adminPassword,
-      role: 'ADMIN',
+      name: 'Superadmin Pengelola',
+      email: 'superadmin@susu.com',
+      password: defaultPassword,
+      role: 'SUPERADMIN',
     },
   });
 
-  const staff = await prisma.user.upsert({
-    where: { email: 'staff@farm.com' },
-    update: {},
+  const adminFarm = await prisma.user.upsert({
+    where: { email: 'farm@susu.com' },
+    update: { name: 'Admin Farm Produksi', role: 'ADMIN_FARM', password: farmPassword, isActive: true },
     create: {
-      name: 'Staff Lapangan',
-      email: 'staff@farm.com',
-      password: staffPassword,
-      role: 'STAFF',
+      name: 'Admin Farm Produksi',
+      email: 'farm@susu.com',
+      password: farmPassword,
+      role: 'ADMIN_FARM',
     },
   });
 
-  console.log('✅ Users seeded:', { admin: admin.email, staff: staff.email });
-
-  // 2. Seed Cages
-  const cage1 = await prisma.cage.upsert({
-    where: { name: 'Kandang Sapi Blok A' },
-    update: {},
+  const adminPemasaran = await prisma.user.upsert({
+    where: { email: 'pemasaran@susu.com' },
+    update: { name: 'Admin Pemasaran & Stok', role: 'ADMIN_PEMASARAN', password: pemasaranPassword, isActive: true },
     create: {
-      name: 'Kandang Sapi Blok A',
-      type: 'Sapi',
-      capacity: 10,
-      location: 'Blok Utara',
-      description: 'Kandang penggemukan sapi potong fasilitas otomatis',
+      name: 'Admin Pemasaran & Stok',
+      email: 'pemasaran@susu.com',
+      password: pemasaranPassword,
+      role: 'ADMIN_PEMASARAN',
     },
   });
 
-  const cage2 = await prisma.cage.upsert({
-    where: { name: 'Kandang Kambing & Domba B1' },
-    update: {},
-    create: {
-      name: 'Kandang Kambing & Domba B1',
-      type: 'Kambing',
-      capacity: 25,
-      location: 'Blok Selatan',
-      description: 'Kandang panggung kayu untuk ternak kambing etawa',
-    },
-  });
+  console.log('✅ Akun User (SUPERADMIN, ADMIN_FARM, ADMIN_PEMASARAN) siap');
 
-  console.log('✅ Cages seeded:', [cage1.name, cage2.name]);
+  // 2. Kategori SUSU SEGAR (9 Kode Lapangan)
+  const segarCategoriesData = [
+    { name: 'Susu Murni (MYPI)', code: 'MYPI', productType: 'SEGAR', defaultPackaging: 'botol', description: 'Susu Murni Segar Hasil Perah Performa Tinggi (MYPI)' },
+    { name: 'Susu Segar (HS)', code: 'HS', productType: 'SEGAR', defaultPackaging: 'liter', description: 'Hasil Perah Susu Segar Kategori HS' },
+    { name: 'Susu Segar (HT)', code: 'HT', productType: 'SEGAR', defaultPackaging: 'liter', description: 'Hasil Perah Susu Segar Kategori HT' },
+    { name: 'Susu Segar (OS)', code: 'OS', productType: 'SEGAR', defaultPackaging: 'botol', description: 'Olahan Segar Kategori OS' },
+    { name: 'Penjualan Segar (JS)', code: 'JS', productType: 'SEGAR', defaultPackaging: 'botol', description: 'Penjualan Susu Segar (Piutang JS)' },
+    { name: 'Penjualan Segar PNBP (JS PNBP)', code: 'JS_PNBP', productType: 'SEGAR', defaultPackaging: 'botol', description: 'Penjualan Susu Segar Setor PNBP' },
+    { name: 'Bulk Segar (BS)', code: 'BS', productType: 'SEGAR', defaultPackaging: 'botol', description: 'Bulk Segar Kategori BS' },
+    { name: 'Jual Laktasi Bulk (JLB)', code: 'JLB', productType: 'SEGAR', defaultPackaging: 'liter', description: 'Jual Laktasi Bulk Volume' },
+    { name: 'Beli Laktasi Bulk (BLB)', code: 'BLB', productType: 'SEGAR', defaultPackaging: 'liter', description: 'Beli Laktasi Bulk Volume' },
+  ];
 
-  // 3. Seed Animals
-  const animal1 = await prisma.animal.upsert({
-    where: { code: 'SAPI-001' },
-    update: {},
-    create: {
-      code: 'SAPI-001',
-      name: 'Bima',
-      type: 'Sapi',
-      breed: 'Limosin',
-      gender: 'Jantan',
-      birthDate: new Date('2023-01-15'),
-      weight: 480.5,
-      healthStatus: 'Sehat - Vaksin Lengkap',
-      purchasePrice: 16000000,
-      estimatedSellingPrice: 24000000,
-      cageId: cage1.id,
-      origin: 'Peternakan Boyolali',
-      notes: 'Nafsu makan sangat tinggi',
-      weightHistories: {
-        create: [
-          { weight: 450.0, notes: 'Berat awal masuk' },
-          { weight: 480.5, notes: 'Penimbangan bulan ini' },
-        ],
-      },
-    },
-  });
+  for (const cat of segarCategoriesData) {
+    await prisma.milkCategory.create({ data: cat });
+  }
 
-  const animal2 = await prisma.animal.upsert({
-    where: { code: 'KMB-001' },
-    update: {},
-    create: {
-      code: 'KMB-001',
-      name: 'Sultan',
-      type: 'Kambing',
-      breed: 'Etawa',
-      gender: 'Jantan',
-      birthDate: new Date('2023-06-10'),
-      weight: 55.0,
-      healthStatus: 'Sehat',
-      purchasePrice: 3500000,
-      estimatedSellingPrice: 5500000,
-      cageId: cage2.id,
-      origin: 'Peternakan Kaligesing',
-      notes: 'Siap kontes / qurban',
-      weightHistories: {
-        create: [
-          { weight: 48.0, notes: 'Masuk kandang' },
-          { weight: 55.0, notes: 'Penimbangan rutin' },
-        ],
-      },
-    },
-  });
+  // 3. Kategori SUSU OLAHAN (11 Kode Lapangan)
+  const olahanCategoriesData = [
+    { name: 'Rasa Susu 110ml (RS 110)', code: 'RS_110', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Rasa Kemasan 110ml' },
+    { name: 'Rasa Susu 200ml (RS 200)', code: 'RS_200', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Rasa Kemasan 200ml' },
+    { name: 'Rasa Susu 500ml (RS 500)', code: 'RS_500', productType: 'OLAHAN', defaultPackaging: 'botol', description: 'Susu Olahan Rasa Botol 500ml' },
+    { name: 'Jeruk Susu 110ml (JS 110)', code: 'JS_110', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Rasa Jeruk 110ml' },
+    { name: 'Jeruk Susu 250ml (JS 250)', code: 'JS_250', productType: 'OLAHAN', defaultPackaging: 'cup', description: 'Susu Olahan Rasa Jeruk Cup 250ml' },
+    { name: 'Hijau Susu 110ml (HS 110)', code: 'HS_110', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Rasa Melon/Matcha 110ml' },
+    { name: 'Hijau Susu 200ml (HS 200)', code: 'HS_200', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Rasa Melon/Matcha 200ml' },
+    { name: 'Hijau Vanilla 200ml (HV 200)', code: 'HV_200', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Rasa Vanilla 200ml' },
+    { name: 'Susu Es 110ml (SE 110)', code: 'SE_110', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Es Kemasan 110ml' },
+    { name: 'Susu Es 200ml (SE 200)', code: 'SE_200', productType: 'OLAHAN', defaultPackaging: 'pack', description: 'Susu Olahan Es Kemasan 200ml' },
+    { name: 'Yogurt Es 200ml (YE 200)', code: 'YE_200', productType: 'OLAHAN', defaultPackaging: 'cup', description: 'Olahan Yogurt Segar Cup 200ml' },
+  ];
 
-  console.log('✅ Animals seeded:', [animal1.code, animal2.code]);
+  for (const cat of olahanCategoriesData) {
+    await prisma.milkCategory.create({ data: cat });
+  }
 
-  // 4. Seed Buyer & Sales
-  const buyer = await prisma.buyer.create({
+  console.log('✅ Master Kategori Susu Segar (9) & Susu Olahan (11) siap');
+
+  // Log Initial Reset Action
+  await prisma.systemLog.create({
     data: {
-      name: 'H. Ahmad Syarif',
-      phone: '081234567890',
-      address: 'Jl. Raya Merdeka No. 45, Jakarta Selatan',
-      notes: 'Pelanggan rutin hewan qurban',
+      userId: superadmin.id,
+      userEmail: superadmin.email,
+      action: 'RESET_DATABASE_STOK',
+      details: 'Seluruh riwayat produksi, pengeluaran produk, dan stok di-reset ke 0 (Clean State).',
     },
   });
 
-  const soldAnimal = await prisma.animal.create({
-    data: {
-      code: 'SAPI-002',
-      name: 'Barong',
-      type: 'Sapi',
-      breed: 'Simental',
-      gender: 'Jantan',
-      birthDate: new Date('2022-11-20'),
-      weight: 520.0,
-      healthStatus: 'Sehat',
-      purchasePrice: 18000000,
-      estimatedSellingPrice: 27000000,
-      status: 'SOLD',
-      cageId: cage1.id,
-      origin: 'Peternakan Kediri',
-      sale: {
-        create: {
-          buyerId: buyer.id,
-          saleDate: new Date(),
-          sellingPrice: 28000000,
-          weightAtSale: 520.0,
-          paymentMethod: 'TRANSFER',
-          notes: 'Lunas via transfer BCA',
-        },
-      },
-    },
-  });
-
-  console.log('✅ Buyer & Sales seeded:', buyer.name, soldAnimal.code);
+  console.log('✨ Reset Database Berhasil! Seluruh Stok Dimulai dari 0.');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error seeding database:', e);
+    console.error('❌ Error resetting database:', e);
     process.exit(1);
   })
   .finally(async () => {
