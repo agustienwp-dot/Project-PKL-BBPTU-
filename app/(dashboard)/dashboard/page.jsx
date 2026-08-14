@@ -7,70 +7,38 @@ import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import { 
-  ShieldCheck, 
-  Users, 
   Milk, 
-  Coffee,
-  ShoppingBag, 
   Package, 
   Plus, 
   ArrowRight, 
   Activity, 
   TrendingUp, 
-  Boxes, 
   Calendar,
   Layers,
   FileText,
-  Truck
+  Clock,
+  CheckCircle2,
+  Filter
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, isSuperAdmin, isAdminFarm, isAdminPemasaran } = useAuth();
-
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState(null);
-  const [activeTab, setActiveTab] = useState(isAdminFarm && !isSuperAdmin ? 'farm' : 'segar'); // 'farm' | 'segar' | 'olahan' | 'superadmin'
-  const [categories, setCategories] = useState([]);
+  const [chartFilter, setChartFilter] = useState('7'); // '7' or '30'
+  const [packagingTab, setPackagingTab] = useState('ALL'); // 'ALL' | 'SAPI' | 'KAMBING'
   const [toast, setToast] = useState(null);
-
-  // Quick Production Modal (Farm - Simple Milk Production Input)
-  const [showProdModal, setShowProdModal] = useState(false);
-  const [prodDate, setProdDate] = useState(new Date().toISOString().split('T')[0]);
-  const [prodCategoryId, setProdCategoryId] = useState('');
-  const [prodRawLiters, setProdRawLiters] = useState('');
-  const [prodNotes, setProdNotes] = useState('');
-
-  // Quick Outflow Modal (Pemasaran - Distribution / Outflow)
-  const [showOutModal, setShowOutModal] = useState(false);
-  const [outDate, setOutDate] = useState(new Date().toISOString().split('T')[0]);
-  const [outProductType, setOutProductType] = useState('SEGAR');
-  const [outCategoryId, setOutCategoryId] = useState('');
-  const [outPackagingType, setOutPackagingType] = useState('botol');
-  const [outQuantity, setOutQuantity] = useState('');
-  const [outNotes, setOutNotes] = useState('');
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [statsRes, catRes] = await Promise.all([
-        api.get('/dashboard/stats'),
-        api.get('/categories'),
-      ]);
-
-      if (statsRes.data.success) {
-        setStatsData(statsRes.data.data);
-      }
-      if (catRes.data.success) {
-        setCategories(catRes.data.data);
-        const segarCats = catRes.data.data.filter(c => c.productType === 'SEGAR');
-        if (segarCats.length > 0) {
-          setProdCategoryId(segarCats[0].id);
-          setOutCategoryId(segarCats[0].id);
-        }
+      const res = await api.get('/dashboard/stats');
+      if (res.data.success) {
+        setStatsData(res.data.data);
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
-      setToast({ type: 'error', message: 'Gagal memuat data statistik.' });
+      setToast({ type: 'error', message: 'Gagal memuat data statistik dashboard.' });
     } finally {
       setLoading(false);
     }
@@ -80,647 +48,476 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [user]);
 
-  const segarCategories = categories.filter(c => c.productType === 'SEGAR');
-  const filteredOutCategories = categories.filter(c => c.productType === outProductType);
-
-  const handleCreateProduction = async (e) => {
-    e.preventDefault();
-    try {
-      // Find category default packaging
-      const cat = categories.find(c => c.id === prodCategoryId);
-      const pkg = cat?.defaultPackaging || 'botol';
-      const liters = parseFloat(prodRawLiters) || 0;
-      
-      const res = await api.post('/farm/production', {
-        date: prodDate,
-        categoryId: prodCategoryId,
-        productType: 'SEGAR',
-        packagingType: pkg,
-        rawVolumeLiters: liters,
-        processedLiters: liters,
-        packagedQty: Math.round(liters), // simple 1:1 or bottle volume
-        notes: prodNotes,
-      });
-
-      if (res.data.success) {
-        setToast({ type: 'success', message: 'Laporan hasil perah susu segar harian berhasil disimpan!' });
-        setShowProdModal(false);
-        setProdRawLiters('');
-        setProdNotes('');
-        fetchDashboardData();
-      }
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Gagal menyimpan laporan produksi.';
-      setToast({ type: 'error', message: msg });
-    }
-  };
-
-  const handleCreateOutflow = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await api.post('/pemasaran/outflow', {
-        date: outDate,
-        categoryId: outCategoryId,
-        productType: outProductType,
-        packagingType: outPackagingType,
-        quantity: outQuantity,
-        notes: outNotes,
-      });
-
-      if (res.data.success) {
-        setToast({ type: 'success', message: `Distribusi / produk keluar ${outProductType} (${outPackagingType}) berhasil dicatat!` });
-        setShowOutModal(false);
-        setOutQuantity('');
-        setOutNotes('');
-        fetchDashboardData();
-      }
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Gagal mencatat pengeluaran stok.';
-      setToast({ type: 'error', message: msg });
-    }
-  };
-
   if (loading) {
-    return <LoadingSpinner text="Memuat Dashboard Sistem Stok Susu..." />;
+    return <LoadingSpinner text="Memuat Dashboard Admin Farm Produksi..." />;
   }
 
-  const superadminStats = statsData?.superadmin || {};
-  const segarStats = statsData?.segar || {};
-  const olahanStats = statsData?.olahan || {};
   const farmStats = statsData?.farm || {};
+  const todaySapi = farmStats.todaySapiLiters || 0;
+  const todayKambing = farmStats.todayKambingLiters || 0;
+  const todayTotalLiters = farmStats.todayTotalLiters || (todaySapi + todayKambing);
+  const todayPackagedQty = farmStats.todayPackagedQty || 0;
+  const sapiPackagedQty = farmStats.sapiPackagedQty || 0;
+  const kambingPackagedQty = farmStats.kambingPackagedQty || 0;
+
+  const sapiPercentage = todayTotalLiters > 0 ? Math.round((todaySapi / todayTotalLiters) * 100) : 0;
+  const kambingPercentage = todayTotalLiters > 0 ? Math.round((todayKambing / todayTotalLiters) * 100) : 0;
+
+  const chartData = chartFilter === '30' ? (farmStats.chart30Days || []) : (farmStats.chart7Days || []);
+  const maxChartVal = Math.max(...chartData.map(d => d.totalLiters || 0), 10);
+
+  // Format date today (e.g. 13 Agustus 2026)
+  const todayFormatted = new Date().toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   return (
     <div className="space-y-8 pb-12">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
-      {/* Welcome Banner */}
-      <div className="bg-[#1E3F20] text-[#FFFFFF] p-6 md:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="space-y-2 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-emerald-200 border border-white/10">
-            <Milk className="w-4 h-4 text-emerald-300" />
-            <span>Sistem Management Stok Susu • Role: {user?.role}</span>
+      {/* HEADER GREETING */}
+      <div>
+        <h1 className="text-2xl font-black text-slate-900">
+          Hallo, {user?.name || 'Admin'}!
+        </h1>
+        <p className="text-xs text-slate-500 font-semibold mt-1">
+          Ringkasan statistik perah & pengemasan susu • {todayFormatted}
+        </p>
+      </div>
+
+      {/* 1. BAGIAN PALING ATAS - 4 STATISTIC CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Card 1: Produksi Hari Ini */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Produksi Hari Ini</span>
+            <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+              <Milk className="w-5 h-5 text-emerald-700" />
+            </div>
           </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight">
-            Selamat Datang, {user?.name}!
-          </h1>
-          <p className="text-emerald-100 text-xs md:text-sm max-w-2xl leading-relaxed">
-            {isAdminFarm && !isSuperAdmin
-              ? 'Laporkan hasil produksi susu segar harian dari farm secara singkat dan akurat.'
-              : 'Kelola stok susu segar dan susu olahan yang akan didistribusikan serta pantau akumulasinya.'}
-          </p>
+          <div>
+            <p className="text-3xl font-black text-slate-900">
+              {todayTotalLiters.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
+            </p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-1">Total hasil perah hari ini</p>
+          </div>
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="relative z-10 flex flex-wrap gap-3">
-          {isAdminFarm && (
-            <button
-              onClick={() => setShowProdModal(true)}
-              className="flex items-center gap-2 px-5 py-3 bg-white text-[#1E3F20] hover:bg-emerald-50 rounded-2xl font-bold text-xs shadow-lg transition-all transform hover:-translate-y-0.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Input Hasil Perah Harian</span>
-            </button>
-          )}
+        {/* Card 2: Susu Sapi */}
+        <div className="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Susu Sapi</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">🐄 SAPI</span>
+          </div>
+          <div>
+            <p className="text-3xl font-black text-emerald-700">
+              {todaySapi.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
+            </p>
+            <p className="text-[11px] text-slate-500 font-semibold mt-1">{sapiPercentage}% dari produksi hari ini</p>
+          </div>
+        </div>
 
-          {isAdminPemasaran && (
-            <button
-              onClick={() => setShowOutModal(true)}
-              className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-[#FFFFFF] hover:bg-blue-500 rounded-2xl font-bold text-xs shadow-lg transition-all transform hover:-translate-y-0.5"
-            >
-              <Truck className="w-4 h-4" />
-              <span>Input Distribusi / Produk Keluar</span>
-            </button>
-          )}
+        {/* Card 3: Susu Kambing */}
+        <div className="bg-white p-6 rounded-3xl border border-purple-200 bg-purple-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-purple-900 uppercase tracking-wider">Susu Kambing</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black">🐐 KAMBING</span>
+          </div>
+          <div>
+            <p className="text-3xl font-black text-purple-700">
+              {todayKambing.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
+            </p>
+            <p className="text-[11px] text-slate-500 font-semibold mt-1">{kambingPercentage}% dari produksi hari ini</p>
+          </div>
+        </div>
 
-          <Link
-            href="/reports"
-            className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-2xl font-bold text-xs shadow-lg transition-all transform hover:-translate-y-0.5"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Akumulasi Laporan</span>
-          </Link>
+        {/* Card 4: TOTAL PRODUK DIKEMAS */}
+        <div className="bg-white p-6 rounded-3xl border border-amber-200 bg-amber-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">TOTAL PRODUK DIKEMAS</span>
+            <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+              <Package className="w-5 h-5 text-amber-700" />
+            </div>
+          </div>
+          <div>
+            <p className="text-3xl font-black text-amber-600">
+              {todayPackagedQty.toLocaleString()} <span className="text-sm font-bold text-slate-500">pcs</span>
+            </p>
+            <p className="text-[11px] text-slate-600 font-bold mt-1">
+              Sapi: {sapiPackagedQty} pcs | Kambing: {kambingPackagedQty} pcs
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* DASHBOARD TAB SWITCHER */}
-      <div className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          {isAdminFarm && (
-            <button
-              onClick={() => setActiveTab('farm')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'farm'
-                  ? 'bg-[#1E3F20] text-white shadow-md'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Milk className="w-4 h-4" />
-              <span>Laporan Hasil Perah Farm</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => setActiveTab('segar')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'segar'
-                ? 'bg-[#1E3F20] text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Milk className="w-4 h-4" />
-            <span>Stok & Distribusi Susu Segar</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('olahan')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'olahan'
-                ? 'bg-amber-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Coffee className="w-4 h-4" />
-            <span>Stok & Distribusi Susu Olahan</span>
-          </button>
-
-          {isSuperAdmin && (
-            <button
-              onClick={() => setActiveTab('superadmin')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'superadmin'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Superadmin</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* VIEW FOR ADMIN FARM: SIMPLIFIED MILK PRODUCTION REPORTING */}
-      {activeTab === 'farm' && (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <Milk className="w-5 h-5 text-emerald-600" />
-              <span>Laporan Hasil Perah Susu Segar Harian (Farm)</span>
-            </h2>
-            <button
-              onClick={() => setShowProdModal(true)}
-              className="px-3.5 py-2 bg-[#1E3F20] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Laporkan Produksi Perah</span>
-            </button>
-          </div>
-
-          {/* Simple Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Hasil Perah Hari Ini</span>
-              <p className="text-3xl font-black text-emerald-700">{(segarStats.todayLiters || 0).toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span></p>
-              <p className="text-xs text-slate-400 font-semibold">Tercatat di sistem farm</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Hasil Perah Bulan Ini</span>
-              <p className="text-3xl font-black text-slate-900">{(segarStats.monthLiters || 0).toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span></p>
-              <p className="text-xs text-slate-400 font-semibold">Akumulasi bulan berjalan</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Akumulasi Perah</span>
-              <p className="text-3xl font-black text-slate-900">{(segarStats.totalLitersProduced || farmStats.totalLiters || 0).toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span></p>
-              <p className="text-xs text-slate-400 font-semibold">Seluruh riwayat perah</p>
-            </div>
-          </div>
-
-          {/* Recent Simple Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <Milk className="w-4 h-4 text-emerald-600" />
-                <span>Riwayat Laporan Hasil Perah Terbaru</span>
-              </h3>
-              <Link href="/produksi" className="text-xs font-bold text-[#1E3F20] hover:underline flex items-center gap-1">
-                <span>Lihat Semua</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="pb-3 px-3">Tanggal</th>
-                    <th className="pb-3 px-3">Kode / Varian Susu</th>
-                    <th className="pb-3 px-3">Jumlah Hasil Perah (Liter)</th>
-                    <th className="pb-3 px-3">Petugas Input</th>
-                    <th className="pb-3 px-3">Catatan Perah</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {segarStats.recentProductions && segarStats.recentProductions.length > 0 ? (
-                    segarStats.recentProductions.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50">
-                        <td className="py-3 px-3 text-slate-600 font-semibold whitespace-nowrap">
-                          {new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-[11px]">
-                            {p.category?.name || 'Susu Segar'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-black text-slate-900">{p.rawVolumeLiters} Liter</td>
-                        <td className="py-3 px-3 text-slate-600">{p.createdBy?.name || 'Admin Farm'}</td>
-                        <td className="py-3 px-3 text-slate-500 max-w-xs truncate">{p.notes || '-'}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-400">Belum ada laporan hasil perah susu segar.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW FOR ADMIN PEMASARAN: STOK & DISTRIBUSI SUSU SEGAR */}
-      {activeTab === 'segar' && (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <Milk className="w-5 h-5 text-emerald-600" />
-              <span>Kelola Stok & Distribusi Susu Segar (Admin Pemasaran)</span>
-            </h2>
-            <Link href="/pemasaran?productType=SEGAR" className="text-xs font-bold text-[#1E3F20] hover:underline flex items-center gap-1">
-              <span>Halaman Stok Susu Segar</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Stok Ready Segar</span>
-              <p className="text-3xl font-black text-emerald-700">{(segarStats.totalReadyStock || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">botol/pcs</span></p>
-              <p className="text-[11px] text-slate-400 font-semibold">Tersedia Siap Distribusi</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Produksi Perah Hari Ini</span>
-              <p className="text-2xl font-black text-slate-900">{(segarStats.todayLiters || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span></p>
-              <p className="text-xs font-bold text-slate-600">{(segarStats.todayPackaged || 0).toLocaleString()} botol dikemas</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Produksi Perah Bulan Ini</span>
-              <p className="text-2xl font-black text-slate-900">{(segarStats.monthLiters || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span></p>
-              <p className="text-xs font-bold text-slate-600">{(segarStats.monthPackaged || 0).toLocaleString()} botol dikemas</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Distribusi Hari Ini</span>
-              <p className="text-3xl font-black text-blue-600">{(segarStats.todayOutflow || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">botol</span></p>
-              <p className="text-[11px] text-slate-400 font-semibold">Bulan Ini: {(segarStats.monthOutflow || 0).toLocaleString()} botol</p>
-            </div>
-          </div>
-
-          {/* Table Stok Ready per Varian Susu Segar */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-emerald-600" />
-              <span>Stok Ready Berdasarkan Kategori Susu Segar</span>
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {segarStats.categories && segarStats.categories.length > 0 ? (
-                segarStats.categories.map((c) => (
-                  <div key={c.id} className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{c.name}</h4>
-                      <p className="text-[11px] text-slate-500">Total Masuk: {c.packaged} botol | Terdistribusi: {c.outflow} botol</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-2xl font-black text-emerald-700">{c.ready}</span>
-                      <span className="text-xs font-bold text-slate-500 ml-1">botol</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-400">Belum ada stok varian kategori susu segar.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW FOR ADMIN PEMASARAN: STOK & DISTRIBUSI SUSU OLAHAN */}
-      {activeTab === 'olahan' && (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <Coffee className="w-5 h-5 text-amber-600" />
-              <span>Kelola Stok & Distribusi Susu Olahan (Admin Pemasaran)</span>
-            </h2>
-            <Link href="/pemasaran?productType=OLAHAN" className="text-xs font-bold text-[#1E3F20] hover:underline flex items-center gap-1">
-              <span>Halaman Stok Susu Olahan</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Stok Ready Olahan</span>
-              <p className="text-3xl font-black text-amber-600">{(olahanStats.totalReadyStock || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">pcs</span></p>
-              <p className="text-[11px] text-slate-400 font-semibold">Tersedia Siap Distribusi</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-amber-200 bg-amber-50/40 p-5 rounded-3xl space-y-2">
-              <span className="text-xs font-bold text-amber-900 uppercase tracking-wider block">Stok Ready Kemasan CUP</span>
-              <p className="text-3xl font-black text-amber-700">{(olahanStats.packagingTotals?.cup || 0).toLocaleString()} <span className="text-xs font-bold text-amber-900">cup</span></p>
-              <p className="text-[11px] text-amber-800">Kemasan Cup 250ml</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-blue-200 bg-blue-50/40 p-5 rounded-3xl space-y-2">
-              <span className="text-xs font-bold text-blue-900 uppercase tracking-wider block">Stok Ready Kemasan PACK</span>
-              <p className="text-3xl font-black text-blue-700">{(olahanStats.packagingTotals?.pack || 0).toLocaleString()} <span className="text-xs font-bold text-blue-900">pack</span></p>
-              <p className="text-[11px] text-blue-800">Kemasan Bantal / Plastik Pack</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 rounded-3xl space-y-2">
-              <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider block">Stok Ready Kemasan BOTOL</span>
-              <p className="text-3xl font-black text-emerald-700">{(olahanStats.packagingTotals?.botol || 0).toLocaleString()} <span className="text-xs font-bold text-emerald-900">botol</span></p>
-              <p className="text-[11px] text-emerald-800">Kemasan Botol Olahan</p>
-            </div>
-          </div>
-
-          {/* Table Breakdown Stok Ready per Varian & Kemasan Susu Olahan */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-amber-600" />
-              <span>Breakdown Stok Ready per Jenis Rasa & Kemasan</span>
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {olahanStats.categories && olahanStats.categories.length > 0 ? (
-                olahanStats.categories.map((c) => (
-                  <div key={c.id} className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-2">
-                    <div className="flex items-center justify-between border-b border-amber-200/50 pb-2">
-                      <h4 className="font-black text-slate-900 text-sm">{c.name}</h4>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-200/60 text-amber-900">
-                        {c.ready} {c.defaultPackaging}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-600 space-y-1">
-                      {Object.keys(c.packagingBreakdown).map((pkg) => (
-                        <div key={pkg} className="flex justify-between font-semibold">
-                          <span className="capitalize">Kemasan {pkg}:</span>
-                          <span className="font-bold text-amber-800">{c.packagingBreakdown[pkg].ready} {pkg}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-400">Belum ada stok varian kategori susu olahan.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW FOR SUPERADMIN OVERVIEW */}
-      {isSuperAdmin && activeTab === 'superadmin' && (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-purple-600" />
-              <span>Ringkasan Teknis Superadmin</span>
-            </h2>
-            <Link href="/superadmin" className="text-xs font-bold text-purple-600 hover:underline flex items-center gap-1">
-              <span>Kelola Akun Admin</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total User Admin</span>
-              <p className="text-3xl font-black text-purple-700">{superadminStats.totalAdmins || 0}</p>
-            </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Stok Segar Ready</span>
-              <p className="text-3xl font-black text-emerald-700">{(superadminStats.totalSegarReady || 0).toLocaleString()} botol</p>
-            </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Stok Olahan Ready</span>
-              <p className="text-3xl font-black text-amber-600">{(superadminStats.totalOlahanReady || 0).toLocaleString()} pcs</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SIMPLE PRODUCTION REPORTING MODAL FOR ADMIN FARM */}
-      {showProdModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+      {/* 2. RINGKASAN PRODUKSI HARI INI & 3. HASIL PENGEMASAN HARI INI (SIDE BY SIDE) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        
+        {/* 2. SECTION: PRODUKSI HARI INI */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Milk className="w-5 h-5 text-emerald-600" />
-                <span>Lapor Hasil Perah Susu Segar Harian</span>
-              </h3>
-              <button onClick={() => setShowProdModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                <span>Produksi Hari Ini</span>
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">{todayFormatted}</p>
             </div>
-
-            <form onSubmit={handleCreateProduction} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Perah</label>
-                <input
-                  type="date"
-                  value={prodDate}
-                  onChange={(e) => setProdDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Kode / Jenis Susu Segar</label>
-                <select
-                  value={prodCategoryId}
-                  onChange={(e) => setProdCategoryId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-                  required
-                >
-                  {segarCategories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Hasil Perah Susu Segar (Liter)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  placeholder="Contoh: 500"
-                  value={prodRawLiters}
-                  onChange={(e) => setProdRawLiters(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Hasil Perah / Peternakan</label>
-                <textarea
-                  rows="2"
-                  placeholder="Contoh: Perah pagi hari dari sektor kandang A..."
-                  value={prodNotes}
-                  onChange={(e) => setProdNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-                ></textarea>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowProdModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#1E3F20] text-white rounded-xl text-xs font-bold hover:bg-[#16331a] shadow"
-                >
-                  Kirim Laporan Perah
-                </button>
-              </div>
-            </form>
+            <Link href="/produksi" className="text-xs font-bold text-[#1E3F20] hover:underline flex items-center gap-1">
+              <span>Lihat Detail</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        </div>
-      )}
 
-      {/* OUTFLOW / DISTRIBUTION MODAL FOR ADMIN PEMASARAN */}
-      {showOutModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                <Truck className="w-5 h-5 text-blue-600" />
-                <span>Input Distribusi / Produk Keluar</span>
-              </h3>
-              <button onClick={() => setShowOutModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateOutflow} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🐄</span>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Tipe Produk</label>
-                  <select
-                    value={outProductType}
-                    onChange={(e) => {
-                      setOutProductType(e.target.value);
-                      const matching = categories.filter(c => c.productType === e.target.value);
-                      if (matching.length > 0) setOutCategoryId(matching[0].id);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                    required
-                  >
-                    <option value="SEGAR">Susu Segar</option>
-                    <option value="OLAHAN">Susu Olahan</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Kemasan</label>
-                  <select
-                    value={outPackagingType}
-                    onChange={(e) => setOutPackagingType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                    required
-                  >
-                    <option value="botol">Botol</option>
-                    <option value="cup">Cup</option>
-                    <option value="pack">Pack / Bantal</option>
-                    <option value="liter">Liter (Bulk)</option>
-                  </select>
+                  <h4 className="font-bold text-slate-900 text-sm">Susu Sapi</h4>
+                  <p className="text-[11px] text-slate-500">Hasil perah sapi segar</p>
                 </div>
               </div>
+              <span className="text-xl font-black text-emerald-700">{todaySapi} Liter</span>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Distribusi</label>
-                <input
-                  type="date"
-                  value={outDate}
-                  onChange={(e) => setOutDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-purple-50/60 border border-purple-100">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🐐</span>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">Susu Kambing</h4>
+                  <p className="text-[11px] text-slate-500">Hasil perah kambing segar</p>
+                </div>
               </div>
+              <span className="text-xl font-black text-purple-700">{todayKambing} Liter</span>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Varian Kategori Produk</label>
-                <select
-                  value={outCategoryId}
-                  onChange={(e) => setOutCategoryId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                >
-                  {filteredOutCategories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900 text-white shadow-sm">
+              <span className="font-extrabold text-sm">Total Produksi Hari Ini</span>
+              <span className="text-2xl font-black text-emerald-400">{todayTotalLiters} Liter</span>
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah Distribusi ({outPackagingType})</label>
-                <input
-                  type="number"
-                  placeholder="Contoh: 200"
-                  value={outQuantity}
-                  onChange={(e) => setOutQuantity(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Tujuan Distribusi</label>
-                <textarea
-                  rows="2"
-                  placeholder="Contoh: Pengiriman ke toko agen..."
-                  value={outNotes}
-                  onChange={(e) => setOutNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                ></textarea>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowOutModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow"
-                >
-                  Simpan Distribusi
-                </button>
-              </div>
-            </form>
+          {/* VISUAL RATIO PROGRESS BAR */}
+          <div className="space-y-1.5 pt-2">
+            <div className="flex justify-between text-xs font-bold text-slate-600">
+              <span>Rasio Sapi vs Kambing</span>
+              <span>{sapiPercentage}% Sapi / {kambingPercentage}% Kambing</span>
+            </div>
+            <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+              <div className="bg-emerald-600 h-full transition-all duration-500" style={{ width: `${sapiPercentage}%` }}></div>
+              <div className="bg-purple-600 h-full transition-all duration-500" style={{ width: `${kambingPercentage}%` }}></div>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* 3. SECTION: HASIL PENGEMASAN HARI INI WITH TAB [ SEMUA ] [ 🐄 SAPI ] [ 🐐 KAMBING ] */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Package className="w-5 h-5 text-amber-600" />
+                <span>Hasil Pengemasan Hari Ini</span>
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Produk siap didistribusikan ke pemasaran</p>
+            </div>
+
+            {/* TAB SELECTOR: [ Semua ] [ 🐄 Sapi ] [ 🐐 Kambing ] */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl self-start sm:self-auto">
+              <button
+                onClick={() => setPackagingTab('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  packagingTab === 'ALL'
+                    ? 'bg-[#1E3F20] text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Semua
+              </button>
+              <button
+                onClick={() => setPackagingTab('SAPI')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  packagingTab === 'SAPI'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🐄 Sapi
+              </button>
+              <button
+                onClick={() => setPackagingTab('KAMBING')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  packagingTab === 'KAMBING'
+                    ? 'bg-purple-600 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🐐 Kambing
+              </button>
+            </div>
+          </div>
+
+          {/* TAB CONTENT: SEMUA MODE */}
+          {packagingTab === 'ALL' && (
+            <div className="space-y-4">
+              <div className="space-y-2.5">
+                {/* Botol */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-xs uppercase">Botol</h4>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Sapi: <span className="font-bold text-emerald-700">{farmStats.sapiBotolQty || 0} pcs</span> | Kambing: <span className="font-bold text-purple-700">{farmStats.kambingBotolQty || 0} pcs</span>
+                    </p>
+                  </div>
+                  <span className="text-xl font-black text-amber-700">{farmStats.todayBotolQty || 0} pcs</span>
+                </div>
+
+                {/* Cup */}
+                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-xs uppercase">Cup</h4>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Sapi: <span className="font-bold text-emerald-700">{farmStats.sapiCupQty || 0} pcs</span> | Kambing: <span className="font-bold text-purple-700">{farmStats.kambingCupQty || 0} pcs</span>
+                    </p>
+                  </div>
+                  <span className="text-xl font-black text-blue-700">{farmStats.todayCupQty || 0} pcs</span>
+                </div>
+
+                {/* Plastik Bantal */}
+                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-xs uppercase">Plastik Bantal</h4>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Sapi: <span className="font-bold text-emerald-700">{farmStats.sapiPlastikBantalQty || 0} pcs</span> | Kambing: <span className="font-bold text-purple-700">{farmStats.kambingPlastikBantalQty || 0} pcs</span>
+                    </p>
+                  </div>
+                  <span className="text-xl font-black text-emerald-700">{farmStats.todayPlastikBantalQty || 0} pcs</span>
+                </div>
+              </div>
+
+              {/* TOTAL KEMASAN CARD */}
+              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs">Total Produk Dikemas Hari Ini</span>
+                  <span className="text-2xl font-black text-amber-400">{todayPackagedQty} pcs</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-slate-300 border-t border-slate-800 pt-1.5 font-semibold">
+                  <span>Sapi: {sapiPackagedQty} pcs</span>
+                  <span>Kambing: {kambingPackagedQty} pcs</span>
+                  <span>Total: {todayPackagedQty} pcs</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: SAPI MODE */}
+          {packagingTab === 'SAPI' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 text-emerald-900 font-extrabold text-xs">
+                <span>🐄 Pengemasan Susu Sapi</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 text-center space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Botol</span>
+                  <p className="text-2xl font-black text-amber-700">{farmStats.sapiBotolQty || 0}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Cup</span>
+                  <p className="text-2xl font-black text-blue-700">{farmStats.sapiCupQty || 0}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 text-center space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Plastik Bantal</span>
+                  <p className="text-2xl font-black text-emerald-700">{farmStats.sapiPlastikBantalQty || 0}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-900 text-white flex items-center justify-between">
+                <span className="font-extrabold text-xs">Total Pengemasan Sapi</span>
+                <span className="text-2xl font-black text-emerald-300">{sapiPackagedQty} pcs</span>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: KAMBING MODE */}
+          {packagingTab === 'KAMBING' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-purple-50 text-purple-900 font-extrabold text-xs">
+                <span>🐐 Pengemasan Susu Kambing</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 text-center space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Botol</span>
+                  <p className="text-2xl font-black text-amber-700">{farmStats.kambingBotolQty || 0}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Cup</span>
+                  <p className="text-2xl font-black text-blue-700">{farmStats.kambingCupQty || 0}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 text-center space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Plastik Bantal</span>
+                  <p className="text-2xl font-black text-emerald-700">{farmStats.kambingPlastikBantalQty || 0}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-purple-900 text-white flex items-center justify-between">
+                <span className="font-extrabold text-xs">Total Pengemasan Kambing</span>
+                <span className="text-2xl font-black text-purple-300">{kambingPackagedQty} pcs</span>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <Link href="/pengemasan" className="text-xs font-bold text-amber-600 hover:underline flex items-center justify-center gap-1">
+              <span>Kelola Seluruh Pengemasan</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. GRAFIK PRODUKSI & 5. AKTIVITAS TERAKHIR */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* 4. SECTION: GRAFIK PRODUKSI */}
+        <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                <span>Produksi {chartFilter === '30' ? '30 Hari' : '7 Hari'} Terakhir</span>
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold">Grafik volume hasil perah susu dalam Liter per tanggal</p>
+            </div>
+
+            {/* FILTER SWITCH: 7 Hari / 30 Hari */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+              <button
+                onClick={() => setChartFilter('7')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  chartFilter === '7'
+                    ? 'bg-[#1E3F20] text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                7 Hari
+              </button>
+              <button
+                onClick={() => setChartFilter('30')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  chartFilter === '30'
+                    ? 'bg-[#1E3F20] text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                30 Hari
+              </button>
+            </div>
+          </div>
+
+          {/* CLEAN SVG BAR CHART */}
+          <div className="space-y-4 pt-2">
+            <div className="h-56 flex items-end justify-between gap-2 md:gap-3 px-2">
+              {chartData.map((d, index) => {
+                const heightPercent = maxChartVal > 0 ? Math.round((d.totalLiters / maxChartVal) * 100) : 0;
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                    <span className="opacity-0 group-hover:opacity-100 text-[10px] font-black text-emerald-800 transition-opacity bg-emerald-100 px-1.5 py-0.5 rounded shadow">
+                      {d.totalLiters} L
+                    </span>
+                    <div
+                      className="w-full bg-gradient-to-t from-[#1E3F20] to-emerald-500 rounded-t-xl group-hover:brightness-110 transition-all shadow-sm min-h-[4px]"
+                      style={{ height: `${Math.max(heightPercent, 4)}%` }}
+                    ></div>
+                    <span className="text-[10px] font-bold text-slate-500 truncate w-full text-center">
+                      {chartFilter === '30' ? d.dateStr : d.dayName}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 pt-3 border-t border-slate-100">
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded bg-[#1E3F20]"></span>
+                Total Liter Perah
+              </span>
+              <span>Tinggi grafik sesuai dengan volume hasil perah</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 5. SECTION: AKTIVITAS TERAKHIR */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-600" />
+              <span>Aktivitas Terakhir</span>
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Realtime</span>
+          </div>
+
+          <div className="space-y-4 flex-1 overflow-y-auto max-h-[280px] pr-1">
+            {farmStats.recentLogs && farmStats.recentLogs.length > 0 ? (
+              farmStats.recentLogs.map((log) => {
+                const logTime = new Date(log.createdAt).toLocaleTimeString('id-ID', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+                return (
+                  <div key={log.id} className="flex gap-3 text-xs">
+                    <div className="flex flex-col items-center">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px] shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-emerald-700" />
+                      </div>
+                      <div className="w-0.5 flex-1 bg-slate-100 my-1"></div>
+                    </div>
+                    <div className="space-y-1 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-slate-900">{logTime}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold">
+                          {log.action}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 font-medium leading-relaxed">
+                        {log.details || 'Aktivitas perah/pengemasan berhasil dicatat.'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-xs font-semibold">
+                Belum ada aktivitas terbaru hari ini.
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100">
+            <Link
+              href="/produksi"
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>Kelola Seluruh Laporan</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

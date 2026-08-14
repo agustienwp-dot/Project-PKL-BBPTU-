@@ -92,15 +92,14 @@ export default function PemasaranPage() {
     fetchData();
   }, [productType, filterCategory, filterDate]);
 
-  if (!isAdminPemasaran) {
-    return (
-      <div className="p-8 bg-white border border-rose-200 rounded-3xl text-center space-y-4 shadow-sm">
-        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-black text-rose-700">Akses Ditolak — Khusus Admin Pemasaran</h2>
-        <p className="text-xs text-slate-500">Halaman ini dikhususkan untuk Admin Pemasaran untuk menginput dan mengelola stok ready serta pengeluaran produk.</p>
-      </div>
-    );
-  }
+  const canManage = user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN';
+
+  useEffect(() => {
+    const actionParam = searchParams.get('action');
+    if (actionParam === 'outflow' && canManage) {
+      openAddModal();
+    }
+  }, [searchParams, canManage]);
 
   const openAddModal = () => {
     setEditingOutflow(null);
@@ -188,7 +187,7 @@ export default function PemasaranPage() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold mb-2">
             <ShoppingBag className="w-4 h-4" />
-            <span>POV Admin Pemasaran</span>
+            <span>{canManage ? 'POV Admin Pemasaran' : 'Informasi Stok Pemasaran (Read Only)'}</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900">
             Manajemen Stok & Pengeluaran {productType === 'SEGAR' ? 'Susu Segar' : 'Susu Olahan'}
@@ -196,13 +195,15 @@ export default function PemasaranPage() {
           <p className="text-xs text-slate-500 font-medium">Pantau ketersediaan stok ready dan catat pengeluaran produk terjual secara real-time.</p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Input Produk Keluar ({productType})</span>
-        </button>
+        {canManage && (
+          <button
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Input Produk Keluar ({productType})</span>
+          </button>
+        )}
       </div>
 
       {/* Product Type Switcher Tab */}
@@ -359,20 +360,26 @@ export default function PemasaranPage() {
                       <td className="py-3.5 px-4 text-slate-600">{o.createdBy?.name || 'Admin Pemasaran'}</td>
                       <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">{o.notes || '-'}</td>
                       <td className="py-3.5 px-4 text-center space-x-2">
-                        <button
-                          onClick={() => openEditModal(o)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit Pengeluaran"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingOutflow(o)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Hapus Pengeluaran"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canManage ? (
+                          <>
+                            <button
+                              onClick={() => openEditModal(o)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit Pengeluaran"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingOutflow(o)}
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Hapus Pengeluaran"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 font-semibold text-[10px]">Read Only</span>
+                        )}
                       </td>
                     </tr>
                   ))

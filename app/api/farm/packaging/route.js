@@ -8,13 +8,11 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('categoryId');
-    const productType = searchParams.get('productType');
     const animalType = searchParams.get('animalType');
     const date = searchParams.get('date');
 
     const where = {};
     if (categoryId) where.categoryId = categoryId;
-    if (productType) where.productType = productType;
     if (animalType) where.animalType = animalType;
     if (date) {
       const startDate = new Date(date);
@@ -27,7 +25,7 @@ export async function GET(request) {
       };
     }
 
-    const productions = await prisma.milkProduction.findMany({
+    const packagings = await prisma.milkPackaging.findMany({
       where,
       include: {
         category: true,
@@ -38,9 +36,9 @@ export async function GET(request) {
       orderBy: { date: 'desc' },
     });
 
-    return NextResponse.json({ success: true, data: productions });
+    return NextResponse.json({ success: true, data: packagings });
   } catch (error) {
-    console.error('GET /api/farm/production error:', error);
+    console.error('GET /api/farm/packaging error:', error);
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -49,35 +47,40 @@ export async function POST(request) {
   try {
     const authUser = getAuthUser(request);
     if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN')) {
-      return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm atau Superadmin yang dapat menginput produksi' }, { status: 403 });
+      return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm atau Superadmin yang dapat menginput hasil pengemasan' }, { status: 403 });
     }
 
-    const { date, categoryId, productType, animalType, packagingType, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
+    const { date, categoryId, animalType, processedLiters, botolQty, cupQty, plastikBantalQty, notes } = await request.json();
 
-    if (!categoryId) {
-      return NextResponse.json({ success: false, message: 'Kategori susu wajib dipilih' }, { status: 400 });
+    const liters = parseFloat(processedLiters) || 0;
+    const botol = parseInt(botolQty, 10) || 0;
+    const cup = parseInt(cupQty, 10) || 0;
+    const plastikBantal = parseInt(plastikBantalQty, 10) || 0;
+
+    // Validation
+    if (liters < 0 || botol < 0 || cup < 0 || plastikBantal < 0) {
+      return NextResponse.json({ success: false, message: 'Jumlah liter dan kemasan tidak boleh bernilai negatif' }, { status: 400 });
     }
 
-    const category = await prisma.milkCategory.findUnique({ where: { id: categoryId } });
-    if (!category) {
-      return NextResponse.json({ success: false, message: 'Kategori susu tidak ditemukan' }, { status: 404 });
+    const totalPackagedQty = botol + cup + plastikBantal;
+    if (totalPackagedQty <= 0 && liters <= 0) {
+      return NextResponse.json({ success: false, message: 'Harap masukkan jumlah liter diproses atau jumlah kemasan valid' }, { status: 400 });
     }
 
-    const pType = productType || category.productType || 'SEGAR';
-    const aType = animalType || category.animalType || 'SAPI';
-    const pkgType = packagingType || category.defaultPackaging || 'botol';
+    const aType = animalType || 'SAPI';
 
-    const production = await prisma.milkProduction.create({
+    const packaging = await prisma.milkPackaging.create({
       data: {
         date: date ? new Date(date) : new Date(),
-        categoryId,
-        productType: pType,
         animalType: aType,
-        packagingType: pkgType,
-        rawVolumeLiters: parseFloat(rawVolumeLiters) || 0,
-        processedLiters: parseFloat(processedLiters) || 0,
-        packagedQty: parseInt(packagedQty, 10) || 0,
+        categoryId: categoryId || null,
+        processedLiters: liters,
+        botolQty: botol,
+        cupQty: cup,
+        plastikBantalQty: plastikBantal,
+        totalPackagedQty,
         notes: notes || '',
+        status: 'SELESAI',
         createdById: authUser.id,
       },
       include: {
@@ -92,18 +95,18 @@ export async function POST(request) {
       data: {
         userId: authUser.id,
         userEmail: authUser.email,
-        action: 'CREATE_PRODUCTION',
-        details: `Input produksi ${aType} (${pType}) ${category.name}: ${rawVolumeLiters || 0} L, dikemas ${packagedQty || 0} ${pkgType}`,
+        action: 'CREATE_PACKAGING',
+        details: `Pengemasan ${aType}: ${liters}L diproses -> Botol: ${botol}, Cup: ${cup}, Plastik Bantal: ${plastikBantal} (Total: ${totalPackagedQty} pcs)`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Data produksi Susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${rawVolumeLiters || 0} Liter) berhasil disimpan!`,
-      data: production,
+      message: `Hasil pengemasan (${totalPackagedQty} pcs) berhasil dicatat!`,
+      data: packaging,
     });
   } catch (error) {
-    console.error('POST /api/farm/production error:', error);
+    console.error('POST /api/farm/packaging error:', error);
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
   }
 }

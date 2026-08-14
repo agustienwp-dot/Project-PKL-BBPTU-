@@ -103,15 +103,42 @@ export async function GET(request) {
       });
     });
 
-    // Today & Month Stats for SEGAR
+    // Today & Month Stats for SEGAR (All, Sapi, Kambing)
     const todaySegarProd = await prisma.milkProduction.aggregate({
       where: { productType: 'SEGAR', date: { gte: startOfToday, lte: endOfToday } },
       _sum: { rawVolumeLiters: true, packagedQty: true },
     });
+    const todaySapiProd = await prisma.milkProduction.aggregate({
+      where: { productType: 'SEGAR', animalType: 'SAPI', date: { gte: startOfToday, lte: endOfToday } },
+      _sum: { rawVolumeLiters: true, packagedQty: true },
+    });
+    const todayKambingProd = await prisma.milkProduction.aggregate({
+      where: { productType: 'SEGAR', animalType: 'KAMBING', date: { gte: startOfToday, lte: endOfToday } },
+      _sum: { rawVolumeLiters: true, packagedQty: true },
+    });
+
     const monthSegarProd = await prisma.milkProduction.aggregate({
       where: { productType: 'SEGAR', date: { gte: startOfMonth, lte: endOfMonth } },
       _sum: { rawVolumeLiters: true, packagedQty: true },
     });
+    const monthSapiProd = await prisma.milkProduction.aggregate({
+      where: { productType: 'SEGAR', animalType: 'SAPI', date: { gte: startOfMonth, lte: endOfMonth } },
+      _sum: { rawVolumeLiters: true, packagedQty: true },
+    });
+    const monthKambingProd = await prisma.milkProduction.aggregate({
+      where: { productType: 'SEGAR', animalType: 'KAMBING', date: { gte: startOfMonth, lte: endOfMonth } },
+      _sum: { rawVolumeLiters: true, packagedQty: true },
+    });
+
+    const totalSapiAgg = await prisma.milkProduction.aggregate({
+      where: { animalType: 'SAPI' },
+      _sum: { rawVolumeLiters: true },
+    });
+    const totalKambingAgg = await prisma.milkProduction.aggregate({
+      where: { animalType: 'KAMBING' },
+      _sum: { rawVolumeLiters: true },
+    });
+
     const todaySegarOut = await prisma.milkOutflow.aggregate({
       where: { productType: 'SEGAR', date: { gte: startOfToday, lte: endOfToday } },
       _sum: { quantity: true },
@@ -141,13 +168,13 @@ export async function GET(request) {
 
     // Recent items
     const recentSegarProductions = await prisma.milkProduction.findMany({
-      take: 5,
+      take: 8,
       where: { productType: 'SEGAR' },
       orderBy: { date: 'desc' },
       include: { category: true, createdBy: { select: { name: true } } },
     });
     const recentOlahanProductions = await prisma.milkProduction.findMany({
-      take: 5,
+      take: 8,
       where: { productType: 'OLAHAN' },
       orderBy: { date: 'desc' },
       include: { category: true, createdBy: { select: { name: true } } },
@@ -174,6 +201,76 @@ export async function GET(request) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Today Packaging Aggregates for Admin Farm (Total, Sapi, Kambing)
+    const todayPackagingAgg = await prisma.milkPackaging.aggregate({
+      where: { date: { gte: startOfToday, lte: endOfToday } },
+      _sum: { botolQty: true, cupQty: true, plastikBantalQty: true, totalPackagedQty: true, processedLiters: true },
+    });
+
+    const sapiPackagingAgg = await prisma.milkPackaging.aggregate({
+      where: { animalType: 'SAPI', date: { gte: startOfToday, lte: endOfToday } },
+      _sum: { botolQty: true, cupQty: true, plastikBantalQty: true, totalPackagedQty: true, processedLiters: true },
+    });
+
+    const kambingPackagingAgg = await prisma.milkPackaging.aggregate({
+      where: { animalType: 'KAMBING', date: { gte: startOfToday, lte: endOfToday } },
+      _sum: { botolQty: true, cupQty: true, plastikBantalQty: true, totalPackagedQty: true, processedLiters: true },
+    });
+
+    const totalPackagingAgg = await prisma.milkPackaging.aggregate({
+      _sum: { botolQty: true, cupQty: true, plastikBantalQty: true, totalPackagedQty: true, processedLiters: true },
+    });
+
+    // Chart Data Generation (7 Days & 30 Days)
+    const getDailyChartData = async (daysCount) => {
+      const chartData = [];
+      const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+        const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+        const dayAgg = await prisma.milkProduction.aggregate({
+          where: { date: { gte: dStart, lte: dEnd } },
+          _sum: { rawVolumeLiters: true },
+        });
+
+        const sapiAgg = await prisma.milkProduction.aggregate({
+          where: { animalType: 'SAPI', date: { gte: dStart, lte: dEnd } },
+          _sum: { rawVolumeLiters: true },
+        });
+
+        const kambingAgg = await prisma.milkProduction.aggregate({
+          where: { animalType: 'KAMBING', date: { gte: dStart, lte: dEnd } },
+          _sum: { rawVolumeLiters: true },
+        });
+
+        const dayLabel = `${daysName[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
+
+        chartData.push({
+          label: dayLabel,
+          dayName: daysName[d.getDay()],
+          dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
+          fullDate: d.toISOString().split('T')[0],
+          totalLiters: dayAgg._sum.rawVolumeLiters || 0,
+          sapiLiters: sapiAgg._sum.rawVolumeLiters || 0,
+          kambingLiters: kambingAgg._sum.rawVolumeLiters || 0,
+        });
+      }
+      return chartData;
+    };
+
+    const chart7Days = await getDailyChartData(7);
+    const chart30Days = await getDailyChartData(30);
+
+    const recentPackagings = await prisma.milkPackaging.findMany({
+      take: 5,
+      orderBy: { date: 'desc' },
+      include: { category: true, createdBy: { select: { name: true } } },
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -184,12 +281,51 @@ export async function GET(request) {
           totalOlahanReady,
           recentLogs,
         },
+        farm: {
+          todayTotalLiters: todaySegarProd._sum.rawVolumeLiters || 0,
+          todaySapiLiters: todaySapiProd._sum.rawVolumeLiters || 0,
+          todayKambingLiters: todayKambingProd._sum.rawVolumeLiters || 0,
+
+          // Overall Packaging
+          todayPackagedQty: todayPackagingAgg._sum.totalPackagedQty || 0,
+          todayBotolQty: todayPackagingAgg._sum.botolQty || 0,
+          todayCupQty: todayPackagingAgg._sum.cupQty || 0,
+          todayPlastikBantalQty: todayPackagingAgg._sum.plastikBantalQty || 0,
+          todayProcessedLiters: todayPackagingAgg._sum.processedLiters || 0,
+
+          // Sapi Packaging
+          sapiPackagedQty: sapiPackagingAgg._sum.totalPackagedQty || 0,
+          sapiBotolQty: sapiPackagingAgg._sum.botolQty || 0,
+          sapiCupQty: sapiPackagingAgg._sum.cupQty || 0,
+          sapiPlastikBantalQty: sapiPackagingAgg._sum.plastikBantalQty || 0,
+          sapiProcessedLiters: sapiPackagingAgg._sum.processedLiters || 0,
+
+          // Kambing Packaging
+          kambingPackagedQty: kambingPackagingAgg._sum.totalPackagedQty || 0,
+          kambingBotolQty: kambingPackagingAgg._sum.botolQty || 0,
+          kambingCupQty: kambingPackagingAgg._sum.cupQty || 0,
+          kambingPlastikBantalQty: kambingPackagingAgg._sum.plastikBantalQty || 0,
+          kambingProcessedLiters: kambingPackagingAgg._sum.processedLiters || 0,
+
+          totalAccumulatedLiters: totalLitersAgg._sum.rawVolumeLiters || 0,
+          totalPackagedQty: totalPackagingAgg._sum.totalPackagedQty || 0,
+          chart7Days,
+          chart30Days,
+          recentPackagings,
+          recentLogs,
+        },
         segar: {
           totalReadyStock: totalSegarReady,
           todayLiters: todaySegarProd._sum.rawVolumeLiters || 0,
+          todaySapiLiters: todaySapiProd._sum.rawVolumeLiters || 0,
+          todayKambingLiters: todayKambingProd._sum.rawVolumeLiters || 0,
           todayPackaged: todaySegarProd._sum.packagedQty || 0,
           monthLiters: monthSegarProd._sum.rawVolumeLiters || 0,
+          monthSapiLiters: monthSapiProd._sum.rawVolumeLiters || 0,
+          monthKambingLiters: monthKambingProd._sum.rawVolumeLiters || 0,
           monthPackaged: monthSegarProd._sum.packagedQty || 0,
+          totalSapiLiters: totalSapiAgg._sum.rawVolumeLiters || 0,
+          totalKambingLiters: totalKambingAgg._sum.rawVolumeLiters || 0,
           todayOutflow: todaySegarOut._sum.quantity || 0,
           monthOutflow: monthSegarOut._sum.quantity || 0,
           categories: segarStocks,

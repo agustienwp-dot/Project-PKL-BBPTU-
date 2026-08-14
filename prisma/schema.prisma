@@ -3,8 +3,18 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id          Int     @id @default(autoincrement())
+  username    String? @unique @db.VarChar(255)
+  password    String? @db.VarChar(255)
+  role        String? @db.VarChar(50)
+  record_flag String? @default("ACTIVE") @db.VarChar(31)
+
+  @@map("admin")
 }
 
 model User {
@@ -19,6 +29,7 @@ model User {
 
   logs        SystemLog[]
   productions MilkProduction[]
+  packagings  MilkPackaging[]
   outflows    MilkOutflow[]
 
   @@map("users")
@@ -42,12 +53,14 @@ model MilkCategory {
   name             String   @unique // e.g. Susu Murni Segar, Susu Olahan Cokelat, Yogurt, Keju
   code             String   @unique // e.g. SEGAR_MURNI, OLAHAN_COKELAT, YOGURT
   productType      String   @default("SEGAR") // "SEGAR" or "OLAHAN"
+  animalType       String   @default("SAPI") // "SAPI" or "KAMBING"
   defaultPackaging String   @default("botol") // "cup", "pack", "botol", "liter"
   description      String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   productions MilkProduction[]
+  packagings  MilkPackaging[]
   outflows    MilkOutflow[]
 
   @@map("milk_categories")
@@ -59,10 +72,12 @@ model MilkProduction {
   categoryId      String
   category        MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   productType     String   @default("SEGAR") // "SEGAR" or "OLAHAN"
+  animalType      String   @default("SAPI") // "SAPI" or "KAMBING"
   packagingType   String   @default("botol") // "cup", "pack", "botol", "liter"
   rawVolumeLiters Float    @default(0) // Input jumlah susu dalam liter (hasil perah)
   processedLiters Float    @default(0) // Input jumlah susu yang diproses/dikemas (liter)
   packagedQty     Int      @default(0) // Input jumlah produk setelah dikemas (botol/cup/pack)
+  status          String   @default("SELESAI") // "SELESAI"
   notes           String?
   createdById     String?
   createdBy       User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
@@ -72,12 +87,34 @@ model MilkProduction {
   @@map("milk_productions")
 }
 
+model MilkPackaging {
+  id               String   @id @default(uuid())
+  date             DateTime @default(now())
+  animalType       String   @default("SAPI") // "SAPI" or "KAMBING"
+  categoryId       String?
+  category         MilkCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  processedLiters  Float    @default(0) // Jumlah liter susu yang diproses/dikemas
+  botolQty         Int      @default(0) // Jumlah pcs botol
+  cupQty           Int      @default(0) // Jumlah pcs cup
+  plastikBantalQty Int      @default(0) // Jumlah pcs plastik bantal
+  totalPackagedQty Int      @default(0) // botolQty + cupQty + plastikBantalQty
+  status           String   @default("SELESAI") // "SELESAI"
+  notes            String?
+  createdById      String?
+  createdBy        User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("milk_packagings")
+}
+
 model MilkOutflow {
   id            String   @id @default(uuid())
   date          DateTime @default(now())
   categoryId    String
   category      MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   productType   String   @default("SEGAR") // "SEGAR" or "OLAHAN"
+  animalType    String   @default("SAPI") // "SAPI" or "KAMBING"
   packagingType String   @default("botol") // "cup", "pack", "botol", "liter"
   quantity      Int      @default(0) // Jumlah produk yang keluar/terjual (botol/cup/pack)
   notes         String?

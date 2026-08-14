@@ -43,6 +43,8 @@ export async function GET(request) {
 
     // Monthly Aggregates
     let totalRawLiters = 0;
+    let totalSapiRawLiters = 0;
+    let totalKambingRawLiters = 0;
     let totalProcessedLiters = 0;
     let totalPackaged = 0;
     let totalOutflow = 0;
@@ -52,6 +54,11 @@ export async function GET(request) {
 
     monthProductions.forEach((p) => {
       totalRawLiters += p.rawVolumeLiters;
+      if (p.animalType === 'KAMBING') {
+        totalKambingRawLiters += p.rawVolumeLiters;
+      } else {
+        totalSapiRawLiters += p.rawVolumeLiters;
+      }
       totalProcessedLiters += p.processedLiters;
       totalPackaged += p.packagedQty;
 
@@ -91,6 +98,8 @@ export async function GET(request) {
       });
 
       let dayRawLiters = 0;
+      let daySapiRawLiters = 0;
+      let dayKambingRawLiters = 0;
       let dayProcessedLiters = 0;
       let dayPackaged = 0;
       let dayOutflow = 0;
@@ -100,6 +109,11 @@ export async function GET(request) {
 
       dayProds.forEach((p) => {
         dayRawLiters += p.rawVolumeLiters;
+        if (p.animalType === 'KAMBING') {
+          dayKambingRawLiters += p.rawVolumeLiters;
+        } else {
+          daySapiRawLiters += p.rawVolumeLiters;
+        }
         dayProcessedLiters += p.processedLiters;
         dayPackaged += p.packagedQty;
         const pkg = p.packagingType || 'botol';
@@ -116,6 +130,8 @@ export async function GET(request) {
         day,
         dateStr: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
         rawVolumeLiters: dayRawLiters,
+        sapiRawLiters: daySapiRawLiters,
+        kambingRawLiters: dayKambingRawLiters,
         processedLiters: dayProcessedLiters,
         packagedQty: dayPackaged,
         outflowQty: dayOutflow,
@@ -134,6 +150,8 @@ export async function GET(request) {
         productType,
         summary: {
           totalRawLiters,
+          totalSapiRawLiters,
+          totalKambingRawLiters,
           totalProcessedLiters,
           totalPackaged,
           totalOutflow,

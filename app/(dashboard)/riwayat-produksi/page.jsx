@@ -1,0 +1,484 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import Toast from '@/components/Toast';
+import ConfirmModal from '@/components/ConfirmModal';
+import { 
+  History, 
+  Search, 
+  Filter, 
+  Edit2, 
+  Trash2, 
+  Eye, 
+  CheckCircle2, 
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Milk,
+  FileSpreadsheet
+} from 'lucide-react';
+
+export default function RiwayatProduksiPage() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [productions, setProductions] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [toast, setToast] = useState(null);
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterAnimalType, setFilterAnimalType] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Detail Modal
+  const [selectedProd, setSelectedProd] = useState(null);
+
+  // Edit Modal State
+  const [editingProd, setEditingProd] = useState(null);
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formAnimalType, setFormAnimalType] = useState('SAPI');
+  const [formCategoryId, setFormCategoryId] = useState('');
+  const [formRawLiters, setFormRawLiters] = useState('');
+  const [formNotes, setFormNotes] = useState('');
+
+  // Delete State
+  const [deletingProd, setDeletingProd] = useState(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      let url = '/farm/production?productType=SEGAR&';
+      if (filterAnimalType) url += `animalType=${filterAnimalType}&`;
+      if (filterDate) url += `date=${filterDate}&`;
+
+      const [pRes, cRes] = await Promise.all([
+        api.get(url),
+        api.get('/categories?productType=SEGAR'),
+      ]);
+
+      if (pRes.data.success) setProductions(pRes.data.data);
+      if (cRes.data.success) {
+        setCategories(cRes.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching production history:', err);
+      setToast({ type: 'error', message: 'Gagal memuat riwayat produksi.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [filterAnimalType, filterDate]);
+
+  const canManage = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
+
+  const openEditModal = (p) => {
+    setEditingProd(p);
+    setFormDate(new Date(p.date).toISOString().split('T')[0]);
+    setFormAnimalType(p.animalType || 'SAPI');
+    setFormCategoryId(p.categoryId);
+    setFormRawLiters(p.rawVolumeLiters.toString());
+    setFormNotes(p.notes || '');
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    const liters = parseFloat(formRawLiters);
+    if (isNaN(liters) || liters < 0) {
+      setToast({ type: 'error', message: 'Jumlah liter tidak boleh bernilai negatif' });
+      return;
+    }
+
+    try {
+      const cat = categories.find(c => c.id === formCategoryId);
+      const pkg = cat?.defaultPackaging || 'botol';
+
+      const res = await api.put(`/farm/production/${editingProd.id}`, {
+        date: formDate,
+        categoryId: formCategoryId,
+        productType: 'SEGAR',
+        animalType: formAnimalType,
+        packagingType: pkg,
+        rawVolumeLiters: liters,
+        processedLiters: liters,
+        packagedQty: Math.round(liters),
+        notes: formNotes,
+      });
+
+      if (res.data.success) {
+        setToast({ type: 'success', message: 'Laporan perah susu berhasil diperbarui!' });
+        setEditingProd(null);
+        fetchData();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Gagal memperbarui data.';
+      setToast({ type: 'error', message: msg });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingProd) return;
+    try {
+      const res = await api.delete(`/farm/production/${deletingProd.id}`);
+      if (res.data.success) {
+        setToast({ type: 'success', message: 'Data riwayat produksi berhasil dihapus.' });
+        setDeletingProd(null);
+        fetchData();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Gagal menghapus data.';
+      setToast({ type: 'error', message: msg });
+    }
+  };
+
+  // Search & Filter
+  const filteredProductions = productions.filter((p) => {
+    const q = searchQuery.toLowerCase();
+    const catName = (p.category?.name || '').toLowerCase();
+    const notes = (p.notes || '').toLowerCase();
+    const creator = (p.createdBy?.name || '').toLowerCase();
+    return catName.includes(q) || notes.includes(q) || creator.includes(q);
+  });
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredProductions.length / itemsPerPage) || 1;
+  const paginatedData = filteredProductions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  return (
+    <div className="space-y-8 pb-12">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+
+      {/* Header Section */}
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold mb-2">
+          <History className="w-4 h-4" />
+          <span>POV Admin Farm Produksi</span>
+        </div>
+        <h1 className="text-2xl font-black text-slate-900">Riwayat Produksi Susu</h1>
+        <p className="text-xs text-slate-500 font-medium">Tabel riwayat pencatatan hasil perah harian lengkap dengan status dan filter.</p>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Cari varian, catatan, atau petugas..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+          </div>
+
+          <select
+            value={filterAnimalType}
+            onChange={(e) => {
+              setFilterAnimalType(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+          >
+            <option value="">Semua Jenis Susu (Sapi & Kambing)</option>
+            <option value="SAPI">🐄 Susu Sapi</option>
+            <option value="KAMBING">🐐 Susu Kambing</option>
+          </select>
+
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => {
+              setFilterDate(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+          />
+
+          {(filterAnimalType || filterDate || searchQuery) && (
+            <button
+              onClick={() => {
+                setFilterAnimalType('');
+                setFilterDate('');
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold"
+            >
+              Reset Filter
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Production History Table */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+            <span>Riwayat Laporan Perah ({filteredProductions.length} Entry)</span>
+          </h2>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center"><LoadingSpinner text="Memuat riwayat produksi..." /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Tanggal</th>
+                  <th className="py-3.5 px-4">Jenis Susu</th>
+                  <th className="py-3.5 px-4">Jumlah Liter</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {paginatedData.length > 0 ? (
+                  paginatedData.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50">
+                      <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
+                        {new Date(p.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </td>
+                      <td className="py-3.5 px-4 font-extrabold text-slate-900">
+                        {p.animalType === 'KAMBING' ? (
+                          <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 font-extrabold text-[10px] inline-flex items-center gap-1">
+                            🐐 Kambing
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] inline-flex items-center gap-1">
+                            🐄 Sapi
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-black text-emerald-700 text-sm">{p.rawVolumeLiters} L</td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px] inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Selesai
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center space-x-1.5 whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedProd(p)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                        >
+                          Detail
+                        </button>
+                        {canManage && (
+                          <>
+                            <button
+                              onClick={() => openEditModal(p)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingProd(p)}
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">Belum ada riwayat produksi susu yang sesuai.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-600">
+          <span>Menampilkan halaman {currentPage} dari {totalPages} ({filteredProductions.length} Total)</span>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 py-1 bg-slate-100 rounded-xl font-extrabold">{currentPage}</span>
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* DETAIL MODAL */}
+      {selectedProd && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <Milk className="w-5 h-5 text-emerald-600" />
+                <span>Detail Riwayat Produksi</span>
+              </h3>
+              <button onClick={() => setSelectedProd(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="font-semibold text-slate-500">Tanggal:</span>
+                <span className="font-extrabold text-slate-900">
+                  {new Date(selectedProd.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="font-semibold text-slate-500">Jenis Susu:</span>
+                <span className="font-extrabold text-slate-900">
+                  {selectedProd.animalType === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="font-semibold text-slate-500">Jumlah Volume:</span>
+                <span className="font-black text-emerald-700 text-sm">{selectedProd.rawVolumeLiters} Liter</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="font-semibold text-slate-500">Status:</span>
+                <span className="font-bold text-emerald-600">Selesai (Tercatat)</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="font-semibold text-slate-500">Petugas Input:</span>
+                <span className="font-semibold text-slate-700">{selectedProd.createdBy?.name || 'Admin Farm'}</span>
+              </div>
+              <div className="space-y-1 pt-1">
+                <span className="font-semibold text-slate-500 block">Catatan:</span>
+                <p className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium">{selectedProd.notes || 'Tidak ada catatan.'}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setSelectedProd(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {editingProd && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-blue-600" />
+                <span>Edit Riwayat Produksi</span>
+              </h3>
+              <button onClick={() => setEditingProd(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
+                <input
+                  type="date"
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Susu</label>
+                <select
+                  value={formAnimalType}
+                  onChange={(e) => setFormAnimalType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                >
+                  <option value="SAPI">🐄 Susu Sapi</option>
+                  <option value="KAMBING">🐐 Susu Kambing</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah Liter</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formRawLiters}
+                  onChange={(e) => setFormRawLiters(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan</label>
+                <textarea
+                  rows="2"
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                ></textarea>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingProd(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#1E3F20] text-white rounded-xl text-xs font-bold hover:bg-[#16331a] shadow"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE MODAL */}
+      <ConfirmModal
+        isOpen={!!deletingProd}
+        title="Konfirmasi Hapus Laporan Produksi"
+        message="Apakah Anda yakin ingin menghapus data laporan produksi ini?"
+        confirmText="Ya, Hapus Laporan"
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingProd(null)}
+      />
+    </div>
+  );
+}

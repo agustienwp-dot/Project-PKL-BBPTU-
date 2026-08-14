@@ -18,11 +18,42 @@ import {
   User,
   ShieldCheck,
   FileText,
-  PackageCheck
+  PackageCheck,
+  Package,
+  History,
+  ClipboardList,
+  Boxes,
+  TrendingDown
 } from 'lucide-react';
 
+function isRouteAllowed(role, pathname) {
+  if (!role || !pathname) return true;
+
+  // Root and dashboard are accessible to all authenticated users
+  if (pathname === '/dashboard' || pathname === '/') return true;
+  if (pathname.startsWith('/profil')) return true;
+  if (pathname.startsWith('/reports')) return true;
+
+  if (role === 'SUPERADMIN') {
+    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran'];
+    return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  }
+
+  if (role === 'ADMIN_FARM') {
+    const allowed = ['/dashboard', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  }
+
+  if (role === 'ADMIN_PEMASARAN') {
+    const allowed = ['/dashboard', '/pemasaran', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  }
+
+  return false;
+}
+
 export default function DashboardLayout({ children }) {
-  const { user, loading, logout, isSuperAdmin, isAdminFarm, isAdminPemasaran } = useAuth();
+  const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -34,23 +65,7 @@ export default function DashboardLayout({ children }) {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <LoadingSpinner text="Memverifikasi hak akses Sistem Manajemen Stok Susu..." />;
-  }
-
-  // Navigation Items
-  const navItems = [
-    { label: 'Dashboard Utama', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Stok & Susu Segar', path: '/pemasaran?productType=SEGAR', icon: Milk },
-    { label: 'Stok & Susu Olahan', path: '/pemasaran?productType=OLAHAN', icon: Coffee },
-    { label: 'Produksi Susu Farm', path: '/produksi', icon: PackageCheck },
-    { label: 'Laporan Bulanan', path: '/reports', icon: FileText },
-  ];
-
-  if (isSuperAdmin) {
-    navItems.push(
-      { label: 'Kelola Admin User', path: '/superadmin', icon: Users, badge: 'SUPERADMIN' },
-      { label: 'Kategori Produk', path: '/kategori', icon: Layers }
-    );
+    return <LoadingSpinner text="Memverifikasi hak akses Sistem Management Produksi Susu..." />;
   }
 
   const handleLogout = () => {
@@ -72,6 +87,55 @@ export default function DashboardLayout({ children }) {
   };
 
   const roleInfo = getRoleBadge(user?.role);
+
+  // Define Role-based Navigation Items
+  const getNavItems = () => {
+    const role = user?.role;
+
+    if (role === 'SUPERADMIN') {
+      return [
+        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Manajemen Admin', path: '/superadmin', icon: Users },
+        { label: 'Aktivitas Sistem', path: '/superadmin?tab=logs', icon: ShieldCheck },
+        { label: 'Laporan', path: '/reports', icon: FileText },
+        { label: 'Profil', path: '/profil', icon: User }
+      ];
+    }
+
+    if (role === 'ADMIN_FARM') {
+      return [
+        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Produksi Susu', path: '/produksi', icon: Milk },
+        { label: 'Pengemasan', path: '/pengemasan', icon: Package },
+        { label: 'Riwayat Produksi', path: '/riwayat-produksi', icon: History },
+        { label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
+        { label: 'Laporan Produksi', path: '/reports', icon: FileText },
+        { label: 'Profil', path: '/profil', icon: User }
+      ];
+    }
+
+    if (role === 'ADMIN_PEMASARAN') {
+      return [
+        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Stok Produk', path: '/pemasaran', icon: Boxes },
+        { label: 'Produk Keluar', path: '/pemasaran?action=outflow', icon: TrendingDown },
+        { label: 'Riwayat Stok', path: '/pemasaran?view=riwayat', icon: History },
+        { label: 'Produksi & Pengemasan', path: '/produksi', icon: Milk },
+        { label: 'Laporan Pemasaran', path: '/reports', icon: FileText },
+        { label: 'Profil', path: '/profil', icon: User }
+      ];
+    }
+
+    // Default fallback navigation
+    return [
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Laporan', path: '/reports', icon: FileText },
+      { label: 'Profil', path: '/profil', icon: User }
+    ];
+  };
+
+  const navItems = getNavItems();
+  const isAllowed = isRouteAllowed(user?.role, pathname);
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex flex-col md:flex-row font-sans">
@@ -110,11 +174,12 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+          {/* Navigation Links Directly */}
+          <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+              const basePath = item.path.split('?')[0];
+              const isActive = pathname === basePath || (basePath !== '/dashboard' && pathname.startsWith(basePath));
               return (
                 <Link
                   key={item.path}
@@ -140,7 +205,7 @@ export default function DashboardLayout({ children }) {
             })}
           </nav>
 
-          {/* User Profile Box */}
+          {/* User Profile Box & Logout */}
           <div className="p-4 border-t border-white/10 bg-[#16331a]">
             <div className="p-3 bg-[#102613] rounded-xl border border-white/10 mb-3 space-y-1">
               <div className="flex items-center gap-2">
@@ -184,9 +249,27 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
 
-        {/* Content Viewport */}
+        {/* Content Viewport / Protected Access View */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
+          {isAllowed ? (
+            children
+          ) : (
+            <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
+              <div className="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 flex items-center justify-center font-black text-2xl shadow-inner">
+                403
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">403 - Akses Ditolak</h2>
+              <p className="text-xs text-slate-500 max-w-md font-medium leading-relaxed">
+                Anda tidak memiliki izin untuk mengakses halaman ini.
+              </p>
+              <Link
+                href="/dashboard"
+                className="px-5 py-2.5 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow transition-all transform hover:-translate-y-0.5"
+              >
+                Kembali ke Dashboard
+              </Link>
+            </div>
+          )}
         </main>
       </div>
     </div>

@@ -12,7 +12,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = params;
-    const { date, categoryId, productType, packagingType, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
+    const { date, categoryId, productType, animalType, packagingType, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
 
     const existing = await prisma.milkProduction.findUnique({ where: { id } });
     if (!existing) {
@@ -25,6 +25,7 @@ export async function PUT(request, { params }) {
         date: date ? new Date(date) : existing.date,
         categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
         productType: productType !== undefined ? productType : existing.productType,
+        animalType: animalType !== undefined ? animalType : existing.animalType,
         packagingType: packagingType !== undefined ? packagingType : existing.packagingType,
         rawVolumeLiters: rawVolumeLiters !== undefined ? parseFloat(rawVolumeLiters) : existing.rawVolumeLiters,
         processedLiters: processedLiters !== undefined ? parseFloat(processedLiters) : existing.processedLiters,
