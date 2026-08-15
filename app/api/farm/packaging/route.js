@@ -9,11 +9,19 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('categoryId');
     const animalType = searchParams.get('animalType');
+    const productCategory = searchParams.get('productCategory');
+    const productSubtype = searchParams.get('productSubtype');
+    const origin = searchParams.get('origin');
+    const status = searchParams.get('status');
     const date = searchParams.get('date');
 
     const where = {};
     if (categoryId) where.categoryId = categoryId;
     if (animalType) where.animalType = animalType;
+    if (productCategory) where.productCategory = productCategory;
+    if (productSubtype) where.productSubtype = productSubtype;
+    if (origin) where.origin = origin;
+    if (status) where.status = status;
     if (date) {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -50,37 +58,88 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm atau Superadmin yang dapat menginput hasil pengemasan' }, { status: 403 });
     }
 
-    const { date, categoryId, animalType, processedLiters, botolQty, cupQty, plastikBantalQty, notes } = await request.json();
+    const body = await request.json();
+    const {
+      date,
+      productCategory,
+      productSubtype,
+      origin,
+      variant,
+      animalType,
+      categoryId,
+      processedAmount,
+      processedUnit,
+      processedLiters,
+      packagingItems,
+      botolQty,
+      cupQty,
+      plastikBantalQty,
+      notes,
+    } = body;
 
-    const liters = parseFloat(processedLiters) || 0;
-    const botol = parseInt(botolQty, 10) || 0;
-    const cup = parseInt(cupQty, 10) || 0;
-    const plastikBantal = parseInt(plastikBantalQty, 10) || 0;
+    const pCategory = productCategory || 'Susu';
+    const pSubtype = productSubtype || null;
+    const pOrigin = origin || (animalType === 'KAMBING' ? 'Kambing' : 'Sapi');
+    const aType = pOrigin.toUpperCase() === 'KAMBING' ? 'KAMBING' : 'SAPI';
+    const pVariant = variant || 'Original';
 
-    // Validation
-    if (liters < 0 || botol < 0 || cup < 0 || plastikBantal < 0) {
-      return NextResponse.json({ success: false, message: 'Jumlah liter dan kemasan tidak boleh bernilai negatif' }, { status: 400 });
+    const pAmount = parseFloat(processedAmount !== undefined ? processedAmount : processedLiters) || 0;
+    const pUnit = processedUnit || (pCategory === 'Keju' ? 'Kg' : 'Liter');
+
+    if (pAmount < 0) {
+      return NextResponse.json({ success: false, message: 'Jumlah bahan diproses tidak boleh bernilai negatif' }, { status: 400 });
     }
 
-    const totalPackagedQty = botol + cup + plastikBantal;
-    if (totalPackagedQty <= 0 && liters <= 0) {
-      return NextResponse.json({ success: false, message: 'Harap masukkan jumlah liter diproses atau jumlah kemasan valid' }, { status: 400 });
+    let itemsList = Array.isArray(packagingItems) ? packagingItems : [];
+    let totalPackagedQty = 0;
+    let bQty = parseInt(botolQty, 10) || 0;
+    let cQty = parseInt(cupQty, 10) || 0;
+    let pQty = parseInt(plastikBantalQty, 10) || 0;
+    let primaryPkgType = null;
+    let primaryPkgSize = null;
+
+    if (itemsList.length > 0) {
+      totalPackagedQty = itemsList.reduce((sum, i) => sum + (parseInt(i.quantity, 10) || 0), 0);
+      primaryPkgType = itemsList[0]?.packagingType || 'Botol';
+      primaryPkgSize = itemsList[0]?.size || '';
+      
+      bQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('botol')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
+      cQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('cup')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
+      pQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('bantal')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
+    } else {
+      totalPackagedQty = bQty + cQty + pQty;
+      itemsList = [];
+      if (bQty > 0) itemsList.push({ packagingType: 'Botol', size: '', quantity: bQty });
+      if (cQty > 0) itemsList.push({ packagingType: 'Cup', size: '', quantity: cQty });
+      if (pQty > 0) itemsList.push({ packagingType: 'Plastik Bantal', size: '', quantity: pQty });
     }
 
-    const aType = animalType || 'SAPI';
+    if (totalPackagedQty <= 0 && pAmount <= 0) {
+      return NextResponse.json({ success: false, message: 'Harap masukkan jumlah bahan diproses atau rincian kemasan yang valid' }, { status: 400 });
+    }
 
     const packaging = await prisma.milkPackaging.create({
       data: {
         date: date ? new Date(date) : new Date(),
+        productCategory: pCategory,
+        productSubtype: pSubtype,
+        origin: pOrigin,
+        variant: pVariant,
         animalType: aType,
         categoryId: categoryId || null,
-        processedLiters: liters,
-        botolQty: botol,
-        cupQty: cup,
-        plastikBantalQty: plastikBantal,
+        processedAmount: pAmount,
+        processedUnit: pUnit,
+        processedLiters: pUnit === 'Liter' ? pAmount : 0,
+        packagingDetails: JSON.stringify(itemsList),
+        packagingType: primaryPkgType,
+        packageSize: primaryPkgSize,
+        botolQty: bQty,
+        cupQty: cQty,
+        plastikBantalQty: pQty,
         totalPackagedQty,
+        quantitySent: totalPackagedQty,
         notes: notes || '',
-        status: 'SELESAI',
+        status: 'DRAFT',
         createdById: authUser.id,
       },
       include: {
@@ -96,13 +155,13 @@ export async function POST(request) {
         userId: authUser.id,
         userEmail: authUser.email,
         action: 'CREATE_PACKAGING',
-        details: `Pengemasan ${aType}: ${liters}L diproses -> Botol: ${botol}, Cup: ${cup}, Plastik Bantal: ${plastikBantal} (Total: ${totalPackagedQty} pcs)`,
+        details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (DRAFT)`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Hasil pengemasan (${totalPackagedQty} pcs) berhasil dicatat!`,
+      message: `Hasil pengemasan ${pCategory} (${totalPackagedQty} pcs) berhasil disimpan sebagai DRAFT!`,
       data: packaging,
     });
   } catch (error) {

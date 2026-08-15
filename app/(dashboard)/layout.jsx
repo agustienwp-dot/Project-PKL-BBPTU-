@@ -23,8 +23,14 @@ import {
   History,
   ClipboardList,
   Boxes,
-  TrendingDown
+  TrendingDown,
+  ChevronRight,
+  Sparkles,
+  ShoppingCart,
+  BarChart3,
+  Bell
 } from 'lucide-react';
+import api from '@/services/api';
 
 function isRouteAllowed(role, pathname) {
   if (!role || !pathname) return true;
@@ -35,7 +41,7 @@ function isRouteAllowed(role, pathname) {
   if (pathname.startsWith('/reports')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran'];
+    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -45,7 +51,7 @@ function isRouteAllowed(role, pathname) {
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/dashboard', '/pemasaran', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -57,12 +63,29 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/login');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN')) {
+      const fetchPending = async () => {
+        try {
+          const res = await api.get('/farm/packaging?status=MENUNGGU_PENERIMAAN');
+          if (res.data.success) {
+            setPendingCount(res.data.data.length);
+          }
+        } catch (e) {}
+      };
+      fetchPending();
+      const interval = setInterval(fetchPending, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   if (loading || !user) {
     return <LoadingSpinner text="Memverifikasi hak akses Sistem Management Produksi Susu..." />;
@@ -94,10 +117,12 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'SUPERADMIN') {
       return [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { label: 'Manajemen Admin', path: '/superadmin', icon: Users },
-        { label: 'Aktivitas Sistem', path: '/superadmin?tab=logs', icon: ShieldCheck },
-        { label: 'Laporan', path: '/reports', icon: FileText },
+        { label: 'Dashboard Main', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
+        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
+        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
+        { label: 'Penjualan Produk', path: '/pemasaran/penjualan', icon: ShoppingCart },
+        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -116,12 +141,11 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { label: 'Stok Produk', path: '/pemasaran', icon: Boxes },
-        { label: 'Produk Keluar', path: '/pemasaran?action=outflow', icon: TrendingDown },
-        { label: 'Riwayat Stok', path: '/pemasaran?view=riwayat', icon: History },
-        { label: 'Produksi & Pengemasan', path: '/produksi', icon: Milk },
-        { label: 'Laporan Pemasaran', path: '/reports', icon: FileText },
+        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: LayoutDashboard },
+        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
+        { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
+        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
+        { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }

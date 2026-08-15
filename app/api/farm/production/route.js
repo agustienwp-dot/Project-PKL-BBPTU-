@@ -52,7 +52,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm atau Superadmin yang dapat menginput produksi' }, { status: 403 });
     }
 
-    const { date, categoryId, productType, animalType, packagingType, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
+    const { date, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
 
     if (!categoryId) {
       return NextResponse.json({ success: false, message: 'Kategori susu wajib dipilih' }, { status: 400 });
@@ -67,6 +67,23 @@ export async function POST(request) {
     const aType = animalType || category.animalType || 'SAPI';
     const pkgType = packagingType || category.defaultPackaging || 'botol';
 
+    const grossVal = grossVolumeLiters !== undefined ? parseFloat(grossVolumeLiters) || 0 : (parseFloat(rawVolumeLiters) || 0);
+    const pedetVal = parseFloat(pedetVolumeLiters) || 0;
+    const afkirVal = parseFloat(afkirVolumeLiters) || 0;
+    const totalUsage = pedetVal + afkirVal;
+
+    const feedLabel = aType === 'KAMBING' ? 'Cempe' : 'Pedet';
+    let summaryUsage = usageType || '';
+    if (!summaryUsage) {
+      const parts = [];
+      if (pedetVal > 0) parts.push(`${feedLabel}: ${pedetVal}L`);
+      if (afkirVal > 0) parts.push(`Afkir: ${afkirVal}L`);
+      summaryUsage = parts.join(', ');
+    }
+
+    const netVolume = Math.max(0, grossVal - totalUsage);
+    const finalProcessed = processedLiters !== undefined ? parseFloat(processedLiters) || netVolume : netVolume;
+
     const production = await prisma.milkProduction.create({
       data: {
         date: date ? new Date(date) : new Date(),
@@ -74,9 +91,14 @@ export async function POST(request) {
         productType: pType,
         animalType: aType,
         packagingType: pkgType,
-        rawVolumeLiters: parseFloat(rawVolumeLiters) || 0,
-        processedLiters: parseFloat(processedLiters) || 0,
-        packagedQty: parseInt(packagedQty, 10) || 0,
+        grossVolumeLiters: grossVal,
+        pedetVolumeLiters: pedetVal,
+        afkirVolumeLiters: afkirVal,
+        usageType: summaryUsage || null,
+        usageVolumeLiters: totalUsage,
+        rawVolumeLiters: netVolume,
+        processedLiters: finalProcessed,
+        packagedQty: parseInt(packagedQty, 10) || Math.round(netVolume),
         notes: notes || '',
         createdById: authUser.id,
       },
@@ -88,18 +110,20 @@ export async function POST(request) {
       },
     });
 
+    const usageDetail = summaryUsage ? ` (Potongan: ${summaryUsage})` : '';
+
     await prisma.systemLog.create({
       data: {
         userId: authUser.id,
         userEmail: authUser.email,
         action: 'CREATE_PRODUCTION',
-        details: `Input produksi ${aType} (${pType}) ${category.name}: ${rawVolumeLiters || 0} L, dikemas ${packagedQty || 0} ${pkgType}`,
+        details: `Produksi susu ${aType} (${pType}) ${category.name}: Gross ${grossVal} L${usageDetail} -> Susu siap olah: ${netVolume} L`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Data produksi Susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${rawVolumeLiters || 0} Liter) berhasil disimpan!`,
+      message: `Produksi susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} berhasil disimpan! (Susu siap olah: ${netVolume} Liter)`,
       data: production,
     });
   } catch (error) {
