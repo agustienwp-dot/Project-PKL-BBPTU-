@@ -398,12 +398,14 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-emerald-600" />
-                <span>Produksi {chartFilter === '30' ? '30 Hari' : '7 Hari'} Terakhir</span>
+                <span>Produksi {chartFilter === '30' ? 'Bulan Ini' : '7 Hari Terakhir'}</span>
               </h2>
-              <p className="text-xs text-slate-400 font-semibold">Grafik volume hasil perah susu dalam Liter per tanggal</p>
+              <p className="text-xs text-slate-400 font-semibold">
+                {chartFilter === '30' ? 'Grafik volume hasil perah susu per tanggal (Tgl 1 - akhir bulan)' : 'Grafik volume hasil perah susu 7 hari terakhir'}
+              </p>
             </div>
 
-            {/* FILTER SWITCH: 7 Hari / 30 Hari */}
+            {/* FILTER SWITCH: 7 Hari / Bulan Ini */}
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
               <button
                 onClick={() => setChartFilter('7')}
@@ -423,27 +425,31 @@ export default function DashboardPage() {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                30 Hari
+                Bulan Ini
               </button>
             </div>
           </div>
 
           {/* CLEAN SVG BAR CHART */}
-          <div className="space-y-4 pt-2">
-            <div className="h-56 flex items-end justify-between gap-2 md:gap-3 px-2">
+          <div className="space-y-4 pt-2 w-full overflow-hidden">
+            <div className={`h-56 flex items-end justify-between px-1 w-full max-w-full ${
+              chartFilter === '30' ? 'gap-0.5 sm:gap-1' : 'gap-2 md:gap-3'
+            }`}>
               {chartData.map((d, index) => {
                 const heightPercent = maxChartVal > 0 ? Math.round((d.totalLiters / maxChartVal) * 100) : 0;
                 return (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                    <span className="opacity-0 group-hover:opacity-100 text-[10px] font-black text-emerald-800 transition-opacity bg-emerald-100 px-1.5 py-0.5 rounded shadow">
-                      {d.totalLiters} L
+                  <div key={index} className="flex-1 min-w-0 flex flex-col items-center gap-1 h-full justify-end group relative">
+                    <span className="opacity-0 group-hover:opacity-100 text-[9px] font-black text-emerald-900 transition-opacity bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-md shadow pointer-events-none whitespace-nowrap z-20 absolute -top-7">
+                      {d.formattedDate || d.dateStr}: {d.totalLiters} L
                     </span>
                     <div
-                      className="w-full bg-gradient-to-t from-[#1E3F20] to-emerald-500 rounded-t-xl group-hover:brightness-110 transition-all shadow-sm min-h-[4px]"
+                      className="w-full bg-gradient-to-t from-[#1E3F20] to-emerald-500 rounded-t-sm sm:rounded-t-md group-hover:brightness-110 transition-all shadow-sm min-h-[4px]"
                       style={{ height: `${Math.max(heightPercent, 4)}%` }}
                     ></div>
-                    <span className="text-[10px] font-bold text-slate-500 truncate w-full text-center">
-                      {chartFilter === '30' ? d.dateStr : d.dayName}
+                    <span className={`font-extrabold text-slate-500 w-full text-center ${
+                      chartFilter === '30' ? 'text-[8px] sm:text-[9px] leading-none' : 'text-[10px]'
+                    }`}>
+                      {chartFilter === '30' ? (d.dayNum || d.dateStr?.split('/')[0]) : d.dayName}
                     </span>
                   </div>
                 );

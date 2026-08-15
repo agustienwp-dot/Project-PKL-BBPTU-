@@ -221,7 +221,7 @@ export async function GET(request) {
       _sum: { botolQty: true, cupQty: true, plastikBantalQty: true, totalPackagedQty: true, processedLiters: true },
     });
 
-    // Chart Data Generation (7 Days & 30 Days)
+    // Chart Data Generation (7 Days & Current Month 1-30/31)
     const getDailyChartData = async (daysCount) => {
       const chartData = [];
       const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -252,7 +252,55 @@ export async function GET(request) {
         chartData.push({
           label: dayLabel,
           dayName: daysName[d.getDay()],
+          dayNum: d.getDate(),
+          monthNum: d.getMonth() + 1,
           dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
+          formattedDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+          fullDate: d.toISOString().split('T')[0],
+          totalLiters: dayAgg._sum.rawVolumeLiters || 0,
+          sapiLiters: sapiAgg._sum.rawVolumeLiters || 0,
+          kambingLiters: kambingAgg._sum.rawVolumeLiters || 0,
+        });
+      }
+      return chartData;
+    };
+
+    const getMonthlyChartData = async () => {
+      const chartData = [];
+      const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let day = 1; day <= totalDaysInMonth; day++) {
+        const d = new Date(year, month, day);
+        const dStart = new Date(year, month, day, 0, 0, 0, 0);
+        const dEnd = new Date(year, month, day, 23, 59, 59, 999);
+
+        const dayAgg = await prisma.milkProduction.aggregate({
+          where: { date: { gte: dStart, lte: dEnd } },
+          _sum: { rawVolumeLiters: true },
+        });
+
+        const sapiAgg = await prisma.milkProduction.aggregate({
+          where: { animalType: 'SAPI', date: { gte: dStart, lte: dEnd } },
+          _sum: { rawVolumeLiters: true },
+        });
+
+        const kambingAgg = await prisma.milkProduction.aggregate({
+          where: { animalType: 'KAMBING', date: { gte: dStart, lte: dEnd } },
+          _sum: { rawVolumeLiters: true },
+        });
+
+        const monthName = d.toLocaleDateString('id-ID', { month: 'short' });
+
+        chartData.push({
+          label: `${daysName[d.getDay()]} ${day}/${month + 1}`,
+          dayName: daysName[d.getDay()],
+          dayNum: day,
+          monthNum: month + 1,
+          dateStr: `${day}/${month + 1}`,
+          formattedDate: `${day} ${monthName}`,
           fullDate: d.toISOString().split('T')[0],
           totalLiters: dayAgg._sum.rawVolumeLiters || 0,
           sapiLiters: sapiAgg._sum.rawVolumeLiters || 0,
@@ -263,7 +311,7 @@ export async function GET(request) {
     };
 
     const chart7Days = await getDailyChartData(7);
-    const chart30Days = await getDailyChartData(30);
+    const chart30Days = await getMonthlyChartData();
 
     const recentPackagings = await prisma.milkPackaging.findMany({
       take: 5,

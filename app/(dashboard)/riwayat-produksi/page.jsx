@@ -242,10 +242,10 @@ export default function RiwayatProduksiPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Tanggal</th>
-                  <th className="py-3.5 px-4">Jenis Susu</th>
-                  <th className="py-3.5 px-4">Jumlah Liter</th>
-                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Tanggal Produksi</th>
+                  <th className="py-3.5 px-4">Jenis Ternak</th>
+                  <th className="py-3.5 px-4">Jumlah Literan Produksi</th>
+                  <th className="py-3.5 px-4">Catatan</th>
                   <th className="py-3.5 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
@@ -267,13 +267,8 @@ export default function RiwayatProduksiPage() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 font-black text-emerald-700 text-sm">{p.rawVolumeLiters} L</td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px] inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Selesai
-                        </span>
-                      </td>
+                      <td className="py-3.5 px-4 font-black text-emerald-700 text-sm">{p.rawVolumeLiters} Liter</td>
+                      <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">{p.notes || '-'}</td>
                       <td className="py-3.5 px-4 text-center space-x-1.5 whitespace-nowrap">
                         <button
                           onClick={() => setSelectedProd(p)}
