@@ -16,7 +16,7 @@ export default function ConfirmModal({ isOpen, title, message, onConfirm, onCanc
           <h3 className="text-lg font-extrabold text-slate-900">{title}</h3>
         </div>
 
-        <p className="text-xs text-slate-600 leading-relaxed">{message}</p>
+        <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">{message}</p>
 
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
           <button

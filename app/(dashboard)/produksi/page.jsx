@@ -6,6 +6,7 @@ import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
+import { exportToExcel } from '@/lib/exportExcel';
 import { 
   Milk, 
   Plus, 
@@ -18,7 +19,8 @@ import {
   FileSpreadsheet,
   Search,
   Eye,
-  X
+  X,
+  Download
 } from 'lucide-react';
 
 export default function ProduksiPage() {
@@ -211,6 +213,29 @@ export default function ProduksiPage() {
     return catName.includes(q) || notes.includes(q) || creator.includes(q);
   });
 
+  const handleExportExcel = () => {
+    if (filteredProductions.length === 0) {
+      setToast({ type: 'error', message: 'Tidak ada data produksi untuk diexport.' });
+      return;
+    }
+
+    const dataToExport = filteredProductions.map((p, idx) => ({
+      'No': idx + 1,
+      'Tanggal': new Date(p.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      'Ternak': p.animalType === 'KAMBING' ? 'Kambing' : 'Sapi',
+      'Kategori': p.category?.name || 'Susu Segar',
+      'Total Produksi (Liter)': p.grossVolumeLiters || p.rawVolumeLiters || 0,
+      'Potongan Pedet/Cempe (Liter)': p.pedetVolumeLiters || 0,
+      'Potongan Afkir (Liter)': p.afkirVolumeLiters || 0,
+      'Susu Siap Olah (Liter)': p.rawVolumeLiters || 0,
+      'Petugas Input': p.createdBy?.name || '-',
+      'Catatan': p.notes || '-'
+    }));
+
+    exportToExcel(dataToExport, `Data_Produksi_Susu_${new Date().toISOString().split('T')[0]}.xlsx`, 'Produksi Susu');
+    setToast({ type: 'success', message: 'Data produksi susu berhasil diexport ke Excel!' });
+  };
+
   return (
     <div className="space-y-8 pb-12">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
@@ -228,15 +253,26 @@ export default function ProduksiPage() {
           </p>
         </div>
 
-        {canManage && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={openAddModal}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+            onClick={handleExportExcel}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-bold shadow-md transition-all"
+            title="Export data produksi ke file Excel"
           >
-            <Plus className="w-4 h-4" />
-            <span>+ Input Produksi Susu</span>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+            <span>Save ke Excel</span>
           </button>
-        )}
+
+          {canManage && (
+            <button
+              onClick={openAddModal}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Input Produksi Susu</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter & Search Section */}

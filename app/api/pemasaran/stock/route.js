@@ -34,8 +34,8 @@ export async function GET(request) {
         acceptedPackagings.forEach((pkg) => {
           // If categoryId matches OR productCategory matches
           const matchCat = pkg.categoryId === cat.id || 
-            (cat.productType === 'SEGAR' && pkg.productCategory === 'Susu') ||
-            (cat.productType === 'OLAHAN' && (pkg.productCategory === 'Yogurt' || pkg.productCategory === 'Keju' || pkg.productSubtype === 'Susu Rasa'));
+            (cat.productType === 'SEGAR' && (pkg.productCategory === 'Susu' || pkg.productCategory === 'Susu Segar')) ||
+            (cat.productType === 'OLAHAN' && (pkg.productCategory === 'Susu Olahan' || pkg.productCategory === 'Yogurt' || pkg.productCategory === 'Keju' || pkg.productSubtype === 'Susu Rasa' || pkg.productSubtype === 'Susu Berasa' || pkg.productSubtype === 'Pasteurisasi'));
 
           if (matchCat) {
             // Check details or fallback to botol/cup/plastikBantal

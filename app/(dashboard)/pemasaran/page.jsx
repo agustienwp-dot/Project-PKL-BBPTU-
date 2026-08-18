@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Boxes, 
   ShoppingCart, 
@@ -25,6 +26,14 @@ import {
 
 export default function DashboardPemasaranPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams && searchParams.get('view') === 'stok') {
+      router.replace('/pemasaran/stok');
+    }
+  }, [searchParams, router]);
   const [loading, setLoading] = useState(true);
   const [dashData, setDashData] = useState(null);
   const [toast, setToast] = useState(null);
@@ -88,19 +97,6 @@ export default function DashboardPemasaranPage() {
         {canManage && (
           <div className="flex items-center gap-2">
             <Link
-              href="/pemasaran/penerimaan"
-              className="relative flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-xs font-bold shadow transition-all"
-            >
-              <Bell className="w-4 h-4" />
-              <span>Notifikasi Stok</span>
-              {pendingNotificationsCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-white text-amber-900 font-extrabold text-[10px]">
-                  {pendingNotificationsCount}
-                </span>
-              )}
-            </Link>
-
-            <Link
               href="/pemasaran/penjualan?action=new"
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow transition-all"
             >
@@ -111,28 +107,7 @@ export default function DashboardPemasaranPage() {
         )}
       </div>
 
-      {/* NOTIFICATION ALERT BANNER FOR PENDING STOCK */}
-      {pendingNotificationsCount > 0 && (
-        <div className="p-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-3xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-2xl shrink-0">
-              <Bell className="w-6 h-6 text-white animate-bounce" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm">Penambahan Stok Susu Masuk Dari Farm!</h3>
-              <p className="text-xs text-amber-100 font-medium">
-                Terdapat <strong>{pendingNotificationsCount} pengiriman stok</strong> dari Admin Farm yang menunggu konfirmasi Anda.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/pemasaran/penerimaan"
-            className="px-4 py-2 bg-white text-amber-900 hover:bg-amber-50 rounded-2xl text-xs font-black transition-all shadow shrink-0 text-center"
-          >
-            Konfirmasi Stok Sekarang →
-          </Link>
-        </div>
-      )}
+
 
       {/* SUMMARY CARDS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

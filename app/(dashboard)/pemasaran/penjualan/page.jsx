@@ -43,13 +43,35 @@ export default function PenjualanPage() {
   // Form Modal State
   const [showModal, setShowModal] = useState(false);
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formProductCategory, setFormProductCategory] = useState('Susu');
-  const [formProductSubtype, setFormProductSubtype] = useState('Susu UHT');
+  const [formProductCategory, setFormProductCategory] = useState('');
+  const [formProductSubtype, setFormProductSubtype] = useState('');
+  const [formOrigin, setFormOrigin] = useState('Sapi');
   const [formVariant, setFormVariant] = useState('Original');
   const [formPackagingType, setFormPackagingType] = useState('Botol');
+  const [formSize, setFormSize] = useState('250 ml');
   const [formQuantity, setFormQuantity] = useState('');
   const [formUnitPrice, setFormUnitPrice] = useState('15000');
   const [formNotes, setFormNotes] = useState('');
+
+  const getSizeOptions = (pkgType, productSubtype) => {
+    if (formProductCategory === 'Susu Olahan' && (formProductSubtype === 'Keju' || productSubtype === 'Keju')) {
+      return ['100 gram', '200 gram', '250 gram', '500 gram', '1 kg'];
+    }
+    const currentPkg = pkgType || formPackagingType;
+    if (currentPkg === 'Cup') {
+      return ['100 ml', '150 ml', '200 ml', '250 ml'];
+    }
+    if (currentPkg === 'Plastik Bantal') {
+      return ['200 ml', '250 ml', '500 ml'];
+    }
+    if (currentPkg === 'Plastik Vacuum') {
+      return ['100 gram', '200 gram', '250 gram', '500 gram', '1 kg'];
+    }
+    if (currentPkg === 'Pouch') {
+      return ['150 ml', '200 ml', '250 ml', '500 ml', '1 Liter'];
+    }
+    return ['100 ml', '200 ml', '250 ml', '330 ml', '500 ml', '1 Liter'];
+  };
 
   // Detail Modal & Confirm Submit & Delete State
   const [selectedSale, setSelectedSale] = useState(null);
@@ -99,10 +121,12 @@ export default function PenjualanPage() {
   const openAddModal = () => {
     setStockError(null);
     setFormDate(new Date().toISOString().split('T')[0]);
-    setFormProductCategory('Susu');
-    setFormProductSubtype('Susu UHT');
+    setFormProductCategory('');
+    setFormProductSubtype('');
+    setFormOrigin('Sapi');
     setFormVariant('Original');
     setFormPackagingType('Botol');
+    setFormSize('250 ml');
     setFormQuantity('');
     setFormUnitPrice('15000');
     setFormNotes('');
@@ -113,7 +137,12 @@ export default function PenjualanPage() {
     setStockError(null);
 
     if (!formProductCategory || computedQuantity <= 0) {
-      setToast({ type: 'error', message: 'Jumlah penjualan harus lebih dari 0 pcs' });
+      setToast({ type: 'error', message: 'Kategori produk dan Jumlah penjualan (> 0) wajib diisi' });
+      return;
+    }
+
+    if (formProductCategory === 'Susu Olahan' && !formProductSubtype) {
+      setToast({ type: 'error', message: 'Pilihan Susu Olahan wajib dipilih' });
       return;
     }
 
@@ -123,12 +152,14 @@ export default function PenjualanPage() {
     }
 
     try {
+      const fullPackagingDisplay = `${formPackagingType} (${formSize})`;
       const res = await api.post('/pemasaran/sales', {
         date: formDate,
         productCategory: formProductCategory,
-        productSubtype: formProductCategory === 'Susu' ? formProductSubtype : formProductCategory,
-        variant: formVariant,
-        packagingType: formPackagingType,
+        productSubtype: formProductCategory === 'Susu Segar' ? 'Susu Segar' : formProductSubtype,
+        origin: formOrigin,
+        variant: formProductCategory === 'Susu Segar' ? 'Original' : formVariant,
+        packagingType: fullPackagingDisplay,
         quantity: computedQuantity,
         unitPrice: computedUnitPrice,
         notes: formNotes,
@@ -247,10 +278,9 @@ export default function PenjualanPage() {
             }}
             className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
           >
-            <option value="">Semua Kategori (Susu, Yogurt, Keju)</option>
-            <option value="Susu">🥛 Susu</option>
-            <option value="Yogurt">🍦 Yogurt</option>
-            <option value="Keju">🧀 Keju</option>
+            <option value="">Semua Kategori (Susu Segar & Susu Olahan)</option>
+            <option value="Susu Segar">🥛 Susu Segar</option>
+            <option value="Susu Olahan">🍶 Susu Olahan</option>
           </select>
 
           <input
@@ -449,83 +479,208 @@ export default function PenjualanPage() {
                   <select
                     value={formProductCategory}
                     onChange={(e) => {
-                      const cat = e.target.value;
-                      setFormProductCategory(cat);
+                      const newCat = e.target.value;
+                      setFormProductCategory(newCat);
                       setStockError(null);
-                      if (cat === 'Susu') {
-                        setFormProductSubtype('Susu UHT');
+                      if (newCat === 'Susu Segar') {
+                        setFormProductSubtype('Susu Segar');
                         setFormVariant('Original');
-                      } else if (cat === 'Yogurt') {
-                        setFormProductSubtype('Yogurt');
+                      } else if (newCat === 'Susu Olahan') {
+                        setFormProductSubtype('Pasteurisasi');
                         setFormVariant('Original');
-                      } else if (cat === 'Keju') {
-                        setFormProductSubtype('Keju');
-                        setFormVariant('Keju Fresh');
                       }
                     }}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
                     required
                   >
-                    <option value="Susu">🥛 Susu</option>
-                    <option value="Yogurt">🍦 Yogurt</option>
-                    <option value="Keju">🧀 Keju</option>
+                    <option value="" disabled>Pilih kategori produk</option>
+                    <option value="Susu Segar">🥛 Susu Segar</option>
+                    <option value="Susu Olahan">🍶 Susu Olahan</option>
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Varian / Rasa</label>
-                    {formProductCategory === 'Susu' ? (
-                      <select
-                        value={formVariant}
-                        onChange={(e) => { setFormVariant(e.target.value); setStockError(null); }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="Original">Original</option>
-                        <option value="Cokelat">Cokelat</option>
-                        <option value="Stroberi">Stroberi</option>
-                        <option value="Vanilla">Vanilla</option>
-                        <option value="Melon">Melon</option>
-                      </select>
-                    ) : formProductCategory === 'Yogurt' ? (
-                      <select
-                        value={formVariant}
-                        onChange={(e) => { setFormVariant(e.target.value); setStockError(null); }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="Original">Original</option>
-                        <option value="Strawberry">Strawberry</option>
-                        <option value="Mangga">Mangga</option>
-                        <option value="Cokelat">Cokelat</option>
-                      </select>
-                    ) : (
-                      <select
-                        value={formVariant}
-                        onChange={(e) => { setFormVariant(e.target.value); setStockError(null); }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="Keju Fresh">Keju Fresh</option>
-                        <option value="Keju Olahan">Keju Olahan</option>
-                      </select>
-                    )}
-                  </div>
+                {/* CONDITIONAL FIELDS FOR SUSU SEGAR */}
+                {formProductCategory === 'Susu Segar' && (
+                  <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/70 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-emerald-900 mb-1">Asal Susu</label>
+                        <select
+                          value={formOrigin}
+                          onChange={(e) => { setFormOrigin(e.target.value); setStockError(null); }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-slate-900"
+                          required
+                        >
+                          <option value="Sapi">🐄 Sapi</option>
+                          <option value="Kambing">🐐 Kambing</option>
+                        </select>
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Kemasan</label>
-                    <select
-                      value={formPackagingType}
-                      onChange={(e) => { setFormPackagingType(e.target.value); setStockError(null); }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      required
-                    >
-                      <option value="Botol">Botol</option>
-                      <option value="Cup">Cup</option>
-                      <option value="Plastik Bantal">Plastik Bantal</option>
-                      <option value="Plastik Vacuum">Plastik Vacuum</option>
-                      <option value="Pouch">Pouch</option>
-                    </select>
+                      <div>
+                        <label className="block text-xs font-bold text-emerald-900 mb-1">Jenis Kemasan</label>
+                        <select
+                          value={formPackagingType}
+                          onChange={(e) => {
+                            const pType = e.target.value;
+                            setFormPackagingType(pType);
+                            setStockError(null);
+                            const opts = getSizeOptions(pType, formProductSubtype);
+                            if (!opts.includes(formSize)) setFormSize(opts[0]);
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-slate-900"
+                          required
+                        >
+                          <option value="Botol">Botol</option>
+                          <option value="Cup">Cup</option>
+                          <option value="Plastik Bantal">Plastik Bantal</option>
+                          <option value="Plastik Vacuum">Plastik Vacuum</option>
+                          <option value="Pouch">Pouch</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-emerald-900 mb-1">Ukuran Kemasan</label>
+                        <select
+                          value={formSize}
+                          onChange={(e) => { setFormSize(e.target.value); setStockError(null); }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-slate-900"
+                          required
+                        >
+                          {getSizeOptions(formPackagingType, formProductSubtype).map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* CONDITIONAL FIELDS FOR SUSU OLAHAN */}
+                {formProductCategory === 'Susu Olahan' && (
+                  <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/70 space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-amber-900 mb-1">
+                        Pilihan Susu Olahan <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={formProductSubtype}
+                        onChange={(e) => {
+                          const sub = e.target.value;
+                          setFormProductSubtype(sub);
+                          setStockError(null);
+                          if (sub === 'Susu Rasa') {
+                            setFormVariant('Cokelat');
+                          } else if (sub === 'Pasteurisasi') {
+                            setFormVariant('Original');
+                          } else if (sub === 'Yogurt') {
+                            setFormVariant('Original');
+                          } else if (sub === 'Keju') {
+                            setFormVariant('Keju Fresh');
+                          }
+                          const opts = getSizeOptions(formPackagingType, sub);
+                          if (!opts.includes(formSize)) setFormSize(opts[0]);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                        required
+                      >
+                        <option value="Pasteurisasi">🥛 Pasteurisasi</option>
+                        <option value="Susu Rasa">🧃 Susu Rasa</option>
+                        <option value="Yogurt">🍦 Yogurt</option>
+                        <option value="Keju">🧀 Keju</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Asal Susu</label>
+                        <select
+                          value={formOrigin}
+                          onChange={(e) => { setFormOrigin(e.target.value); setStockError(null); }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white text-slate-900"
+                          required
+                        >
+                          <option value="Sapi">🐄 Sapi</option>
+                          <option value="Kambing">🐐 Kambing</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Varian / Rasa</label>
+                        {formProductSubtype === 'Yogurt' ? (
+                          <select
+                            value={formVariant}
+                            onChange={(e) => { setFormVariant(e.target.value); setStockError(null); }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white text-slate-900"
+                          >
+                            <option value="Original">Original</option>
+                            <option value="Strawberry">Strawberry</option>
+                            <option value="Mangga">Mangga</option>
+                            <option value="Cokelat">Cokelat</option>
+                          </select>
+                        ) : formProductSubtype === 'Keju' ? (
+                          <select
+                            value={formVariant}
+                            onChange={(e) => { setFormVariant(e.target.value); setStockError(null); }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white text-slate-900"
+                          >
+                            <option value="Keju Fresh">Keju Fresh</option>
+                            <option value="Keju Olahan">Keju Olahan</option>
+                          </select>
+                        ) : (
+                          <select
+                            value={formVariant}
+                            onChange={(e) => { setFormVariant(e.target.value); setStockError(null); }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white text-slate-900"
+                          >
+                            <option value="Original">Original</option>
+                            <option value="Cokelat">Cokelat</option>
+                            <option value="Stroberi">Stroberi</option>
+                            <option value="Vanilla">Vanilla</option>
+                            <option value="Melon">Melon</option>
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Jenis Kemasan</label>
+                        <select
+                          value={formPackagingType}
+                          onChange={(e) => {
+                            const pType = e.target.value;
+                            setFormPackagingType(pType);
+                            setStockError(null);
+                            const opts = getSizeOptions(pType, formProductSubtype);
+                            if (!opts.includes(formSize)) setFormSize(opts[0]);
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white text-slate-900"
+                          required
+                        >
+                          <option value="Botol">Botol</option>
+                          <option value="Cup">Cup</option>
+                          <option value="Plastik Bantal">Plastik Bantal</option>
+                          <option value="Plastik Vacuum">Plastik Vacuum</option>
+                          <option value="Pouch">Pouch</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Ukuran Kemasan</label>
+                        <select
+                          value={formSize}
+                          onChange={(e) => { setFormSize(e.target.value); setStockError(null); }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white text-slate-900"
+                          required
+                        >
+                          {getSizeOptions(formPackagingType, formProductSubtype).map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>

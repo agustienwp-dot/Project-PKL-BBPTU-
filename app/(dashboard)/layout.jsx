@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { 
@@ -41,7 +41,7 @@ function isRouteAllowed(role, pathname) {
   if (pathname.startsWith('/reports')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/stok', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -51,7 +51,7 @@ function isRouteAllowed(role, pathname) {
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/stok', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -61,9 +61,12 @@ function isRouteAllowed(role, pathname) {
 export default function DashboardLayout({ children }) {
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -77,6 +80,7 @@ export default function DashboardLayout({ children }) {
         try {
           const res = await api.get('/farm/packaging?status=MENUNGGU_PENERIMAAN');
           if (res.data.success) {
+            setNotifItems(res.data.data);
             setPendingCount(res.data.data.length);
           }
         } catch (e) {}
@@ -86,6 +90,18 @@ export default function DashboardLayout({ children }) {
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  const getRelativeTime = (dateStr) => {
+    if (!dateStr) return 'Baru saja';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / 60000);
+    if (diffInMinutes < 1) return 'Baru saja';
+    if (diffInMinutes < 60) return `${diffInMinutes} mnt yang lalu`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} jam yang lalu`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
 
   if (loading || !user) {
     return <LoadingSpinner text="Memverifikasi hak akses Sistem Management Produksi Susu..." />;
@@ -132,8 +148,6 @@ export default function DashboardLayout({ children }) {
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Produksi Susu', path: '/produksi', icon: Milk },
         { label: 'Pengemasan', path: '/pengemasan', icon: Package },
-        { label: 'Riwayat Produksi', path: '/riwayat-produksi', icon: History },
-        { label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
         { label: 'Laporan Produksi', path: '/reports', icon: FileText },
         { label: 'Profil', path: '/profil', icon: User }
       ];
@@ -141,11 +155,11 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: LayoutDashboard },
-        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
+        { label: 'Dashboard', path: '/pemasaran', icon: LayoutDashboard },
         { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
-        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
-        { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
+        { label: 'Penerimaan Farm', path: '/pemasaran/penerimaan', icon: PackageCheck, badge: pendingCount > 0 ? `${pendingCount}` : null },
+        { label: 'Produk Keluar', path: '/pemasaran/stok', icon: Boxes },
+        { label: 'Laporan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -202,8 +216,21 @@ export default function DashboardLayout({ children }) {
           <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const basePath = item.path.split('?')[0];
-              const isActive = pathname === basePath || (basePath !== '/dashboard' && pathname.startsWith(basePath));
+              
+              // Precise Route Highlight Logic
+              let isActive = false;
+              if (item.path.includes('?')) {
+                const [basePath, queryString] = item.path.split('?');
+                const viewParam = searchParams ? searchParams.get('view') : null;
+                isActive = pathname === basePath && queryString === `view=${viewParam}`;
+              } else if (item.path === '/pemasaran') {
+                isActive = pathname === '/pemasaran' && (!searchParams || !searchParams.has('view'));
+              } else if (pathname === item.path) {
+                isActive = true;
+              } else if (item.path !== '/' && item.path !== '/dashboard' && item.path !== '/pemasaran') {
+                isActive = pathname.startsWith(item.path + '/');
+              }
+
               return (
                 <Link
                   key={item.path}
@@ -266,6 +293,83 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Notification Bell Dropdown */}
+            {(user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN') && (
+              <div className="relative">
+                <button
+                  onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+                  className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center justify-center border border-slate-200"
+                  title="Pemberitahuan Produk Dari Farm"
+                >
+                  <Bell className="w-4 h-4 text-slate-800" />
+                  {pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white ring-2 ring-white animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown Panel */}
+                {notifDropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-200 z-50 overflow-hidden text-slate-800">
+                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-amber-600" />
+                        <span className="font-extrabold text-xs text-slate-900">Pemberitahuan</span>
+                        {pendingCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                            {pendingCount} Baru
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setNotifDropdownOpen(false)}
+                        className="text-[11px] font-bold text-blue-600 hover:underline"
+                      >
+                        Tandai dibaca
+                      </button>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                      {notifItems.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-slate-400 font-medium">
+                          Tidak ada pemberitahuan produk baru dari Farm.
+                        </div>
+                      ) : (
+                        notifItems.map((pkg) => {
+                          const title = `${pkg.productCategory || 'Susu'} — ${pkg.variant || pkg.origin || 'Original'}`;
+                          const detail = `${pkg.packagingType || 'Botol'} • ${pkg.quantitySent || pkg.totalPackagedQty || 0} pcs`;
+                          const timeAgo = getRelativeTime(pkg.sentAt || pkg.createdAt);
+
+                          return (
+                            <Link
+                              key={pkg.id}
+                              href={`/pemasaran/penerimaan?id=${pkg.id}`}
+                              onClick={() => setNotifDropdownOpen(false)}
+                              className="p-3.5 hover:bg-slate-50 flex items-start gap-3 transition-colors group cursor-pointer"
+                            >
+                              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 mt-1.5 shrink-0 animate-ping"></div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1 mb-0.5">
+                                  <span className="text-[11px] font-extrabold text-amber-900 group-hover:text-amber-700 truncate">
+                                    🟡 Produk baru dari Admin Farm
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-medium shrink-0">{timeAgo}</span>
+                                </div>
+                                <p className="text-xs font-bold text-slate-900 truncate">{title}</p>
+                                <p className="text-[11px] text-slate-500 font-medium">{detail}</p>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 shrink-0 self-center" />
+                            </Link>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-2 bg-[#F5F5F0] px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-[#1E3F20]">
               <ShieldCheck className="w-4 h-4 text-emerald-700" />
               <span>{user?.email}</span>

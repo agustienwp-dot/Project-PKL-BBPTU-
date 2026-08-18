@@ -50,58 +50,50 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Pemasaran atau Superadmin yang dapat menginput pengeluaran stok' }, { status: 403 });
     }
 
-    const { date, categoryId, productType, packagingType, quantity, notes } = await request.json();
-
-    if (!categoryId || !quantity || parseInt(quantity, 10) <= 0) {
-      return NextResponse.json({ success: false, message: 'Kategori produk dan jumlah pengeluaran valid (lebih dari 0) wajib diisi' }, { status: 400 });
-    }
+    const { date, categoryId, code, productType, packagingType, quantity, notes, destination } = await request.json();
 
     const qtyNumber = parseInt(quantity, 10);
-
-    const category = await prisma.milkCategory.findUnique({ where: { id: categoryId } });
-    if (!category) {
-      return NextResponse.json({ success: false, message: 'Kategori produk tidak ditemukan' }, { status: 404 });
+    if (!qtyNumber || qtyNumber <= 0) {
+      return NextResponse.json({ success: false, message: 'Jumlah pengeluaran harus berupa angka lebih dari 0' }, { status: 400 });
     }
 
-    const pType = productType || category.productType || 'SEGAR';
-    const pkgType = packagingType || category.defaultPackaging || 'botol';
-
-    // Check available ready stock for this category AND packagingType
-    const productionSum = await prisma.milkProduction.aggregate({
-      where: {
-        categoryId,
-        packagingType: pkgType,
-      },
-      _sum: { packagedQty: true },
-    });
-
-    const outflowSum = await prisma.milkOutflow.aggregate({
-      where: {
-        categoryId,
-        packagingType: pkgType,
-      },
-      _sum: { quantity: true },
-    });
-
-    const totalProduced = productionSum._sum.packagedQty || 0;
-    const totalOutflow = outflowSum._sum.quantity || 0;
-    const availableStock = totalProduced - totalOutflow;
-
-    if (qtyNumber > availableStock) {
-      return NextResponse.json({
-        success: false,
-        message: `Stok tidak mencukupi! Stok ready ${category.name} kemasan ${pkgType} saat ini hanya ${availableStock} ${pkgType}, tidak dapat mengeluarkan ${qtyNumber} ${pkgType}.`,
-      }, { status: 400 });
+    if (!date) {
+      return NextResponse.json({ success: false, message: 'Tanggal pengeluaran wajib diisi' }, { status: 400 });
     }
+
+    let targetCategory = null;
+    if (categoryId) {
+      targetCategory = await prisma.milkCategory.findUnique({ where: { id: categoryId } });
+    } else {
+      // Find default or first available category
+      targetCategory = await prisma.milkCategory.findFirst();
+    }
+
+    if (!targetCategory) {
+      // Fallback fallback category
+      targetCategory = await prisma.milkCategory.create({
+        data: {
+          name: 'Susu Murni Segar (MYPI)',
+          code: 'MYPI',
+          productType: 'SEGAR',
+          animalType: 'SAPI',
+          defaultPackaging: 'botol',
+        }
+      });
+    }
+
+    const itemCode = code || targetCategory.code || 'MYPI';
+    const destinationNote = destination || notes || 'Pengeluaran Stok';
+    const combinedNotes = `[${itemCode}] ${destinationNote}`;
 
     const outflow = await prisma.milkOutflow.create({
       data: {
         date: date ? new Date(date) : new Date(),
-        categoryId,
-        productType: pType,
-        packagingType: pkgType,
+        categoryId: targetCategory.id,
+        productType: productType || targetCategory.productType || 'SEGAR',
+        packagingType: packagingType || targetCategory.defaultPackaging || 'botol',
         quantity: qtyNumber,
-        notes: notes || '',
+        notes: combinedNotes,
         createdById: authUser.id,
       },
       include: {
@@ -117,13 +109,13 @@ export async function POST(request) {
         userId: authUser.id,
         userEmail: authUser.email,
         action: 'CREATE_OUTFLOW',
-        details: `Input produk keluar ${pType} ${category.name} (${pkgType}): ${qtyNumber} ${pkgType}`,
+        details: `Input produk keluar (${itemCode}): ${qtyNumber} pcs — ${destinationNote}`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Pengeluaran ${qtyNumber} ${pkgType} ${category.name} berhasil dicatat. Stok otomatis berkurang.`,
+      message: `Pengeluaran ${qtyNumber} pcs untuk Keterangan Susu (${itemCode}) berhasil dicatat. Stok otomatis berkurang.`,
       data: outflow,
     });
   } catch (error) {

@@ -98,7 +98,6 @@ export async function POST(request) {
     }
 
     // 1. CALCULATE READY STOCK FOR THIS SPECIFIC PRODUCT
-    // Query all accepted packagings for this category/variant/packagingType
     const acceptedPackagings = await prisma.milkPackaging.findMany({
       where: { status: 'DITERIMA' },
     });
@@ -106,7 +105,18 @@ export async function POST(request) {
     let totalReceivedForProduct = 0;
 
     acceptedPackagings.forEach((pkg) => {
-      const matchCat = (pkg.productCategory || 'Susu').toLowerCase() === productCategory.toLowerCase();
+      const pCat = pkg.productCategory || 'Susu Segar';
+      const pSub = pkg.productSubtype || pCat;
+
+      let matchCat = false;
+      if (productCategory === 'Susu Segar') {
+        matchCat = pCat === 'Susu Segar' || (pCat === 'Susu' && !['Susu Rasa', 'Susu Berasa', 'Pasteurisasi'].includes(pSub));
+      } else if (productCategory === 'Susu Olahan') {
+        matchCat = pCat === 'Susu Olahan' || pCat === 'Yogurt' || pCat === 'Keju' || ['Susu Rasa', 'Susu Berasa', 'Pasteurisasi'].includes(pSub);
+      } else {
+        matchCat = pCat.toLowerCase() === productCategory.toLowerCase();
+      }
+
       if (matchCat) {
         let items = [];
         if (pkg.packagingDetails) {
@@ -116,9 +126,12 @@ export async function POST(request) {
           } catch (e) {}
         }
 
+        const baseType = packagingType.split(' ')[0].toLowerCase();
+
         if (items.length > 0) {
           items.forEach((it) => {
-            const pkgMatch = (it.packagingType || 'Botol').toLowerCase() === packagingType.toLowerCase();
+            const itType = (it.packagingType || 'Botol').toLowerCase();
+            const pkgMatch = itType.includes(baseType) || baseType.includes(itType);
             if (pkgMatch) {
               totalReceivedForProduct += parseInt(it.quantity, 10) || 0;
             }
@@ -126,7 +139,7 @@ export async function POST(request) {
         } else {
           // Fallback legacy packaging
           const pkgTypeLow = (pkg.packagingType || 'Botol').toLowerCase();
-          if (pkgTypeLow === packagingType.toLowerCase()) {
+          if (pkgTypeLow.includes(baseType) || baseType.includes(pkgTypeLow)) {
             totalReceivedForProduct += pkg.quantityReceived || pkg.totalPackagedQty || 0;
           }
         }
@@ -140,16 +153,30 @@ export async function POST(request) {
     });
 
     let totalOutflowForProduct = 0;
+    const reqBaseType = packagingType.split(' ')[0].toLowerCase();
 
     existingOutflows.forEach((out) => {
-      if ((out.packagingType || 'botol').toLowerCase() === packagingType.toLowerCase()) {
+      const outType = (out.packagingType || 'botol').toLowerCase();
+      if (outType.includes(reqBaseType) || reqBaseType.includes(outType)) {
         totalOutflowForProduct += out.quantity || 0;
       }
     });
 
     existingSales.forEach((sale) => {
-      const catMatch = (sale.productCategory || 'Susu').toLowerCase() === productCategory.toLowerCase();
-      const pkgMatch = (sale.packagingType || 'Botol').toLowerCase() === packagingType.toLowerCase();
+      const sCat = sale.productCategory || 'Susu Segar';
+      const sSub = sale.productSubtype || sCat;
+      let catMatch = false;
+
+      if (productCategory === 'Susu Segar') {
+        catMatch = sCat === 'Susu Segar' || (sCat === 'Susu' && !['Susu Rasa', 'Susu Berasa', 'Pasteurisasi'].includes(sSub));
+      } else if (productCategory === 'Susu Olahan') {
+        catMatch = sCat === 'Susu Olahan' || sCat === 'Yogurt' || sCat === 'Keju' || ['Susu Rasa', 'Susu Berasa', 'Pasteurisasi'].includes(sSub);
+      } else {
+        catMatch = sCat.toLowerCase() === productCategory.toLowerCase();
+      }
+
+      const salePkgType = (sale.packagingType || 'Botol').toLowerCase();
+      const pkgMatch = salePkgType.includes(reqBaseType) || reqBaseType.includes(salePkgType);
       if (catMatch && pkgMatch) {
         totalOutflowForProduct += sale.quantity || 0;
       }
@@ -159,13 +186,14 @@ export async function POST(request) {
 
     // 2. CHECK STOCK AVAILABILITY
     if (qtyNum > readyStock) {
+      const pSubDisplay = productSubtype || (productCategory === 'Susu Segar' ? 'Susu Segar' : productCategory);
       return NextResponse.json(
         {
           success: false,
           message: `Stok tidak mencukupi untuk melakukan penjualan.`,
           readyStock,
           requestedQty: qtyNum,
-          productInfo: `${productSubtype || productCategory} (${variant}) - ${packagingType}`,
+          productInfo: `${pSubDisplay} (${variant}) - ${packagingType}`,
         },
         { status: 400 }
       );

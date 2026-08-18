@@ -18,7 +18,23 @@ export async function GET(request) {
     const where = {};
     if (categoryId) where.categoryId = categoryId;
     if (animalType) where.animalType = animalType;
-    if (productCategory) where.productCategory = productCategory;
+    if (productCategory) {
+      if (productCategory === 'Susu Segar') {
+        where.OR = [
+          { productCategory: 'Susu Segar' },
+          { productCategory: 'Susu', productSubtype: { notIn: ['Susu Rasa', 'Susu Berasa', 'Pasteurisasi', 'Susu Pasteurisasi'] } }
+        ];
+      } else if (productCategory === 'Susu Olahan') {
+        where.OR = [
+          { productCategory: 'Susu Olahan' },
+          { productCategory: 'Yogurt' },
+          { productCategory: 'Keju' },
+          { productSubtype: { in: ['Susu Rasa', 'Susu Berasa', 'Pasteurisasi', 'Susu Pasteurisasi'] } }
+        ];
+      } else {
+        where.productCategory = productCategory;
+      }
+    }
     if (productSubtype) where.productSubtype = productSubtype;
     if (origin) where.origin = origin;
     if (status) where.status = status;

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
+import { exportToExcel } from '@/lib/exportExcel';
 import { 
   FileText, 
   Printer, 
@@ -13,7 +14,8 @@ import {
   TrendingUp, 
   TrendingDown, 
   Boxes,
-  CheckCircle2
+  CheckCircle2,
+  FileSpreadsheet
 } from 'lucide-react';
 
 export default function ReportsPage() {
@@ -56,6 +58,40 @@ export default function ReportsPage() {
   const summary = reportData?.summary || {};
   const dailyLogs = reportData?.dailyLogs || [];
 
+  const handleExportExcel = () => {
+    if (!dailyLogs || dailyLogs.length === 0) {
+      setToast({ type: 'error', message: 'Tidak ada data laporan untuk diexport.' });
+      return;
+    }
+
+    const dataToExport = dailyLogs.map((log) => {
+      const netDay = log.packagedQty - log.outflowQty;
+      const row = {
+        'Tanggal': log.dateFormatted || `Tgl ${log.day}`,
+        'Hasil Perah Raw (Liter)': log.rawVolumeLiters || 0,
+        'Susu Diproses (Liter)': log.processedLiters || 0,
+        'Hasil Dikemas (pcs/botol)': log.packagedQty || 0,
+        'Pengeluaran / Terjual (pcs/botol)': log.outflowQty || 0,
+      };
+
+      if (productType === 'OLAHAN') {
+        row['Rincian Kemasan (Dikemas)'] = log.detailsStrProduced || '-';
+        row['Rincian Kemasan (Keluar)'] = log.detailsStrOutflow || '-';
+      }
+
+      row['Perubahan Stok Hari Ini'] = netDay > 0 ? `+${netDay}` : `${netDay}`;
+      return row;
+    });
+
+    const monthName = monthNames[month - 1];
+    exportToExcel(
+      dataToExport,
+      `Laporan_Rekapitulasi_${productType}_${monthName}_${year}.xlsx`,
+      `Rekap Bulanan ${monthName}`
+    );
+    setToast({ type: 'success', message: 'Laporan rekapitulasi bulanan berhasil diexport ke Excel!' });
+  };
+
   return (
     <div className="space-y-8 pb-12 print:p-0 print:bg-white print:text-black">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
@@ -71,13 +107,24 @@ export default function ReportsPage() {
           <p className="text-xs text-slate-500 font-medium">Pantau akumulasi harian (tanggal 1–31) dan total bulanan produksi & pengeluaran.</p>
         </div>
 
-        <button
-          onClick={handlePrint}
-          className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Cetak / Print Laporan</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-bold shadow-md transition-all"
+            title="Export Laporan ke File Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+            <span>Save ke Excel</span>
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Cetak / Print Laporan</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Section (Hidden on print) */}

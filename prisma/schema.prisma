@@ -30,8 +30,9 @@ model User {
   logs        SystemLog[]
   productions MilkProduction[]
   packagings  MilkPackaging[]
-  outflows    MilkOutflow[]
-  sales       MilkSale[]
+  outflows      MilkOutflow[]
+  sales         MilkSale[]
+  dailyOutflows DailyMilkOutflow[]
 
   @@map("users")
 }
@@ -170,4 +171,29 @@ model MilkSale {
   updatedAt       DateTime @updatedAt
 
   @@map("milk_sales")
+}
+
+model DailyMilkOutflow {
+  id                 String   @id @default(uuid())
+  date               DateTime @unique
+  mypi               Int      @default(0)
+  hs                 Int      @default(0)
+  ht                 Int      @default(0)
+  os                 Int      @default(0)
+  js                 Int      @default(0) // JS (piutang)
+  jsPnb              Int      @default(0) // JS PNBP
+  bs                 Int      @default(0) // BS (Piutang)
+  jlb                Int      @default(0)
+  blb                Int      @default(0)
+  stockAkhir         Int      @default(0)
+  penambahanPiutang  Int      @default(0)
+  penguranganPiutang Int      @default(0)
+  sisaPiutang        Int      @default(0)
+  notes              String?
+  createdById        String?
+  createdBy          User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("daily_milk_outflows")
 }
