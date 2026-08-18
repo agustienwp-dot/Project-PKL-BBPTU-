@@ -47,8 +47,22 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isAdminFarm = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
+  const isAdminPemasaran = user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        isSuperAdmin,
+        isAdminFarm,
+        isAdminPemasaran,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

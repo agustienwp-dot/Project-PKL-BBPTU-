@@ -3,246 +3,242 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { BarChart3, Filter, DollarSign, TrendingUp, Boxes, ShoppingCart } from 'lucide-react';
+import Toast from '@/components/Toast';
+import { 
+  FileText, 
+  Printer, 
+  Milk, 
+  Coffee, 
+  Calendar, 
+  TrendingUp, 
+  TrendingDown, 
+  Boxes,
+  CheckCircle2
+} from 'lucide-react';
 
 export default function ReportsPage() {
-  const [stats, setStats] = useState(null);
-  const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
+  const [productType, setProductType] = useState('SEGAR'); // SEGAR or OLAHAN
+  const [reportData, setReportData] = useState(null);
+  const [toast, setToast] = useState(null);
 
-  // Period Filter State
-  const [periodFilter, setPeriodFilter] = useState('ALL'); // ALL, TODAY, WEEK, MONTH, YEAR, CUSTOM
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
 
-  const fetchData = async () => {
+  const fetchReport = async () => {
     setLoading(true);
     try {
-      const [dashRes, salesRes] = await Promise.all([
-        api.get('/dashboard'),
-        api.get('/sales'),
-      ]);
-
-      if (dashRes.data.success) setStats(dashRes.data.data);
-      if (salesRes.data.success) setSales(salesRes.data.data);
+      const res = await api.get(`/reports/monthly?month=${month}&year=${year}&productType=${productType}`);
+      if (res.data.success) {
+        setReportData(res.data.data);
+      }
     } catch (err) {
-      console.error('Error fetching reports data:', err);
+      console.error('Error fetching monthly report:', err);
+      setToast({ type: 'error', message: 'Gagal memuat data laporan bulanan.' });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchReport();
+  }, [month, year, productType]);
 
-  // Filter Sales by Period
-  const filteredSales = sales.filter((sale) => {
-    const sDate = new Date(sale.saleDate);
-    const now = new Date();
+  const handlePrint = () => {
+    window.print();
+  };
 
-    if (periodFilter === 'TODAY') {
-      return sDate.toDateString() === now.toDateString();
-    }
-    if (periodFilter === 'WEEK') {
-      const oneWeekAgo = new Date(now.setDate(now.getDate() - 7));
-      return sDate >= oneWeekAgo;
-    }
-    if (periodFilter === 'MONTH') {
-      return sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear();
-    }
-    if (periodFilter === 'YEAR') {
-      return sDate.getFullYear() === now.getFullYear();
-    }
-    if (periodFilter === 'CUSTOM' && startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59);
-      return sDate >= start && sDate <= end;
-    }
-    return true;
-  });
-
-  const periodRevenue = filteredSales.reduce((acc, curr) => acc + (curr.sellingPrice || 0), 0);
-  const avgPrice = filteredSales.length > 0 ? Math.round(periodRevenue / filteredSales.length) : 0;
-
-  // Breakdown by Type
-  const salesByType = filteredSales.reduce((acc, curr) => {
-    const type = curr.animal?.type || 'Lainnya';
-    if (!acc[type]) acc[type] = { count: 0, revenue: 0 };
-    acc[type].count += 1;
-    acc[type].revenue += curr.sellingPrice || 0;
-    return acc;
-  }, {});
-
-  if (loading) return <LoadingSpinner text="Memuat data laporan..." />;
+  const summary = reportData?.summary || {};
+  const dailyLogs = reportData?.dailyLogs || [];
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black text-[#1E3F20] flex items-center gap-3">
-          <BarChart3 className="w-7 h-7 text-[#1E3F20]" />
-          Laporan Analitik & Penjualan
-        </h1>
-        <p className="text-slate-600 text-sm mt-1">Laporan kinerja stok, omzet penjualan, dan distribusi transaksi per periode</p>
-      </div>
+    <div className="space-y-8 pb-12 print:p-0 print:bg-white print:text-black">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
-      {/* Filter Bar */}
-      <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3 md:space-y-0 md:flex md:items-center md:justify-between shadow-sm">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-2 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5 text-[#1E3F20]" /> Filter Periode:
-          </span>
-          {[
-            { id: 'ALL', label: 'Semua Waktu' },
-            { id: 'TODAY', label: 'Hari Ini' },
-            { id: 'WEEK', label: 'Minggu Ini' },
-            { id: 'MONTH', label: 'Bulan Ini' },
-            { id: 'YEAR', label: 'Tahun Ini' },
-            { id: 'CUSTOM', label: 'Custom Range' },
-          ].map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriodFilter(p.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                periodFilter === p.id
-                  ? 'bg-[#1E3F20] text-white shadow-md'
-                  : 'bg-[#F5F5F0] text-slate-700 hover:bg-slate-200 border border-slate-300'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+      {/* Header section (Hidden on print) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold mb-2">
+            <FileText className="w-4 h-4" />
+            <span>Akumulasi Laporan Bulanan</span>
+          </div>
+          <h1 className="text-2xl font-black text-slate-900">Rekapitulasi Stok & Laporan Bulanan</h1>
+          <p className="text-xs text-slate-500 font-medium">Pantau akumulasi harian (tanggal 1–31) dan total bulanan produksi & pengeluaran.</p>
         </div>
 
-        {/* Custom Range Selector */}
-        {periodFilter === 'CUSTOM' && (
-          <div className="flex items-center gap-2 pt-2 md:pt-0">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-[#F5F5F0] border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-semibold"
-            />
-            <span className="text-slate-500 text-xs">s.d</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-[#F5F5F0] border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-semibold"
-            />
+        <button
+          onClick={handlePrint}
+          className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+        >
+          <Printer className="w-4 h-4" />
+          <span>Cetak / Print Laporan</span>
+        </button>
+      </div>
+
+      {/* Filter Section (Hidden on print) */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 print:hidden">
+        {/* Product Type Tabs */}
+        <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
+          <button
+            onClick={() => setProductType('SEGAR')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              productType === 'SEGAR' ? 'bg-[#1E3F20] text-white shadow' : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Milk className="w-4 h-4" />
+            <span>Laporan Susu Segar</span>
+          </button>
+          <button
+            onClick={() => setProductType('OLAHAN')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              productType === 'OLAHAN' ? 'bg-amber-600 text-white shadow' : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Coffee className="w-4 h-4" />
+            <span>Laporan Susu Olahan (Cup, Pack, Botol)</span>
+          </button>
+        </div>
+
+        {/* Month & Year Selectors */}
+        <div className="flex items-center gap-3">
+          <select
+            value={month}
+            onChange={(e) => setMonth(parseInt(e.target.value, 10))}
+            className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx + 1} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+
+          <select
+            value={year}
+            onChange={(e) => setYear(parseInt(e.target.value, 10))}
+            className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+          >
+            <option value={2025}>2025</option>
+            <option value={2026}>2026</option>
+            <option value={2027}>2027</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Printable Official Document Header */}
+      <div className="hidden print:block border-b-2 border-black pb-4 text-center space-y-1">
+        <h2 className="text-xl font-bold uppercase tracking-wider">LAPORAN REKAPITULASI MANAGEMENT STOK SUSU</h2>
+        <p className="text-sm font-semibold">Periode: {monthNames[month - 1]} {year} • Tipe Produk: {productType === 'SEGAR' ? 'Susu Segar Murni' : 'Susu Olahan (Cup/Pack/Botol)'}</p>
+      </div>
+
+      {/* Monthly Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2 print:border-black print:rounded-none">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Raw Susu (Liter)</span>
+          <p className="text-2xl font-black text-slate-900">{(summary.totalRawLiters || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span></p>
+          <p className="text-[11px] text-slate-400">Total hasil perah bulan ini</p>
+        </div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2 print:border-black print:rounded-none">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Susu Diproses</span>
+          <p className="text-2xl font-black text-slate-900">{(summary.totalProcessedLiters || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span></p>
+          <p className="text-[11px] text-slate-400">Total volume diproses</p>
+        </div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2 print:border-black print:rounded-none">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Hasil Dikemas</span>
+          <p className="text-2xl font-black text-emerald-700">{(summary.totalPackaged || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">pcs/botol</span></p>
+          <p className="text-[11px] text-slate-400 font-semibold">
+            Botol: {summary.packagingProducedTotals?.botol || 0} | Cup: {summary.packagingProducedTotals?.cup || 0} | Pack: {summary.packagingProducedTotals?.pack || 0}
+          </p>
+        </div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2 print:border-black print:rounded-none">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Produk Keluar</span>
+          <p className="text-2xl font-black text-rose-600">{(summary.totalOutflow || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">pcs/botol</span></p>
+          <p className="text-[11px] text-slate-400 font-semibold">
+            Botol: {summary.packagingOutflowTotals?.botol || 0} | Cup: {summary.packagingOutflowTotals?.cup || 0} | Pack: {summary.packagingOutflowTotals?.pack || 0}
+          </p>
+        </div>
+      </div>
+
+      {/* Daily Breakdown Table (Tanggal 1 sd 31) */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden print:border-black print:rounded-none">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between print:p-2 print:border-black">
+          <h2 className="text-base font-black text-slate-800 flex items-center gap-2 print:text-sm">
+            <Calendar className="w-5 h-5 text-emerald-600 print:hidden" />
+            <span>Rincian Akumulasi Harian ({monthNames[month - 1]} {year})</span>
+          </h2>
+          <span className="text-xs font-bold text-slate-400 print:text-[10px]">Tipe: {productType}</span>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center"><LoadingSpinner text="Memuat laporan bulanan..." /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs print:text-[10px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider print:bg-gray-100 print:border-black">
+                  <th className="py-3 px-4 print:py-1 print:px-2">Tanggal</th>
+                  <th className="py-3 px-4 print:py-1 print:px-2">Perah (Liter)</th>
+                  <th className="py-3 px-4 print:py-1 print:px-2">Diproses (Liter)</th>
+                  <th className="py-3 px-4 print:py-1 print:px-2">Hasil Dikemas</th>
+                  <th className="py-3 px-4 print:py-1 print:px-2">Pengeluaran / Terjual</th>
+                  {productType === 'OLAHAN' && (
+                    <th className="py-3 px-4 print:py-1 print:px-2">Rincian Kemasan (Dikemas / Keluar)</th>
+                  )}
+                  <th className="py-3 px-4 print:py-1 print:px-2 text-right">Perubahan Stok Hari Ini</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700 print:divide-black">
+                {dailyLogs.map((log) => {
+                  const netDay = log.packagedQty - log.outflowQty;
+                  return (
+                    <tr key={log.day} className={`hover:bg-slate-50 ${log.productionCount > 0 || log.outflowCount > 0 ? 'bg-emerald-50/20' : ''}`}>
+                      <td className="py-3 px-4 font-bold text-slate-900 print:py-1 print:px-2">
+                        {log.day} {monthNames[month - 1]} {year}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-800 print:py-1 print:px-2">{log.rawVolumeLiters} L</td>
+                      <td className="py-3 px-4 text-slate-600 print:py-1 print:px-2">{log.processedLiters} L</td>
+                      <td className="py-3 px-4 font-bold text-emerald-700 print:py-1 print:px-2">
+                        {log.packagedQty > 0 ? `+${log.packagedQty}` : '0'}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-rose-600 print:py-1 print:px-2">
+                        {log.outflowQty > 0 ? `-${log.outflowQty}` : '0'}
+                      </td>
+                      {productType === 'OLAHAN' && (
+                        <td className="py-3 px-4 text-slate-500 text-[11px] print:py-1 print:px-2">
+                          Botol: +{log.pkgProd.botol || 0}/-{log.pkgOut.botol || 0} | Cup: +{log.pkgProd.cup || 0}/-{log.pkgOut.cup || 0} | Pack: +{log.pkgProd.pack || 0}/-{log.pkgOut.pack || 0}
+                        </td>
+                      )}
+                      <td className="py-3 px-4 text-right font-black print:py-1 print:px-2">
+                        <span className={netDay > 0 ? 'text-emerald-700' : netDay < 0 ? 'text-rose-600' : 'text-slate-400'}>
+                          {netDay > 0 ? `+${netDay}` : netDay}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* 4 Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-2 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-            <span>Total Stok Ternak</span>
-            <Boxes className="w-4 h-4 text-blue-700" />
-          </div>
-          <h3 className="text-3xl font-black text-slate-900">{stats?.totalAnimals || 0} <span className="text-sm font-normal text-slate-500">ekor</span></h3>
-          <p className="text-xs text-[#1E3F20] font-extrabold">{stats?.availableAnimals || 0} ekor status Available</p>
+      {/* Printable Signature Footer */}
+      <div className="hidden print:flex justify-between pt-12 text-center text-xs">
+        <div className="space-y-12">
+          <p>Petugas Admin Farm / Produksi</p>
+          <p className="font-bold underline">(.......................................)</p>
         </div>
-
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-2 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-            <span>Transaksi Penjualan</span>
-            <ShoppingCart className="w-4 h-4 text-blue-700" />
-          </div>
-          <h3 className="text-3xl font-black text-blue-700">{filteredSales.length} <span className="text-sm font-normal text-slate-500">transaksi</span></h3>
-          <p className="text-xs text-slate-500">Sesuai filter periode aktif</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-2 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-            <span>Total Omzet Periode</span>
-            <TrendingUp className="w-4 h-4 text-[#1E3F20]" />
-          </div>
-          <h3 className="text-2xl font-black font-mono text-[#1E3F20]">Rp {periodRevenue.toLocaleString('id-ID')}</h3>
-          <p className="text-xs text-slate-500">Total pendapatan kotor</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-2 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-            <span>Rata-Rata Harga Jual</span>
-            <DollarSign className="w-4 h-4 text-amber-700" />
-          </div>
-          <h3 className="text-2xl font-black font-mono text-amber-700">Rp {avgPrice.toLocaleString('id-ID')}</h3>
-          <p className="text-xs text-slate-500">Per ekor hewan terjual</p>
+        <div className="space-y-12">
+          <p>Mengetahui, Superadmin / Pengelola</p>
+          <p className="font-bold underline">(.......................................)</p>
         </div>
       </div>
-
-      {/* Breakdown by Animal Type */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
-          <h3 className="text-lg font-bold text-[#1E3F20]">Penjualan Berdasarkan Jenis Hewan</h3>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-700">
-              <thead className="bg-[#F5F5F0] text-slate-700 uppercase text-[11px] tracking-wider border-b border-slate-200 font-bold">
-                <tr>
-                  <th className="px-4 py-3">Jenis Hewan</th>
-                  <th className="px-4 py-3 text-right">Jumlah Terjual</th>
-                  <th className="px-4 py-3 text-right">Total Pendapatan (Rp)</th>
-                  <th className="px-4 py-3 text-right">Kontribusi Omzet</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {Object.keys(salesByType).length > 0 ? (
-                  Object.entries(salesByType).map(([type, data]) => {
-                    const percentage = periodRevenue > 0 ? Math.round((data.revenue / periodRevenue) * 100) : 0;
-                    return (
-                      <tr key={type} className="hover:bg-slate-50">
-                        <td className="px-4 py-3.5 font-bold text-slate-900">{type}</td>
-                        <td className="px-4 py-3.5 text-right font-mono font-semibold">{data.count} ekor</td>
-                        <td className="px-4 py-3.5 text-right font-mono font-extrabold text-[#1E3F20]">
-                          Rp {data.revenue.toLocaleString('id-ID')}
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-mono font-bold text-[#1E3F20]">{percentage}%</td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="4" className="text-center py-6 text-slate-500">Tidak ada transaksi penjualan pada periode ini</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Visual Progress Breakdown */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
-          <h3 className="text-lg font-bold text-[#1E3F20]">Visual Kontribusi Omzet</h3>
-
-          <div className="space-y-4">
-            {Object.entries(salesByType).map(([type, data]) => {
-              const percentage = periodRevenue > 0 ? Math.round((data.revenue / periodRevenue) * 100) : 0;
-              return (
-                <div key={type} className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-800">{type}</span>
-                    <span className="text-[#1E3F20]">{percentage}% (Rp {data.revenue.toLocaleString('id-ID')})</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
-                    <div
-                      className="h-full rounded-full bg-[#1E3F20] transition-all duration-500"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-      </div>
-
     </div>
   );
 }
