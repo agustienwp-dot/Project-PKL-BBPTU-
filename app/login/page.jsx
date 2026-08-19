@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Loader2, Milk, ShoppingBag } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Loader2, Milk, ShoppingBag, Package } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -110,10 +110,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Role Selectors for 3 Roles */}
+        {/* Quick Role Selectors for 4 Roles */}
         <div className="pt-4 border-t border-slate-200 text-center space-y-3">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Role Pengujian (3 Role):</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Role Pengujian (4 Role):</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             
             {/* Superadmin */}
             <button
@@ -135,6 +135,16 @@ export default function LoginPage() {
               <span className="text-[10px] uppercase tracking-wide">2. Admin Farm</span>
             </button>
 
+            {/* Admin Pengemasan */}
+            <button
+              type="button"
+              onClick={() => { setEmail('pengemasan@susu.com'); setPassword('pengemasan123'); }}
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl border border-slate-300 transition-colors flex flex-col items-center gap-1"
+            >
+              <Package className="w-4 h-4 text-amber-700" />
+              <span className="text-[10px] uppercase tracking-wide">3. Pengemasan</span>
+            </button>
+
             {/* Admin Pemasaran */}
             <button
               type="button"
@@ -142,7 +152,7 @@ export default function LoginPage() {
               className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl border border-slate-300 transition-colors flex flex-col items-center gap-1"
             >
               <ShoppingBag className="w-4 h-4 text-blue-700" />
-              <span className="text-[10px] uppercase tracking-wide">3. Pemasaran</span>
+              <span className="text-[10px] uppercase tracking-wide">4. Pemasaran</span>
             </button>
 
           </div>

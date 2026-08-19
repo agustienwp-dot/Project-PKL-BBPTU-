@@ -32,6 +32,7 @@ model User {
   packagings  MilkPackaging[]
   outflows    MilkOutflow[]
   sales       MilkSale[]
+  beritaAcaras BeritaAcara[]
 
   @@map("users")
 }
@@ -70,6 +71,8 @@ model MilkCategory {
 model MilkProduction {
   id              String   @id @default(uuid())
   date            DateTime @default(now())
+  shift           String   @default("Pagi") // "Pagi" or "Sore"
+  farmOrigin      String   @default("Manggala") // "Manggala", "Limpakuwus", "Tegal Sari", "Eduwisata"
   categoryId      String
   category        MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   productType     String   @default("SEGAR") // "SEGAR" or "OLAHAN"
@@ -78,17 +81,30 @@ model MilkProduction {
   grossVolumeLiters Float    @default(0) // Produksi susu (Gross Liter)
   pedetVolumeLiters Float    @default(0) // Susu untuk Pedet (Sapi) / Cempe (Kambing) (Liter)
   afkirVolumeLiters Float    @default(0) // Susu Afkir / Rusak (Liter)
+  soldFreshVolumeLiters Float @default(0) // Susu Dijual Langsung Pasca Perah (Liter)
+  keteranganPenjualan String? // Catatan/Keterangan Pembeli
   usageType       String?  // Ringkasan kegunaan / catatan alokasi
-  usageVolumeLiters Float  @default(0) // Total potongan volume (pedet + afkir)
-  rawVolumeLiters Float    @default(0) // Hasil akhir yang masuk ke KPI / Pemasaran (gross - pedet - afkir)
+  usageVolumeLiters Float  @default(0) // Total potongan volume (pedet + afkir + dijual segar)
+  rawVolumeLiters Float    @default(0) // Susu siap olah (gross - pedet - afkir - dijual segar)
   processedLiters Float    @default(0) // Input jumlah susu yang diproses/dikemas (liter)
   packagedQty     Int      @default(0) // Input jumlah produk setelah dikemas (botol/cup/pack)
   status          String   @default("SELESAI") // "SELESAI"
   notes           String?
+
+  // Anti-Cheat & Verification Handshake fields
+  kodeTransfer         String?  @unique
+  fotoTimbangan        String?  @db.LongText
+  nomorSegel           String?
+  pinVerifikasi        String?
+  handoverStatus       String   @default("MENUNGGU_VERIFIKASI") // "MENUNGGU_VERIFIKASI", "DITERIMA", "ADA_SELISIH"
+  receivedVolumeLiters Float?
+
   createdById     String?
   createdBy       User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  beritaAcaras    BeritaAcara[]
 
   @@map("milk_productions")
 }
@@ -170,4 +186,69 @@ model MilkSale {
   updatedAt       DateTime @updatedAt
 
   @@map("milk_sales")
+}
+
+model BeritaAcara {
+  id               String      @id @default(uuid())
+  nomorBa          String      @unique // e.g. BA-20260819-001
+  date             DateTime    @default(now())
+  shift            String      @default("Pagi") // "Pagi" or "Sore"
+  farmLocation     String      @default("Tegalsari") // "Tegalsari", "Limpakuwus", "Manggala", "Eduwisata"
+  animalType       String      @default("SAPI") // "SAPI" or "KAMBING"
+  unit             String      @default("Liter") // "Liter" or "Kg"
+
+  // Quantities
+  totalProduksi    Float       @default(0) // Total gross production
+  penggunaanPedet  Float       @default(0) // Pedet / Cempe
+  afkir            Float       @default(0) // Susu afkir
+  lainLain         Float       @default(0) // Alokasi lain-lain
+  diserahterimakan Float       @default(0) // Volume diserahterimakan ke Pemasaran
+
+  // Pihak Pemasaran (Recipient)
+  penerimaRole     String      @default("Seksi Pemasaran")
+  penerimaUserId   String?
+  penerimaName     String      @default("Seksi Pemasaran")
+
+  // Pihak Pemeliharaan / Farm (Sender)
+  penyerahRole     String      @default("Seksi Pemeliharaan")
+  penyerahUserId   String?
+  penyerahName     String      @default("Seksi Pemeliharaan")
+
+  // Digital Signature & Workflow Status
+  // "DRAFT", "MENUNGGU_TANDA_TANGAN", "SUDAH_DITANDATANGANI", "TERKIRIM_KE_PEMASARAN", "DIBACA_PEMASARAN", "DICETAK"
+  status           String      @default("DRAFT")
+  digitalSignature String?     @db.LongText
+  signedAt         DateTime?
+  signedByName     String?
+  sentAt           DateTime?
+  readAt           DateTime?
+  printedAt        DateTime?
+
+  notes            String?     @db.Text
+
+  // Relation to MilkProduction
+  productionId     String?
+  production       MilkProduction? @relation(fields: [productionId], references: [id], onDelete: SetNull)
+
+  createdById      String?
+  createdBy        User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  logs             BeritaAcaraLog[]
+
+  @@map("berita_acara")
+}
+
+model BeritaAcaraLog {
+  id            String      @id @default(uuid())
+  beritaAcaraId String
+  beritaAcara   BeritaAcara @relation(fields: [beritaAcaraId], references: [id], onDelete: Cascade)
+  action        String      // "DRAFT_CREATED", "EDITED", "SIGNED", "SENT", "READ", "PRINTED"
+  actorName     String
+  actorRole     String?
+  notes         String?
+  createdAt     DateTime    @default(now())
+
+  @@map("berita_acara_logs")
 }

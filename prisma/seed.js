@@ -8,6 +8,7 @@ async function main() {
 
   const defaultPassword = await bcrypt.hash('admin123', 10);
   const farmPassword = await bcrypt.hash('farm123', 10);
+  const pengemasanPassword = await bcrypt.hash('pengemasan123', 10);
   const pemasaranPassword = await bcrypt.hash('pemasaran123', 10);
 
   // Clear existing transaction data
@@ -17,7 +18,7 @@ async function main() {
   await prisma.systemLog.deleteMany({});
   await prisma.milkCategory.deleteMany({});
 
-  // 1. Users (3 Roles Utama)
+  // 1. Users (4 Roles Utama)
   const superadmin = await prisma.user.upsert({
     where: { email: 'superadmin@susu.com' },
     update: { name: 'Superadmin Pengelola', role: 'SUPERADMIN', password: defaultPassword, isActive: true },
@@ -40,6 +41,17 @@ async function main() {
     },
   });
 
+  const adminPengemasan = await prisma.user.upsert({
+    where: { email: 'pengemasan@susu.com' },
+    update: { name: 'Admin Pengemasan', role: 'ADMIN_PENGEMASAN', password: pengemasanPassword, isActive: true },
+    create: {
+      name: 'Admin Pengemasan',
+      email: 'pengemasan@susu.com',
+      password: pengemasanPassword,
+      role: 'ADMIN_PENGEMASAN',
+    },
+  });
+
   const adminPemasaran = await prisma.user.upsert({
     where: { email: 'pemasaran@susu.com' },
     update: { name: 'Admin Pemasaran & Stok', role: 'ADMIN_PEMASARAN', password: pemasaranPassword, isActive: true },
@@ -51,7 +63,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Akun User (SUPERADMIN, ADMIN_FARM, ADMIN_PEMASARAN) siap');
+  console.log('✅ Akun User (SUPERADMIN, ADMIN_FARM, ADMIN_PENGEMASAN, ADMIN_PEMASARAN) siap');
 
   // 2. Kategori SUSU SEGAR (Susu Sapi & Susu Kambing)
   const segarCategoriesData = [

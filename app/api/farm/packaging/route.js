@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +118,8 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Harap masukkan jumlah bahan diproses atau rincian kemasan yang valid' }, { status: 400 });
     }
 
+    const validUserId = await resolveValidUserId(authUser);
+
     const packaging = await prisma.milkPackaging.create({
       data: {
         date: date ? new Date(date) : new Date(),
@@ -140,7 +142,7 @@ export async function POST(request) {
         quantitySent: totalPackagedQty,
         notes: notes || '',
         status: 'DRAFT',
-        createdById: authUser.id,
+        createdById: validUserId,
       },
       include: {
         category: true,
@@ -152,7 +154,7 @@ export async function POST(request) {
 
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
+        userId: validUserId,
         userEmail: authUser.email,
         action: 'CREATE_PACKAGING',
         details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (DRAFT)`,

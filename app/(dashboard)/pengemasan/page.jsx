@@ -52,6 +52,24 @@ export default function PengemasanPage() {
   const [sendingPkg, setSendingPkg] = useState(null);
   const [deletingPkg, setDeletingPkg] = useState(null);
 
+  // Incoming Milk Receptions (1-Click Acceptance)
+  const [incomingProductions, setIncomingProductions] = useState([]);
+  const [discrepancyModalItem, setDiscrepancyModalItem] = useState(null);
+  const [discrepancyRecLiters, setDiscrepancyRecLiters] = useState('');
+  const [discrepancyNotes, setDiscrepancyNotes] = useState('');
+  const [previewFoto, setPreviewFoto] = useState(null);
+
+  const fetchIncoming = async () => {
+    try {
+      const res = await api.get('/farm/production');
+      if (res.data.success) {
+        setIncomingProductions(res.data.data.filter(p => (p.rawVolumeLiters || 0) > 0));
+      }
+    } catch (e) {
+      console.error('Error fetching incoming milk productions:', e);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -60,7 +78,11 @@ export default function PengemasanPage() {
       if (filterStatus) url += `status=${filterStatus}&`;
       if (filterDate) url += `date=${filterDate}&`;
 
-      const res = await api.get(url);
+      const [res] = await Promise.all([
+        api.get(url),
+        fetchIncoming(),
+      ]);
+
       if (res.data.success) {
         setPackagings(res.data.data);
       }
@@ -75,6 +97,41 @@ export default function PengemasanPage() {
   useEffect(() => {
     fetchData();
   }, [filterCategory, filterStatus, filterDate]);
+
+  const handleAcceptMilk = async (prod) => {
+    try {
+      const res = await api.put(`/farm/production/${prod.id}/verify`, { action: 'ACCEPT' });
+      if (res.data.success) {
+        setToast({ type: 'success', message: res.data.message });
+        fetchIncoming();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Gagal memverifikasi penerimaan susu.';
+      setToast({ type: 'error', message: msg });
+    }
+  };
+
+  const handleConfirmDiscrepancy = async (e) => {
+    e.preventDefault();
+    if (!discrepancyModalItem) return;
+    try {
+      const res = await api.put(`/farm/production/${discrepancyModalItem.id}/verify`, {
+        action: 'DISCREPANCY',
+        receivedVolumeLiters: discrepancyRecLiters,
+        notes: discrepancyNotes,
+      });
+      if (res.data.success) {
+        setToast({ type: 'success', message: res.data.message });
+        setDiscrepancyModalItem(null);
+        setDiscrepancyRecLiters('');
+        setDiscrepancyNotes('');
+        fetchIncoming();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Gagal mencatat selisih volume susu.';
+      setToast({ type: 'error', message: msg });
+    }
+  };
 
   const canManage = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
 
@@ -301,6 +358,140 @@ export default function PengemasanPage() {
             <Plus className="w-4 h-4" />
             <span>+ Input Hasil Pengemasan</span>
           </button>
+        )}
+      </div>
+
+      {/* SECTION: PENERIMAAN SUSU MASUK DARI FARM (1-CLICK ACCEPTANCE) */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-900 rounded-full text-xs font-extrabold mb-1">
+              <span>🥛 Penerimaan Susu Mentah dari Seksi Farm</span>
+            </div>
+            <h2 className="text-lg font-black text-slate-900">Daftar Kiriman Susu Siap Olah</h2>
+            <p className="text-xs text-slate-500 font-medium">
+              Verifikasi serah-terima fisik susu dari Seksi Farm ke Seksi Pengemasan (1-Click Verification)
+            </p>
+          </div>
+        </div>
+
+        {incomingProductions.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                  <th className="py-3 px-4">Tanggal Kirim</th>
+                  <th className="py-3 px-4">Asal Farm</th>
+                  <th className="py-3 px-4">Jenis Susu</th>
+                  <th className="py-3 px-4">Volume (Liter)</th>
+                  <th className="py-3 px-4">Foto Timbangan / Wadah</th>
+                  <th className="py-3 px-4">Nomor Segel</th>
+                  <th className="py-3 px-4 text-center">Aksi Verifikasi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {incomingProductions.map((p) => {
+                  const status = p.handoverStatus || 'MENUNGGU_VERIFIKASI';
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50/80">
+                      <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
+                        {new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        <span className="text-[10px] text-slate-400 font-semibold block">{p.shift === 'Sore' ? '🌇 Sore' : '🌅 Pagi'}</span>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-bold text-xs">
+                          📍 {p.farmOrigin || 'Manggala'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {p.animalType === 'KAMBING' ? (
+                          <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 font-extrabold text-[10px]">
+                            🐐 Susu Kambing
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px]">
+                            🐄 Susu Sapi
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="font-black text-emerald-800 text-sm bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono">
+                          +{p.rawVolumeLiters} Liter
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {p.fotoTimbangan ? (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={p.fotoTimbangan}
+                              alt="Thumbnail Timbangan"
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-300 cursor-pointer shadow-sm hover:scale-105 transition-transform"
+                              onClick={() => setPreviewFoto(p.fotoTimbangan)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setPreviewFoto(p.fotoTimbangan)}
+                              className="text-[11px] font-bold text-emerald-700 hover:underline"
+                            >
+                              📷 Lihat Foto
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 font-mono text-[11px] italic">Tidak ada foto</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 font-mono text-xs">
+                        {p.nomorSegel ? (
+                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">{p.nomorSegel}</span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        {status === 'MENUNGGU_VERIFIKASI' ? (
+                          <div className="flex items-center justify-center gap-2">
+                            {/* 1 TOMBOL UTAMA: TERIMA ([X] LITER) */}
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptMilk(p)}
+                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow transition-all flex items-center gap-1.5 active:scale-95"
+                            >
+                              <span>✓ Terima ({p.rawVolumeLiters} Liter)</span>
+                            </button>
+
+                            {/* 1 TOMBOL SEKUNDER / LINK: LAPORKAN SELISIH */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDiscrepancyModalItem(p);
+                                setDiscrepancyRecLiters(p.rawVolumeLiters.toString());
+                                setDiscrepancyNotes('');
+                              }}
+                              className="text-xs font-bold text-amber-700 hover:text-amber-900 underline px-2 py-1"
+                            >
+                              Laporkan Selisih
+                            </button>
+                          </div>
+                        ) : status === 'DITERIMA' ? (
+                          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 font-black text-xs inline-flex items-center gap-1">
+                            🟢 Diterima {p.receivedVolumeLiters || p.rawVolumeLiters} L
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs inline-flex items-center gap-1">
+                            🟠 Ada Selisih (Kirim {p.rawVolumeLiters} L, Diterima {p.receivedVolumeLiters} L)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-6 text-center text-slate-400 text-xs font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            Belum ada kiriman susu mentah yang perlu diverifikasi dari Farm.
+          </div>
         )}
       </div>
 
@@ -1004,6 +1195,87 @@ export default function PengemasanPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeletingPkg(null)}
       />
+
+      {/* MODAL LAPORKAN SELISIH */}
+      {discrepancyModalItem && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <span>🟠 Laporkan Selisih Volume Susu</span>
+              </h3>
+              <button onClick={() => setDiscrepancyModalItem(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+            </div>
+
+            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs space-y-1 text-amber-950">
+              <p className="font-bold">Informasi Kiriman Farm:</p>
+              <p>• Asal Farm: <strong>{discrepancyModalItem.farmOrigin}</strong> ({discrepancyModalItem.animalType})</p>
+              <p>• Volume Dikirim Farm: <strong className="text-amber-900">{discrepancyModalItem.rawVolumeLiters} Liter</strong></p>
+            </div>
+
+            <form onSubmit={handleConfirmDiscrepancy} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Volume Fisik Sebenarnya Diterima (Liter)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  required
+                  placeholder="Contoh: 95.5"
+                  value={discrepancyRecLiters}
+                  onChange={(e) => setDiscrepancyRecLiters(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Alasan / Catatan Selisih</label>
+                <textarea
+                  rows="2"
+                  required
+                  placeholder="Contoh: Terjadi tumpahan wadah saat perjalanan transport..."
+                  value={discrepancyNotes}
+                  onChange={(e) => setDiscrepancyNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                ></textarea>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDiscrepancyModalItem(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 shadow"
+                >
+                  Simpan Laporan Selisih
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PREVIEW FOTO TIMBANGAN */}
+      {previewFoto && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 z-50" onClick={() => setPreviewFoto(null)}>
+          <div className="bg-white rounded-3xl max-w-lg w-full p-4 space-y-3 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h4 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <span>📷 Foto Timbangan / Wadah Fisik</span>
+              </h4>
+              <button onClick={() => setPreviewFoto(null)} className="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+            </div>
+            <div className="w-full h-80 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center">
+              <img src={previewFoto} alt="Foto Timbangan" className="max-w-full max-h-full object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

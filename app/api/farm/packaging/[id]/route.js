@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: false, message: 'Data pengemasan tidak ditemukan' }, { status: 404 });
     }
 
+    const validUserId = await resolveValidUserId(authUser);
+
     // ACTION: SEND TO PEMASARAN
     if (action === 'SEND') {
       if (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN') {
@@ -35,7 +37,7 @@ export async function PUT(request, { params }) {
         data: {
           status: 'MENUNGGU_PENERIMAAN',
           sentAt: new Date(),
-          sentById: authUser.id,
+          sentById: validUserId,
           sentByName: authUser.name || authUser.email,
           quantitySent: existing.totalPackagedQty,
         },
@@ -47,7 +49,7 @@ export async function PUT(request, { params }) {
 
       await prisma.systemLog.create({
         data: {
-          userId: authUser.id,
+          userId: validUserId,
           userEmail: authUser.email,
           action: 'SEND_PACKAGING',
           details: `Mengirim pengemasan ID ${id} (${existing.totalPackagedQty} pcs) ke Admin Pemasaran`,
@@ -83,7 +85,7 @@ export async function PUT(request, { params }) {
         data: {
           status: 'DITERIMA',
           receivedAt: new Date(),
-          receivedById: authUser.id,
+          receivedById: validUserId,
           receivedByName: authUser.name || authUser.email,
           quantityReceived: qRec,
           condition: condition || 'Sesuai',
@@ -97,7 +99,7 @@ export async function PUT(request, { params }) {
 
       await prisma.systemLog.create({
         data: {
-          userId: authUser.id,
+          userId: validUserId,
           userEmail: authUser.email,
           action: 'RECEIVE_PACKAGING',
           details: `Admin Pemasaran mengonfirmasi penerimaan ID ${id}: Diterima ${qRec} pcs (Kondisi: ${condition || 'Sesuai'})`,
@@ -133,7 +135,7 @@ export async function PUT(request, { params }) {
 
       await prisma.systemLog.create({
         data: {
-          userId: authUser.id,
+          userId: validUserId,
           userEmail: authUser.email,
           action: 'REJECT_PACKAGING',
           details: `Admin Pemasaran meminta koreksi data pengemasan ID ${id}: ${receptionNotes || '-'}`,
@@ -243,7 +245,7 @@ export async function PUT(request, { params }) {
 
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
+        userId: validUserId,
         userEmail: authUser.email,
         action: 'UPDATE_PACKAGING',
         details: `Memperbarui data pengemasan ID ${id}: Total ${totalPackagedQty} pcs`,
@@ -281,9 +283,10 @@ export async function DELETE(request, { params }) {
 
     await prisma.milkPackaging.delete({ where: { id } });
 
+    const validUserId = await resolveValidUserId(authUser);
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
+        userId: validUserId,
         userEmail: authUser.email,
         action: 'DELETE_PACKAGING',
         details: `Menghapus data pengemasan ID ${id}`,
@@ -299,3 +302,4 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
   }
 }
+
