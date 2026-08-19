@@ -13,7 +13,7 @@ export async function POST(request) {
     const cleanPassword = (password || '').trim();
     let userRole = (role || 'ADMIN_FARM').toUpperCase();
 
-    const validRoles = ['SUPERADMIN', 'ADMIN_FARM', 'ADMIN_PEMASARAN'];
+    const validRoles = ['SUPERADMIN', 'ADMIN_FARM', 'ADMIN_PENGEMASAN', 'ADMIN_PEMASARAN'];
     if (!validRoles.includes(userRole)) {
       userRole = 'ADMIN_FARM';
     }

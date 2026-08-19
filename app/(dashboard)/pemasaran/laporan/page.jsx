@@ -1,54 +1,103 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
-import { 
-  BarChart3, 
-  Calendar, 
-  Download, 
-  FileSpreadsheet, 
-  Printer, 
-  TrendingUp, 
-  TrendingDown, 
-  Boxes, 
-  Award,
+import EmptyState from '@/components/EmptyState';
+import {
+  FileText,
+  Calendar,
+  Download,
+  Filter,
+  TrendingUp,
+  Milk,
+  Package,
   DollarSign,
-  Layers,
-  Filter
+  Receipt,
+  CheckCircle2
 } from 'lucide-react';
+import ExcelJS from 'exceljs';
 
-export default function LaporanPenjualanPage() {
-  const { user } = useAuth();
+export default function LaporanPemasaranPage() {
   const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Period Selector
-  const [periodType, setPeriodType] = useState('HARIAN'); // "HARIAN" or "BULANAN"
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
-  const [filterMonth, setFilterMonth] = useState((new Date().getMonth() + 1).toString());
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+  const [periodFilter, setPeriodFilter] = useState('MONTH'); // ALL / TODAY / WEEK / MONTH / YEAR / CUSTOM
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [sumberFilter, setSumberFilter] = useState(''); // '' | 'FRESH' | 'OLAHAN'
+
+  const [reportData, setReportData] = useState({
+    summary: {
+      totalSalesCount: 0,
+      totalVolumeSold: 0,
+      totalOmzet: 0,
+      totalFreshVolume: 0,
+      totalFreshOmzet: 0,
+      totalOlahanQty: 0,
+      totalOlahanOmzet: 0,
+      totalPNBPOmzet: 0,
+      totalPiutangOmzet: 0,
+      totalSisaPiutang: 0,
+    },
+    sales: [],
+  });
+
+  // Calculate date range based on periodFilter
+  const getDateParams = () => {
+    if (periodFilter === 'CUSTOM') {
+      return { start: startDate, end: endDate };
+    }
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    if (periodFilter === 'TODAY') {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (periodFilter === 'WEEK') {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+      start = new Date(now.setDate(diff));
+      start.setHours(0, 0, 0, 0);
+      end = new Date();
+    } else if (periodFilter === 'MONTH') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    } else if (periodFilter === 'YEAR') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    } else {
+      // ALL
+      return { start: '', end: '' };
+    }
+
+    return {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  };
 
   const fetchReport = async () => {
     setLoading(true);
     try {
-      let url = `/pemasaran/reports?periodType=${periodType}&`;
-      if (periodType === 'HARIAN') {
-        url += `date=${filterDate}&`;
-      } else {
-        url += `month=${filterMonth}&year=${filterYear}&`;
-      }
+      const { start, end } = getDateParams();
+      let queryParams = [];
+      if (start) queryParams.push(`startDate=${start}`);
+      if (end) queryParams.push(`endDate=${end}`);
+      if (sumberFilter) queryParams.push(`sumber=${sumberFilter}`);
 
-      const res = await api.get(url);
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const res = await api.get(`/reports/milk${queryString}`);
+
       if (res.data.success) {
         setReportData(res.data.data);
       }
     } catch (err) {
-      console.error('Error fetching sales report:', err);
-      setToast({ type: 'error', message: 'Gagal memuat laporan penjualan.' });
+      console.error('Error fetching milk report:', err);
+      setToast({ type: 'error', message: 'Gagal memuat laporan penjualan susu.' });
     } finally {
       setLoading(false);
     }
@@ -56,333 +105,309 @@ export default function LaporanPenjualanPage() {
 
   useEffect(() => {
     fetchReport();
-  }, [periodType, filterDate, filterMonth, filterYear]);
+  }, [periodFilter, sumberFilter]);
 
-  const handleExportExcel = () => {
-    if (!reportData || !reportData.tableData || reportData.tableData.length === 0) {
-      setToast({ type: 'error', message: 'Tidak ada data penjualan untuk diexport pada periode ini.' });
-      return;
+  const handleCustomFilterSubmit = (e) => {
+    e.preventDefault();
+    fetchReport();
+  };
+
+  const exportToExcel = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Laporan Penjualan Susu');
+
+      // Title header
+      worksheet.mergeCells('A1', 'F1');
+      worksheet.getCell('A1').value = 'LAPORAN PENJUALAN SUSU (FARMSTOCK PRO)';
+      worksheet.getCell('A1').font = { size: 16, bold: true, color: { argb: '1E3F20' } };
+      worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+      worksheet.mergeCells('A2', 'F2');
+      worksheet.getCell('A2').value = `Periode: ${periodFilter} | Dicetak: ${new Date().toLocaleDateString('id-ID')}`;
+      worksheet.getCell('A2').font = { size: 11, italic: true };
+      worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+      worksheet.addRow([]); // empty row
+
+      // Summary table
+      worksheet.addRow(['RINGKASAN PENJUALAN']);
+      worksheet.addRow(['Total Transaksi', reportData.summary.totalSalesCount]);
+      worksheet.addRow(['Total Volume/Unit Terjual', reportData.summary.totalVolumeSold]);
+      worksheet.addRow(['Total Omzet (Rp)', reportData.summary.totalOmzet]);
+      worksheet.addRow(['Omzet PNBP (Rp)', reportData.summary.totalPNBPOmzet]);
+      worksheet.addRow(['Omzet Piutang (Rp)', reportData.summary.totalPiutangOmzet]);
+      worksheet.addRow(['Sisa Piutang Belum Lunas (Rp)', reportData.summary.totalSisaPiutang]);
+
+      worksheet.addRow([]);
+
+      // Detail Table Header
+      const headerRow = worksheet.addRow(['Tanggal', 'Pembeli', 'Sumber', 'Jumlah', 'Total Harga (Rp)', 'Kategori Bayar']);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: '1E3F20' },
+        };
+      });
+
+      // Data Rows
+      reportData.sales.forEach((s) => {
+        worksheet.addRow([
+          new Date(s.tanggal || s.date).toLocaleDateString('id-ID'),
+          s.pembeli || '-',
+          s.sumber || 'FRESH',
+          `${s.jumlah || s.quantity} ${s.sumber === 'FRESH' ? 'Liter' : 'Unit'}`,
+          s.hargaJual || s.totalPrice || 0,
+          s.kategoriBayar || 'PNBP',
+        ]);
+      });
+
+      // Auto width columns
+      worksheet.columns.forEach((column) => {
+        column.width = 20;
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Laporan_Penjualan_Susu_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      setToast({ type: 'success', message: 'Berhasil mengunduh laporan Excel!' });
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      setToast({ type: 'error', message: 'Gagal mengunduh laporan Excel.' });
     }
-
-    // Build CSV formatted for Excel
-    const headers = ['ID Transaksi', 'Tanggal', 'Kategori', 'Produk & Varian', 'Kemasan', 'Jumlah (pcs)', 'Harga Satuan (Rp)', 'Total Penjualan (Rp)', 'Status'];
-    const rows = reportData.tableData.map((item) => [
-      item.transactionId,
-      item.dateFormatted,
-      item.productCategory,
-      `"${item.productName}"`,
-      item.packagingType,
-      item.quantity,
-      item.unitPrice,
-      item.totalPrice,
-      item.status,
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    const filename = `Laporan_Penjualan_${periodType}_${periodType === 'HARIAN' ? filterDate : `${filterYear}-${filterMonth}`}.csv`;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setToast({ type: 'success', message: `Laporan ${periodType.toLowerCase()} berhasil diexport to CSV/Excel!` });
   };
-
-  const handlePrintPDF = () => {
-    window.print();
-  };
-
-  const {
-    periodLabel = '',
-    totalTransactions = 0,
-    totalUnitsSold = 0,
-    totalRevenue = 0,
-    topProduct = null,
-    lowestProduct = null,
-    productBreakdown = [],
-    tableData = [],
-  } = reportData || {};
 
   return (
-    <div className="space-y-8 pb-12 print:p-0 print:space-y-4">
-      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
 
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold mb-2">
-            <BarChart3 className="w-4 h-4" />
-            <span>POV Admin Pemasaran</span>
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-rose-100 text-rose-800 rounded-2xl">
+            <FileText className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Laporan Penjualan Produk</h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Rekap hasil penjualan harian & bulanan, analisa produk terlaris, serta export laporan.
-          </p>
+          <div>
+            <h1 className="text-xl font-extrabold text-slate-800">Laporan Penjualan Susu</h1>
+            <p className="text-xs text-slate-500">Rekap omzet, breakdown produk, dan ekspor laporan ke format Excel</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-bold shadow transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export Excel (.xlsx)</span>
-          </button>
-
-          <button
-            onClick={handlePrintPDF}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold shadow transition-all"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Cetak / PDF</span>
-          </button>
-        </div>
+        <button
+          onClick={exportToExcel}
+          className="inline-flex items-center gap-2 bg-[#1E3F20] hover:bg-[#2b592e] text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 self-start md:self-auto"
+        >
+          <Download className="w-4 h-4" />
+          <span>Export Excel (.xlsx)</span>
+        </button>
       </div>
 
-      {/* PERIODE SELECTOR BAR */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 print:hidden">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-            <Filter className="w-4 h-4 text-blue-600" />
-            <span>Periode Laporan:</span>
+      {/* Filter Section */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Period Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+            {['ALL', 'TODAY', 'WEEK', 'MONTH', 'YEAR', 'CUSTOM'].map((period) => (
+              <button
+                key={period}
+                onClick={() => setPeriodFilter(period)}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                  periodFilter === period
+                    ? 'bg-white text-emerald-800 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {period === 'ALL' && 'Semua'}
+                {period === 'TODAY' && 'Hari Ini'}
+                {period === 'WEEK' && 'Minggu Ini'}
+                {period === 'MONTH' && 'Bulan Ini'}
+                {period === 'YEAR' && 'Tahun Ini'}
+                {period === 'CUSTOM' && 'Custom'}
+              </button>
+            ))}
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
-            <button
-              onClick={() => setPeriodType('HARIAN')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                periodType === 'HARIAN' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
+          {/* Sumber Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-600">Sumber Produk:</label>
+            <select
+              value={sumberFilter}
+              onChange={(e) => setSumberFilter(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500"
             >
-              📅 Harian
-            </button>
-            <button
-              onClick={() => setPeriodType('BULANAN')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                periodType === 'BULANAN' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              📆 Bulanan
-            </button>
+              <option value="">Semua (Fresh & Olahan)</option>
+              <option value="FRESH">Susu Fresh</option>
+              <option value="OLAHAN">Susu Olahan</option>
+            </select>
           </div>
-
-          {periodType === 'HARIAN' ? (
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <select
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="1">Januari</option>
-                <option value="2">Februari</option>
-                <option value="3">Maret</option>
-                <option value="4">April</option>
-                <option value="5">Mei</option>
-                <option value="6">Juni</option>
-                <option value="7">Juli</option>
-                <option value="8">Agustus</option>
-                <option value="9">September</option>
-                <option value="10">Oktober</option>
-                <option value="11">November</option>
-                <option value="12">Desember</option>
-              </select>
-
-              <select
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-              </select>
-            </div>
-          )}
         </div>
+
+        {/* Custom Date Inputs */}
+        {periodFilter === 'CUSTOM' && (
+          <form onSubmit={handleCustomFilterSubmit} className="flex flex-wrap items-end gap-3 pt-2 border-t border-slate-100">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Mulai</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+                className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Sampai</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                required
+                className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
+            >
+              Terapkan Filter
+            </button>
+          </form>
+        )}
       </div>
 
       {loading ? (
-        <div className="p-12 text-center"><LoadingSpinner text="Mengkalkulasi rekap laporan penjualan..." /></div>
+        <LoadingSpinner text="Mengkalkulasi Laporan Penjualan..." />
       ) : (
-        <div className="space-y-6">
-          {/* PRINT HEADER TITLE */}
-          <div className="hidden print:block border-b pb-3 mb-4">
-            <h2 className="text-xl font-black text-slate-900">LAPORAN PENJUALAN PRODUK</h2>
-            <p className="text-xs text-slate-600">Periode: {periodLabel}</p>
-          </div>
-
-          {/* REKAP METRICS GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-[#1E3F20] to-[#122b14] text-white p-5 rounded-3xl shadow-md space-y-2">
-              <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider block">Total Pendapatan</span>
-              <p className="text-2xl font-black text-amber-400">Rp {totalRevenue.toLocaleString('id-ID')}</p>
-              <p className="text-[10px] text-emerald-200 font-medium">Periode {periodLabel}</p>
+        <>
+          {/* Summary Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Omzet</span>
+              <h3 className="text-2xl font-black text-slate-800 mt-1">
+                Rp {reportData.summary.totalOmzet.toLocaleString('id-ID')}
+              </h3>
+              <p className="text-[11px] text-emerald-600 font-medium mt-1">
+                {reportData.summary.totalSalesCount} Transaksi Terpenuhi
+              </p>
             </div>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Transaksi</span>
-              <p className="text-3xl font-black text-slate-900">{totalTransactions} <span className="text-xs font-semibold text-slate-500">Transaksi</span></p>
-              <p className="text-[10px] text-slate-500 font-medium">{totalUnitsSold.toLocaleString()} pcs terjual</p>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Omzet PNBP (Tunai)</span>
+              <h3 className="text-2xl font-black text-emerald-700 mt-1">
+                Rp {reportData.summary.totalPNBPOmzet.toLocaleString('id-ID')}
+              </h3>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Pembayaran Langsung</p>
             </div>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <div className="flex items-center gap-1 text-emerald-600">
-                <Award className="w-4 h-4" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">Produk Terlaris</span>
-              </div>
-              {topProduct ? (
-                <div>
-                  <p className="text-sm font-black text-slate-900 truncate">{topProduct.name}</p>
-                  <p className="text-xs font-bold text-emerald-700">{topProduct.units} pcs ({((topProduct.revenue / (totalRevenue || 1)) * 100).toFixed(1)}%)</p>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 font-medium">Belum ada data</p>
-              )}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Omzet Piutang</span>
+              <h3 className="text-2xl font-black text-amber-700 mt-1">
+                Rp {reportData.summary.totalPiutangOmzet.toLocaleString('id-ID')}
+              </h3>
+              <p className="text-[11px] text-amber-600 font-medium mt-1">
+                Sisa Piutang: Rp {reportData.summary.totalSisaPiutang.toLocaleString('id-ID')}
+              </p>
             </div>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <div className="flex items-center gap-1 text-amber-600">
-                <TrendingDown className="w-4 h-4" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">Produk Terendah</span>
-              </div>
-              {lowestProduct ? (
-                <div>
-                  <p className="text-sm font-black text-slate-900 truncate">{lowestProduct.name}</p>
-                  <p className="text-xs font-bold text-amber-700">{lowestProduct.units} pcs terjual</p>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 font-medium">Belum ada data</p>
-              )}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Volume / Unit</span>
+              <h3 className="text-2xl font-black text-blue-900 mt-1">
+                {reportData.summary.totalVolumeSold.toLocaleString('id-ID')}
+              </h3>
+              <p className="text-[11px] text-blue-600 font-medium mt-1">
+                Fresh: {reportData.summary.totalFreshVolume} L | Olahan: {reportData.summary.totalOlahanQty} U
+              </p>
             </div>
           </div>
 
-          {/* PRODUCT PERFORMANCE BREAKDOWN */}
-          {productBreakdown.length > 0 && (
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-blue-600" />
-                <span>Analisis Performa Penjualan Per Produk</span>
-              </h2>
-
-              <div className="space-y-3">
-                {productBreakdown.map((p, idx) => {
-                  const percent = totalRevenue > 0 ? (p.revenue / totalRevenue) * 100 : 0;
-                  return (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold text-slate-800">
-                        <span>{p.name}</span>
-                        <span>{p.units} pcs — Rp {p.revenue.toLocaleString('id-ID')} ({percent.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, Math.max(5, percent))}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* TABLE REKAP PENJUALAN */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                <span>Tabel Data Rekap Penjualan ({periodLabel})</span>
-              </h2>
+          {/* Detailed Sales Report Table */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold text-slate-800 text-base">Rincian Transaksi Penjualan</h2>
+              <span className="text-xs font-semibold text-slate-500">Total: {reportData.sales.length} record</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="py-3.5 px-4 whitespace-nowrap">ID Transaksi</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap">Tanggal</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap">Kategori</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap">Produk & Varian</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap">Kemasan</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap text-right">Jumlah Terjual</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap text-right">Harga Satuan</th>
-                    <th className="py-3.5 px-4 whitespace-nowrap text-right">Total Penjualan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {tableData.length > 0 ? (
-                    tableData.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50">
-                        <td className="py-3.5 px-4 font-mono font-black text-slate-900 whitespace-nowrap">
-                          {row.transactionId}
+            {reportData.sales.length === 0 ? (
+              <EmptyState
+                title="Tidak Ada Data Penjualan"
+                description="Tidak ditemukan transaksi penjualan untuk periode filter ini."
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-y border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3">Tanggal</th>
+                      <th className="px-4 py-3">Sumber</th>
+                      <th className="px-4 py-3">Pembeli</th>
+                      <th className="px-4 py-3">Jumlah</th>
+                      <th className="px-4 py-3">Total Harga</th>
+                      <th className="px-4 py-3">Kategori Bayar</th>
+                      <th className="px-4 py-3">Status Piutang</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {reportData.sales.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3 text-slate-600">
+                          {new Date(s.tanggal || s.date).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-800 whitespace-nowrap">
-                          {row.dateFormatted}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-0.5 rounded-full border font-bold text-[10px] ${
-                            row.productCategory === 'Yogurt' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                            row.productCategory === 'Keju' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                            'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            s.sumber === 'FRESH' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
                           }`}>
-                            {row.productCategory}
+                            {s.sumber || 'FRESH'}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
-                          {row.productName}
+                        <td className="px-4 py-3 font-bold text-slate-800">{s.pembeli}</td>
+                        <td className="px-4 py-3">{s.jumlah || s.quantity} {s.sumber === 'FRESH' ? 'Liter' : 'Unit'}</td>
+                        <td className="px-4 py-3 font-black text-slate-800">
+                          Rp {(s.hargaJual || s.totalPrice || 0).toLocaleString('id-ID')}
                         </td>
-                        <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">
-                          {row.packagingType}
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            s.kategoriBayar === 'PNBP' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {s.kategoriBayar}
+                          </span>
                         </td>
-                        <td className="py-3.5 px-4 font-extrabold text-slate-900 text-right whitespace-nowrap">
-                          {row.quantity} pcs
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-slate-700 text-right whitespace-nowrap">
-                          Rp {row.unitPrice.toLocaleString('id-ID')}
-                        </td>
-                        <td className="py-3.5 px-4 font-black text-emerald-700 text-right whitespace-nowrap">
-                          Rp {row.totalPrice.toLocaleString('id-ID')}
+                        <td className="px-4 py-3">
+                          {s.kategoriBayar === 'PIUTANG' ? (
+                            s.piutang?.lunas ? (
+                              <span className="text-emerald-700 font-bold">LUNAS</span>
+                            ) : (
+                              <span className="text-rose-600 font-bold">Sisa: Rp {(s.piutang?.sisaPiutang || 0).toLocaleString('id-ID')}</span>
+                            )
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
-                        Tidak ada data transaksi penjualan pada periode {periodLabel}.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-                {tableData.length > 0 && (
-                  <tfoot>
-                    <tr className="bg-slate-900 text-white font-black text-xs">
-                      <td colSpan={5} className="py-4 px-4 text-right uppercase tracking-wider">
-                        TOTAL KESELURUHAN:
-                      </td>
-                      <td className="py-4 px-4 text-right font-mono font-black text-amber-400">
-                        {totalUnitsSold.toLocaleString()} pcs
-                      </td>
-                      <td className="py-4 px-4"></td>
-                      <td className="py-4 px-4 text-right font-mono font-black text-amber-400">
-                        Rp {totalRevenue.toLocaleString('id-ID')}
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -51,7 +51,17 @@ function isRouteAllowed(role, pathname) {
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = [
+      '/dashboard',
+      '/pemasaran',
+      '/pemasaran/dashboard',
+      '/pemasaran/terima-data',
+      '/pemasaran/jual-fresh',
+      '/pemasaran/jual-olahan',
+      '/pemasaran/piutang',
+      '/pemasaran/laporan',
+      '/profil'
+    ];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -119,9 +129,11 @@ export default function DashboardLayout({ children }) {
       return [
         { label: 'Dashboard Main', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
-        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
-        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
-        { label: 'Penjualan Produk', path: '/pemasaran/penjualan', icon: ShoppingCart },
+        { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: Boxes },
+        { label: 'Terima Data', path: '/pemasaran/terima-data', icon: PackageCheck },
+        { label: 'Jual Fresh', path: '/pemasaran/jual-fresh', icon: Milk },
+        { label: 'Jual Olahan', path: '/pemasaran/jual-olahan', icon: Package },
+        { label: 'Kelola Piutang', path: '/pemasaran/piutang', icon: ShoppingCart },
         { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
@@ -141,11 +153,10 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: LayoutDashboard },
-        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
-        { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
-        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
-        { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
+        { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: LayoutDashboard },
+        { label: 'Terima Data (Farm & Packaging)', path: '/pemasaran/terima-data', icon: PackageCheck },
+        { label: 'Kelola Piutang & Pelunasan', path: '/pemasaran/piutang', icon: ShoppingCart },
+        { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }

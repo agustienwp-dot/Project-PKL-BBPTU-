@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Package,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -149,6 +150,24 @@ export default function LoginPage() {
     setSuccess(`Akun "${createdEmail}" berhasil didaftarkan. Silakan login manual.`);
   };
 
+  const handleQuickLogin = async (quickEmail, quickPassword) => {
+    setEmail(quickEmail);
+    setPassword(quickPassword);
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      await login(quickEmail, quickPassword);
+      window.location.href = '/dashboard';
+    } catch (err) {
+      console.error('Quick login error:', err);
+      const msg = err.response?.data?.message || err.message || 'Gagal login dengan akun quick login.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex items-center justify-center p-4 relative overflow-hidden">
       
@@ -215,71 +234,129 @@ export default function LoginPage() {
 
         {/* FORM 1: LOGIN MANUAL */}
         {mode === 'login' && (
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <p className="text-xs text-slate-500 text-center font-medium">
-              Masukkan email/username dan password akun Anda untuk masuk.
-            </p>
+          <div className="space-y-5">
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <p className="text-xs text-slate-500 text-center font-medium">
+                Masukkan email/username dan password akun Anda untuk masuk.
+              </p>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Email / Username
-              </label>
-              <div className="relative">
-                <Mail className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Ketikkan email atau username Anda..."
-                  className="w-full bg-[#F5F5F0] border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1E3F20] focus:ring-2 focus:ring-[#1E3F20]/20 transition-colors"
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Email / Username
+                </label>
+                <div className="relative">
+                  <Mail className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Ketikkan email atau username Anda..."
+                    className="w-full bg-[#F5F5F0] border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1E3F20] focus:ring-2 focus:ring-[#1E3F20]/20 transition-colors"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Ketikkan password Anda..."
-                  className="w-full bg-[#F5F5F0] border border-slate-300 rounded-xl py-3 pl-11 pr-11 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1E3F20] focus:ring-2 focus:ring-[#1E3F20]/20 transition-colors"
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Ketikkan password Anda..."
+                    className="w-full bg-[#F5F5F0] border border-slate-300 rounded-xl py-3 pl-11 pr-11 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1E3F20] focus:ring-2 focus:ring-[#1E3F20]/20 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                    title={showPassword ? 'Sembunyikan Password' : 'Tampilkan Password'}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#1E3F20] hover:bg-[#2b592e] text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 mt-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Memverifikasi Akun...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Masuk ke Sistem</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Quick Demo Login Shortcuts */}
+            <div className="pt-4 border-t border-slate-200 space-y-2.5">
+              <div className="flex items-center gap-1.5 justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
+                  Shortcut Quick Login (Demo Role):
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
-                  title={showPassword ? 'Sembunyikan Password' : 'Tampilkan Password'}
+                  disabled={loading}
+                  onClick={() => handleQuickLogin('superadmin@susu.com', 'admin123')}
+                  className="p-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-left transition-all active:scale-95 group shadow-sm disabled:opacity-50"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  <span className="text-[10px] font-bold text-purple-600 block uppercase">SUPERADMIN</span>
+                  <span className="text-xs font-black text-purple-950 block group-hover:underline">⚡ Superadmin</span>
+                  <span className="text-[10px] text-purple-700/80 block mt-0.5">superadmin@susu.com</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickLogin('farm@susu.com', 'farm123')}
+                  className="p-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-left transition-all active:scale-95 group shadow-sm disabled:opacity-50"
+                >
+                  <span className="text-[10px] font-bold text-emerald-600 block uppercase">ADMIN FARM</span>
+                  <span className="text-xs font-black text-emerald-950 block group-hover:underline">⚡ Farm Produksi</span>
+                  <span className="text-[10px] text-emerald-700/80 block mt-0.5">farm@susu.com</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickLogin('pengemasan@susu.com', 'pengemasan123')}
+                  className="p-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-left transition-all active:scale-95 group shadow-sm disabled:opacity-50"
+                >
+                  <span className="text-[10px] font-bold text-indigo-600 block uppercase">ADMIN PENGEMASAN</span>
+                  <span className="text-xs font-black text-indigo-950 block group-hover:underline">⚡ Pengemasan</span>
+                  <span className="text-[10px] text-indigo-700/80 block mt-0.5">pengemasan@susu.com</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickLogin('pemasaran@susu.com', 'pemasaran123')}
+                  className="p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-left transition-all active:scale-95 group shadow-sm disabled:opacity-50"
+                >
+                  <span className="text-[10px] font-bold text-blue-600 block uppercase">ADMIN PEMASARAN</span>
+                  <span className="text-xs font-black text-blue-950 block group-hover:underline">⚡ Pemasaran & Stok</span>
+                  <span className="text-[10px] text-blue-700/80 block mt-0.5">pemasaran@susu.com</span>
                 </button>
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#1E3F20] hover:bg-[#2b592e] text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 mt-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Memverifikasi Akun...</span>
-                </>
-              ) : (
-                <>
-                  <span>Masuk ke Sistem</span>
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
-          </form>
+          </div>
         )}
 
         {/* FORM 2: REGISTRASI AKUN BARU MANUAL (DENGAN EMAIL) */}
@@ -353,7 +430,7 @@ export default function LoginPage() {
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Pilih Role Hak Akses
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setRegRole('ADMIN_FARM')}
@@ -365,6 +442,19 @@ export default function LoginPage() {
                 >
                   <Milk className="w-4 h-4 text-emerald-700" />
                   <span>Admin Farm</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRegRole('ADMIN_PENGEMASAN')}
+                  className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                    regRole === 'ADMIN_PENGEMASAN'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-800'
+                      : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Package className="w-4 h-4 text-indigo-700" />
+                  <span>Pengemasan</span>
                 </button>
 
                 <button

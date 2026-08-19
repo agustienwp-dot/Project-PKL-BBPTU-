@@ -150,12 +150,32 @@ export async function POST(request) {
       },
     });
 
+    // Also sync to PackagedProduct for Admin Pemasaran confirmation
+    for (const item of itemsList) {
+      const sizeStr = item.size ? item.size : item.packagingType || 'Botol';
+      const jProduk = `${pCategory}${pVariant && pVariant !== 'Original' ? ` Rasa ${pVariant}` : ''}`;
+      const itemQty = parseFloat(item.quantity) || 0;
+      if (itemQty > 0) {
+        await prisma.packagedProduct.create({
+          data: {
+            tanggal: date ? new Date(date) : new Date(),
+            jenisProduk: jProduk,
+            kemasan: sizeStr.includes('ml') || sizeStr.includes('gram') ? `${item.packagingType || 'Botol'} ${sizeStr}` : sizeStr,
+            jumlah: itemQty,
+            status: 'MENUNGGU_PENERIMAAN',
+            notes: notes || null,
+            createdById: authUser.id,
+          },
+        });
+      }
+    }
+
     await prisma.systemLog.create({
       data: {
         userId: authUser.id,
         userEmail: authUser.email,
         action: 'CREATE_PACKAGING',
-        details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (DRAFT)`,
+        details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (MENUNGGU_PENERIMAAN)`,
       },
     });
 

@@ -203,6 +203,54 @@ export default function ProduksiPage() {
     }
   };
 
+  // BAST Modal State
+  const [showBastModal, setShowBastModal] = useState(false);
+  const [bastVolume, setBastVolume] = useState('');
+  const [bastJenis, setBastJenis] = useState('PENJUALAN_LANGSUNG');
+  const [bastPenerima, setBastPenerima] = useState('');
+  const [bastNotes, setBastNotes] = useState('');
+  const [submittingBast, setSubmittingBast] = useState(false);
+
+  const handleIssueBast = async (e) => {
+    e.preventDefault();
+    const numVol = parseFloat(bastVolume);
+    if (isNaN(numVol) || numVol <= 0) {
+      setToast({ type: 'error', message: 'Volume susu segar (Liter) harus bernilai > 0.' });
+      return;
+    }
+
+    setSubmittingBast(true);
+    try {
+      const res = await api.post('/bast', {
+        tanggal: formDate,
+        volumeLiters: numVol,
+        jenisPermintaan: bastJenis,
+        instansiPenerima: bastPenerima,
+        pengirimNama: user?.name || 'Admin Farm Produksi',
+        catatan: bastNotes,
+      });
+
+      if (res.data.success) {
+        setToast({
+          type: 'success',
+          message: `Berhasil menerbitkan Surat BAST (${res.data.data?.nomorBast}) untuk Pemasaran!`
+        });
+        setShowBastModal(false);
+        setBastVolume('');
+        setBastPenerima('');
+        setBastNotes('');
+      }
+    } catch (err) {
+      console.error('Error issuing BAST:', err);
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || 'Gagal menerbitkan Surat BAST.'
+      });
+    } finally {
+      setSubmittingBast(false);
+    }
+  };
+
   const filteredProductions = productions.filter((p) => {
     const q = searchQuery.toLowerCase();
     const catName = (p.category?.name || '').toLowerCase();
@@ -229,13 +277,22 @@ export default function ProduksiPage() {
         </div>
 
         {canManage && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Input Produksi Susu</span>
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowBastModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>📄 + Catat BAST Hardfile</span>
+            </button>
+            <button
+              onClick={openAddModal}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Input Produksi Susu</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -631,6 +688,119 @@ export default function ProduksiPage() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TERBITKAN SURAT BAST */}
+      {showBastModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-blue-700" />
+                <span>Pencatatan Surat BAST Hardfile (Kertas Fisik)</span>
+              </h3>
+              <button
+                onClick={() => setShowBastModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleIssueBast} className="space-y-4 text-xs">
+              <p className="text-slate-500 font-medium">
+                Catat penerbitan/penyerahan dokumen fisik Surat BAST (Hardfile Kertas) yang diserahkan langsung bersama pengiriman susu mentah ke Admin Pemasaran.
+              </p>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tanggal Serah Terima</label>
+                <input
+                  type="date"
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Volume Susu Segar (Liter)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="Contoh: 100"
+                  value={bastVolume}
+                  onChange={(e) => setBastVolume(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Pengirim (Farm)</label>
+                <input
+                  type="text"
+                  value={user?.name || 'Admin Farm Produksi'}
+                  disabled
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-xl font-semibold text-slate-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jenis Keperluan / Permintaan BAST</label>
+                <select
+                  value={bastJenis}
+                  onChange={(e) => setBastJenis(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800"
+                >
+                  <option value="PENJUALAN_LANGSUNG">💰 Penjualan Susu Langsung</option>
+                  <option value="HIBAH">🎁 Penyaluran Susu Hibah / CSR</option>
+                  <option value="KERJASAMA">🏢 Permintaan Kerjasama / Dinas / Universitas</option>
+                  <option value="DISTRIBUSI_INTERNAL">🏢 Distribusi Internal / Khusus</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Penerima / Instansi / Pembeli</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Kedai Mas Budi / CSR Gizi Anak / Koperasi Mulia"
+                  value={bastPenerima}
+                  onChange={(e) => setBastPenerima(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan Penyerahan (Opsional)</label>
+                <textarea
+                  rows="2"
+                  placeholder="Keterangan penyerahan ke Pemasaran / Pembeli..."
+                  value={bastNotes}
+                  onChange={(e) => setBastNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBastModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingBast}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md disabled:opacity-50"
+                >
+                  {submittingBast ? 'Menerbitkan...' : 'Terbitkan BAST'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
