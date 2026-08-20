@@ -6,50 +6,43 @@ export const dynamic = 'force-dynamic';
 
 // Global In-Memory Store for instant persistence across fallback / DB states
 if (!global.__inMemoryBaList) {
-  global.__inMemoryBaList = [
-    {
-      id: 'ba-fallback-1',
-      nomorBa: 'BA-20260819-001',
-      date: new Date().toISOString(),
-      shift: 'Pagi',
-      farmLocation: 'Tegalsari',
-      animalType: 'SAPI',
-      unit: 'Liter',
-      totalProduksi: 8000,
-      penggunaanPedet: 120,
-      afkir: 90,
-      lainLain: 0,
-      diserahterimakan: 7770,
-      penyerahName: 'Admin Farm Produksi',
-      penerimaName: 'Seksi Pemasaran',
-      status: 'DIBACA_PEMASARAN',
-      notes: 'Serah terima rutin produksi susu segar',
-      createdAt: new Date().toISOString(),
-      logs: [],
-    },
-  ];
+  global.__inMemoryBaList = [];
 }
 
-// Helper to generate sequential BA Number (e.g. BA-20260819-001)
-async function generateNomorBa() {
-  const dateObj = new Date();
+// Helper to generate sequential BA Number (e.g. BA-FS-20260820-001)
+async function generateNomorBa(farmLocation = 'FS', targetDate = null) {
+  let farmCode = 'FS';
+  if (farmLocation && typeof farmLocation === 'string') {
+    const loc = farmLocation.toUpperCase().trim();
+    if (loc.includes('TEGAL')) farmCode = 'TS';
+    else if (loc.includes('LIMPA')) farmCode = 'LK';
+    else if (loc.includes('MANGGALA')) farmCode = 'MG';
+    else if (loc.includes('EDU')) farmCode = 'EW';
+    else farmCode = 'FS';
+  }
+
+  const dateObj = targetDate ? new Date(targetDate) : new Date();
   const year = dateObj.getFullYear();
   const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
   const day = dateObj.getDate().toString().padStart(2, '0');
-  const datePrefix = `BA-${year}${month}${day}`;
+  const dateStr = `${year}${month}${day}`;
+
+  const prefix = `BA-${farmCode}-${dateStr}`;
 
   try {
     const count = await prisma.beritaAcara.count({
       where: {
-        nomorBa: { startsWith: datePrefix },
+        nomorBa: { startsWith: prefix },
       },
     });
 
-    const nextNum = (count + 1).toString().padStart(3, '0');
-    return `${datePrefix}-${nextNum}`;
+    const memCount = (global.__inMemoryBaList || []).filter((i) => i.nomorBa && i.nomorBa.startsWith(prefix)).length;
+    const nextNum = (Math.max(count, memCount) + 1).toString().padStart(3, '0');
+    return `${prefix}-${nextNum}`;
   } catch (err) {
-    const rand = Math.floor(100 + Math.random() * 899);
-    return `${datePrefix}-${rand}`;
+    const memCount = (global.__inMemoryBaList || []).filter((i) => i.nomorBa && i.nomorBa.startsWith(prefix)).length;
+    const nextNum = (memCount + 1).toString().padStart(3, '0');
+    return `${prefix}-${nextNum}`;
   }
 }
 
@@ -172,6 +165,13 @@ export async function GET(request) {
       );
     }
 
+    // Sort descending by newest update / creation time so latest updated items are on top
+    filteredList.sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.createdAt || a.date || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || b.date || 0).getTime();
+      return timeB - timeA;
+    });
+
     return NextResponse.json({ success: true, data: filteredList });
   } catch (error) {
     console.error('GET /api/berita-acara error:', error);
@@ -239,7 +239,7 @@ export async function POST(request) {
     }
 
     const validUserId = await resolveValidUserId(authUser);
-    const nomorBa = await generateNomorBa();
+    const nomorBa = await generateNomorBa(farmLocation, date);
     const initialStatus = body.status || 'TERKIRIM_KE_PEMASARAN';
 
     const createdBa = await prisma.beritaAcara.create({
@@ -282,6 +282,9 @@ export async function POST(request) {
     });
 
     if (createdBa) {
+      if (productionId && !createdBa.productionId) {
+        createdBa.productionId = productionId;
+      }
       global.__inMemoryBaList.unshift(createdBa);
     }
 
@@ -290,9 +293,7 @@ export async function POST(request) {
     console.error('POST /api/berita-acara error:', error);
     
     // Smooth fallback if DB is offline/unreachable
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randNum = Math.floor(100 + Math.random() * 899);
-    const fallbackNomorBa = `BA-${dateStr}-${randNum}`;
+    const fallbackNomorBa = await generateNomorBa(body?.farmLocation, body?.date);
     const initialStatus = body?.status || 'TERKIRIM_KE_PEMASARAN';
     const diserahVol = parseFloat(body?.diserahterimakan || 0);
 

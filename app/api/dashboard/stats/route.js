@@ -266,13 +266,31 @@ export async function GET(request) {
 
     const farmOriginMap = { tegalsari: 0, limpakuwus: 0, manggala: 0, eduwisata: 0 };
     todayFarmOriginAgg.forEach(f => {
-      let key = (f.farmOrigin || '').toLowerCase().replace(/\s+/g, '').trim();
-      if (key === 'limpakuwiu') key = 'limpakuwus';
+      let key = (f.farmOrigin || '').toLowerCase().replace(/\s+/g, '').replace(/^farm\s*/i, '').trim();
+      if (key.includes('limpa')) key = 'limpakuwus';
+      if (key.includes('tegal')) key = 'tegalsari';
+      if (key.includes('manggala')) key = 'manggala';
+      if (key.includes('edu')) key = 'eduwisata';
       if (farmOriginMap[key] !== undefined) {
         const vol = (f._sum.grossVolumeLiters || 0) > 0 ? f._sum.grossVolumeLiters : (f._sum.rawVolumeLiters || 0);
         farmOriginMap[key] += vol;
       }
     });
+
+    if (global.__inMemoryProductionList && global.__inMemoryProductionList.length > 0) {
+      global.__inMemoryProductionList.forEach((m) => {
+        let key = (m.farmOrigin || 'manggala').toLowerCase().replace(/\s+/g, '').replace(/^farm\s*/i, '').trim();
+        if (key.includes('limpa')) key = 'limpakuwus';
+        if (key.includes('tegal')) key = 'tegalsari';
+        if (key.includes('manggala')) key = 'manggala';
+        if (key.includes('edu')) key = 'eduwisata';
+
+        if (farmOriginMap[key] !== undefined) {
+          const vol = (m.grossVolumeLiters || 0) > 0 ? m.grossVolumeLiters : (m.rawVolumeLiters || 0);
+          farmOriginMap[key] += vol;
+        }
+      });
+    }
 
     // Fetch sold fresh items with buyer breakdown
     const todaySoldFreshItems = await prisma.milkProduction.findMany({
@@ -312,6 +330,18 @@ export async function GET(request) {
       _sum: { botolQty: true, cupQty: true, plastikBantalQty: true, totalPackagedQty: true, processedLiters: true },
     });
 
+    const parseDateToYYYYMMDD = (dateInput) => {
+      if (!dateInput) return '';
+      if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+        return dateInput.substring(0, 10);
+      }
+      const d = new Date(dateInput);
+      const yyyy = d.getFullYear();
+      const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+      const dd = d.getDate().toString().padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     // Chart Data Generation (7 Days & Current Month 1-30/31)
     const getDailyChartData = async (daysCount) => {
       const chartData = [];
@@ -322,21 +352,44 @@ export async function GET(request) {
         d.setDate(d.getDate() - i);
         const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
         const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+        const yyyy = d.getFullYear();
+        const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+        const dd = d.getDate().toString().padStart(2, '0');
+        const dStr = `${yyyy}-${mm}-${dd}`;
 
         const dayAgg = await prisma.milkProduction.aggregate({
           where: { date: { gte: dStart, lte: dEnd } },
-          _sum: { rawVolumeLiters: true },
+          _sum: { grossVolumeLiters: true, rawVolumeLiters: true },
         });
 
         const sapiAgg = await prisma.milkProduction.aggregate({
           where: { animalType: 'SAPI', date: { gte: dStart, lte: dEnd } },
-          _sum: { rawVolumeLiters: true },
+          _sum: { grossVolumeLiters: true, rawVolumeLiters: true },
         });
 
         const kambingAgg = await prisma.milkProduction.aggregate({
           where: { animalType: 'KAMBING', date: { gte: dStart, lte: dEnd } },
-          _sum: { rawVolumeLiters: true },
+          _sum: { grossVolumeLiters: true, rawVolumeLiters: true },
         });
+
+        let totVol = (dayAgg._sum.grossVolumeLiters || 0) > 0 ? dayAgg._sum.grossVolumeLiters : (dayAgg._sum.rawVolumeLiters || 0);
+        let sapiVol = (sapiAgg._sum.grossVolumeLiters || 0) > 0 ? sapiAgg._sum.grossVolumeLiters : (sapiAgg._sum.rawVolumeLiters || 0);
+        let kambingVol = (kambingAgg._sum.grossVolumeLiters || 0) > 0 ? kambingAgg._sum.grossVolumeLiters : (kambingAgg._sum.rawVolumeLiters || 0);
+
+        if (global.__inMemoryProductionList && global.__inMemoryProductionList.length > 0) {
+          for (const m of global.__inMemoryProductionList) {
+            const mStr = parseDateToYYYYMMDD(m.date);
+            if (mStr === dStr) {
+              const vol = (m.grossVolumeLiters || 0) > 0 ? m.grossVolumeLiters : (m.rawVolumeLiters || 0);
+              totVol += vol;
+              if (m.animalType === 'KAMBING') {
+                kambingVol += vol;
+              } else {
+                sapiVol += vol;
+              }
+            }
+          }
+        }
 
         const dayLabel = `${daysName[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
 
@@ -347,10 +400,10 @@ export async function GET(request) {
           monthNum: d.getMonth() + 1,
           dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
           formattedDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-          fullDate: d.toISOString().split('T')[0],
-          totalLiters: dayAgg._sum.rawVolumeLiters || 0,
-          sapiLiters: sapiAgg._sum.rawVolumeLiters || 0,
-          kambingLiters: kambingAgg._sum.rawVolumeLiters || 0,
+          fullDate: dStr,
+          totalLiters: totVol,
+          sapiLiters: sapiVol,
+          kambingLiters: kambingVol,
         });
       }
       return chartData;
@@ -367,21 +420,44 @@ export async function GET(request) {
         const d = new Date(year, month, day);
         const dStart = new Date(year, month, day, 0, 0, 0, 0);
         const dEnd = new Date(year, month, day, 23, 59, 59, 999);
+        const yyyy = year;
+        const mm = (month + 1).toString().padStart(2, '0');
+        const dd = day.toString().padStart(2, '0');
+        const dStr = `${yyyy}-${mm}-${dd}`;
 
         const dayAgg = await prisma.milkProduction.aggregate({
           where: { date: { gte: dStart, lte: dEnd } },
-          _sum: { rawVolumeLiters: true },
+          _sum: { grossVolumeLiters: true, rawVolumeLiters: true },
         });
 
         const sapiAgg = await prisma.milkProduction.aggregate({
           where: { animalType: 'SAPI', date: { gte: dStart, lte: dEnd } },
-          _sum: { rawVolumeLiters: true },
+          _sum: { grossVolumeLiters: true, rawVolumeLiters: true },
         });
 
         const kambingAgg = await prisma.milkProduction.aggregate({
           where: { animalType: 'KAMBING', date: { gte: dStart, lte: dEnd } },
-          _sum: { rawVolumeLiters: true },
+          _sum: { grossVolumeLiters: true, rawVolumeLiters: true },
         });
+
+        let totVol = (dayAgg._sum.grossVolumeLiters || 0) > 0 ? dayAgg._sum.grossVolumeLiters : (dayAgg._sum.rawVolumeLiters || 0);
+        let sapiVol = (sapiAgg._sum.grossVolumeLiters || 0) > 0 ? sapiAgg._sum.grossVolumeLiters : (sapiAgg._sum.rawVolumeLiters || 0);
+        let kambingVol = (kambingAgg._sum.grossVolumeLiters || 0) > 0 ? kambingAgg._sum.grossVolumeLiters : (kambingAgg._sum.rawVolumeLiters || 0);
+
+        if (global.__inMemoryProductionList && global.__inMemoryProductionList.length > 0) {
+          for (const m of global.__inMemoryProductionList) {
+            const mStr = parseDateToYYYYMMDD(m.date);
+            if (mStr === dStr) {
+              const vol = (m.grossVolumeLiters || 0) > 0 ? m.grossVolumeLiters : (m.rawVolumeLiters || 0);
+              totVol += vol;
+              if (m.animalType === 'KAMBING') {
+                kambingVol += vol;
+              } else {
+                sapiVol += vol;
+              }
+            }
+          }
+        }
 
         const monthName = d.toLocaleDateString('id-ID', { month: 'short' });
 
@@ -392,10 +468,10 @@ export async function GET(request) {
           monthNum: month + 1,
           dateStr: `${day}/${month + 1}`,
           formattedDate: `${day} ${monthName}`,
-          fullDate: d.toISOString().split('T')[0],
-          totalLiters: dayAgg._sum.rawVolumeLiters || 0,
-          sapiLiters: sapiAgg._sum.rawVolumeLiters || 0,
-          kambingLiters: kambingAgg._sum.rawVolumeLiters || 0,
+          fullDate: dStr,
+          totalLiters: totVol,
+          sapiLiters: sapiVol,
+          kambingLiters: kambingVol,
         });
       }
       return chartData;
@@ -410,32 +486,56 @@ export async function GET(request) {
       include: { category: true, createdBy: { select: { name: true } } },
     });
 
+    // Add in-memory production items into dashboard stats totals
+    let memGrossTotal = 0;
+    let memSapiGross = 0;
+    let memKambingGross = 0;
+    let memRawTotal = 0;
+    let memSapiRaw = 0;
+    let memKambingRaw = 0;
+
+    if (global.__inMemoryProductionList && global.__inMemoryProductionList.length > 0) {
+      for (const m of global.__inMemoryProductionList) {
+        const gross = m.grossVolumeLiters || m.rawVolumeLiters || 0;
+        const raw = m.rawVolumeLiters || 0;
+        memGrossTotal += gross;
+        memRawTotal += raw;
+        if (m.animalType === 'KAMBING') {
+          memKambingGross += gross;
+          memKambingRaw += raw;
+        } else {
+          memSapiGross += gross;
+          memSapiRaw += raw;
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         superadmin: {
           totalAdmins,
-          totalLitersProduced: totalLitersAgg._sum.rawVolumeLiters || 0,
+          totalLitersProduced: (totalLitersAgg._sum.rawVolumeLiters || 0) + memRawTotal,
           totalSegarReady,
           totalOlahanReady,
           recentLogs,
         },
         farm: {
-          todayGrossLiters: todayFarmProdAgg._sum.grossVolumeLiters || todaySegarProd._sum.rawVolumeLiters || 0,
+          todayGrossLiters: (todayFarmProdAgg._sum.grossVolumeLiters || todaySegarProd._sum.rawVolumeLiters || 0) + memGrossTotal,
           todayPedetLiters: todayFarmProdAgg._sum.pedetVolumeLiters || 0,
           todayAfkirLiters: todayFarmProdAgg._sum.afkirVolumeLiters || 0,
           todaySoldFreshLiters: todayFarmProdAgg._sum.soldFreshVolumeLiters || 0,
-          todayRawLiters: todayFarmProdAgg._sum.rawVolumeLiters || todaySegarProd._sum.rawVolumeLiters || 0,
+          todayRawLiters: (todayFarmProdAgg._sum.rawVolumeLiters || todaySegarProd._sum.rawVolumeLiters || 0) + memRawTotal,
 
-          todaySapiGross: todayFarmSapiProdAgg._sum.grossVolumeLiters || todaySapiProd._sum.rawVolumeLiters || 0,
-          todaySapiRaw: todayFarmSapiProdAgg._sum.rawVolumeLiters || todaySapiProd._sum.rawVolumeLiters || 0,
+          todaySapiGross: (todayFarmSapiProdAgg._sum.grossVolumeLiters || todaySapiProd._sum.rawVolumeLiters || 0) + memSapiGross,
+          todaySapiRaw: (todayFarmSapiProdAgg._sum.rawVolumeLiters || todaySapiProd._sum.rawVolumeLiters || 0) + memSapiRaw,
 
-          todayKambingGross: todayFarmKambingProdAgg._sum.grossVolumeLiters || todayKambingProd._sum.rawVolumeLiters || 0,
-          todayKambingRaw: todayFarmKambingProdAgg._sum.rawVolumeLiters || todayKambingProd._sum.rawVolumeLiters || 0,
+          todayKambingGross: (todayFarmKambingProdAgg._sum.grossVolumeLiters || todayKambingProd._sum.rawVolumeLiters || 0) + memKambingGross,
+          todayKambingRaw: (todayFarmKambingProdAgg._sum.rawVolumeLiters || todayKambingProd._sum.rawVolumeLiters || 0) + memKambingRaw,
 
-          todayTotalLiters: todayFarmProdAgg._sum.grossVolumeLiters || todaySegarProd._sum.rawVolumeLiters || 0,
-          todaySapiLiters: todayFarmSapiProdAgg._sum.grossVolumeLiters || todaySapiProd._sum.rawVolumeLiters || 0,
-          todayKambingLiters: todayFarmKambingProdAgg._sum.grossVolumeLiters || todayKambingProd._sum.rawVolumeLiters || 0,
+          todayTotalLiters: (todayFarmProdAgg._sum.grossVolumeLiters || todaySegarProd._sum.rawVolumeLiters || 0) + memGrossTotal,
+          todaySapiLiters: (todayFarmSapiProdAgg._sum.grossVolumeLiters || todaySapiProd._sum.rawVolumeLiters || 0) + memSapiGross,
+          todayKambingLiters: (todayFarmKambingProdAgg._sum.grossVolumeLiters || todayKambingProd._sum.rawVolumeLiters || 0) + memKambingGross,
 
           farmOriginToday: farmOriginMap,
           todaySoldFreshItems,
@@ -504,22 +604,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('GET /api/dashboard/stats error:', error);
 
-    const memList = global.__inMemoryProductionList || [
-      {
-        id: 'prod-fallback-1',
-        date: new Date().toISOString(),
-        shift: 'Sore',
-        farmOrigin: 'Limpakuwus',
-        animalType: 'SAPI',
-        grossVolumeLiters: 8000,
-        pedetVolumeLiters: 120,
-        afkirVolumeLiters: 90,
-        soldFreshVolumeLiters: 20,
-        rawVolumeLiters: 7770,
-        notes: '',
-        createdAt: new Date().toISOString(),
-      },
-    ];
+    const memList = global.__inMemoryProductionList || [];
 
     let gross = 0, pedet = 0, afkir = 0, soldFresh = 0, raw = 0;
     let sapiGross = 0, sapiRaw = 0, kambingGross = 0, kambingRaw = 0;

@@ -59,12 +59,10 @@ export default function DashboardPage() {
   const todayTotalGross = farmStats.todayGrossLiters || todayTotalLiters || 0;
   const todaySapiGross = farmStats.todaySapiGross || todaySapi || 0;
   const todayKambingGross = farmStats.todayKambingGross || todayKambing || 0;
-  const todaySoldFresh = farmStats.todaySoldFreshLiters || 0;
-  const todayRawLiters = farmStats.todayRawLiters || Math.max(0, todayTotalGross - todaySoldFresh);
+  const todayRawLiters = farmStats.todayRawLiters || todayTotalGross;
 
   const sapiPercentage = todayTotalGross > 0 ? Math.round((todaySapiGross / todayTotalGross) * 100) : 0;
   const kambingPercentage = todayTotalGross > 0 ? Math.round((todayKambingGross / todayTotalGross) * 100) : 0;
-  const freshPercentage = todayTotalGross > 0 ? Math.round((todaySoldFresh / todayTotalGross) * 100) : 0;
   const rawPercentage = todayTotalGross > 0 ? Math.round((todayRawLiters / todayTotalGross) * 100) : 0;
 
   const chartData = chartFilter === '30' ? (farmStats.chart30Days || []) : (farmStats.chart7Days || []);
@@ -111,7 +109,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 1. TOP HORIZONTAL WIDGET CARDS ROW */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Produksi Susu */}
         <div className="bg-[#1E3F20] text-white p-5 rounded-3xl shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="flex items-center justify-between">
@@ -153,23 +151,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Card 4: Distribusi Susu Segar */}
-        <div className="bg-white p-5 rounded-3xl border border-amber-200 bg-amber-50/20 shadow-sm flex flex-col justify-between h-36 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-extrabold text-amber-900 uppercase tracking-wider">Distribusi Susu Segar</span>
-          </div>
-          <div>
-            <p className="text-2xl font-black text-amber-600">
-              {todaySoldFresh.toLocaleString()} <span className="text-xs font-semibold text-slate-400">Liter</span>
-            </p>
-            <span className="text-[10px] text-amber-800 font-medium block mt-1">{freshPercentage}% dari total produksi</span>
-          </div>
-        </div>
-
-        {/* Card 5: Susu Siap Olah (Diserahkan) */}
+        {/* Card 4: Diserah terimakan */}
         <div className="bg-gradient-to-tr from-emerald-600 to-teal-700 text-white p-5 rounded-3xl shadow-sm flex flex-col justify-between h-36 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-100 uppercase tracking-wider">Susu Siap Olah</span>
+            <span className="text-[11px] font-bold text-emerald-100 uppercase tracking-wider">Diserah terimakan</span>
           </div>
           <div>
             <p className="text-2xl font-black text-white">

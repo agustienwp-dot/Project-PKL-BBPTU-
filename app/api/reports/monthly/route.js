@@ -61,14 +61,35 @@ export async function GET(request) {
       monthOutflows = [];
     }
 
+    const parseDateObj = (dateInput) => {
+      if (!dateInput) return { year: 0, month: 0, day: 0 };
+      if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+        const parts = dateInput.substring(0, 10).split('-');
+        return {
+          year: parseInt(parts[0], 10),
+          month: parseInt(parts[1], 10),
+          day: parseInt(parts[2], 10),
+        };
+      }
+      const d = new Date(dateInput);
+      return {
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        day: d.getDate(),
+      };
+    };
+
     // Merge in-memory production store items
     const mergedProductions = [...monthProductions];
     const existingIds = new Set(mergedProductions.map((p) => p.id));
     for (const memProd of (global.__inMemoryProductionList || [])) {
       if (!existingIds.has(memProd.id)) {
-        if (!animalType || animalType === 'ALL' || memProd.animalType === animalType) {
-          mergedProductions.push(memProd);
-          existingIds.add(memProd.id);
+        const pDate = parseDateObj(memProd.date);
+        if (pDate.year === year && pDate.month === month) {
+          if (!animalType || animalType === 'ALL' || memProd.animalType === animalType) {
+            mergedProductions.push(memProd);
+            existingIds.add(memProd.id);
+          }
         }
       }
     }
@@ -161,13 +182,13 @@ export async function GET(request) {
     const dailyLogs = [];
     for (let day = 1; day <= daysInMonth; day++) {
       const dayProds = mergedProductions.filter((p) => {
-        const d = new Date(p.date);
-        return d.getDate() === day && (d.getMonth() + 1) === month && d.getFullYear() === year;
+        const parsed = parseDateObj(p.date);
+        return parsed.day === day && parsed.month === month && parsed.year === year;
       });
 
       const dayOuts = monthOutflows.filter((o) => {
-        const d = new Date(o.date);
-        return d.getDate() === day && (d.getMonth() + 1) === month && d.getFullYear() === year;
+        const parsed = parseDateObj(o.date);
+        return parsed.day === day && parsed.month === month && parsed.year === year;
       });
 
       let dayGrossLiters = 0;
