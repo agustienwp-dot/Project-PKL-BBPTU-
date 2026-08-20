@@ -17,15 +17,16 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get('status');
+    const sortOrder = searchParams.get('sortOrder') || 'asc';
 
     const whereClause = {};
-    if (statusParam) {
+    if (statusParam && statusParam !== 'ALL') {
       whereClause.status = statusParam.toUpperCase();
     }
 
     const packagedProducts = await prisma.packagedProduct.findMany({
       where: whereClause,
-      orderBy: { tanggal: 'desc' },
+      orderBy: { tanggal: sortOrder === 'desc' ? 'desc' : 'asc' },
       include: {
         createdBy: {
           select: { id: true, name: true, email: true },

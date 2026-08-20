@@ -7,52 +7,187 @@ import Toast from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
 import {
   PackageCheck,
-  Milk,
-  Package,
-  RefreshCw,
-  CheckCircle,
-  Clock,
-  FileText,
-  Printer,
-  X,
   CheckCircle2,
   AlertCircle,
+  RefreshCw,
   Eye,
-  Gift,
-  ShoppingCart,
-  Building2,
-  Filter,
+  Check,
+  Milk,
   Layers,
-  ArrowDownRight,
-  TrendingDown,
-  Info
+  Search,
+  Filter,
+  Calendar,
+  Sparkles,
+  Info,
+  Clock,
+  RotateCcw,
+  CheckCheck
 } from 'lucide-react';
 
-export default function TerimaDataPemasaranPage() {
+export default function TerimaProdukOlahanPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
-  const [productions, setProductions] = useState([]);
   const [packagings, setPackagings] = useState([]);
-  const [basts, setBasts] = useState([]);
-  const [activeTab, setActiveTab] = useState('susu_fresh'); // 'susu_fresh' | 'bast' | 'susu_rasa' | 'yogurt' | 'keju'
-  const [bastFilterType, setBastFilterType] = useState('ALL'); // 'ALL' | 'PENJUALAN_LANGSUNG' | 'HIBAH' | 'KERJASAMA'
 
-  // Modal states for BAST
-  const [selectedBast, setSelectedBast] = useState(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showPrintModal, setShowPrintModal] = useState(false);
-  const [confirmNotes, setConfirmNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  // Product Category Tab: 'susu_rasa' | 'susu_original' | 'yogurt' | 'keju'
+  const [activeTab, setActiveTab] = useState('susu_rasa');
 
-  // Modal states for Olahan (Packaged Products)
+  // Sub Packaging Filter: 'ALL' or specific size
+  const [selectedSizeFilter, setSelectedSizeFilter] = useState('ALL');
+
+  // Time & Status Filters
+  const [timeFilter, setTimeFilter] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortOrder, setSortOrder] = useState('asc'); // Default 1 - 31
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Confirmation Modal
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [showConfirmPkgModal, setShowConfirmPkgModal] = useState(false);
   const [pkgNotes, setPkgNotes] = useState('');
   const [submittingPkg, setSubmittingPkg] = useState(false);
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/packaged-products?sortOrder=asc');
+      if (res.data?.success) {
+        setPackagings(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching packaged products:', err);
+      setToast({ type: 'error', message: 'Gagal memuat data produk olahan UHT.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // 1. Groupings for Products: Separated Rasa vs Original vs Yogurt vs Keju
+  const susuRasaItems = useMemo(() => {
+    return packagings.filter((p) => {
+      const name = (p.jenisProduk || '').toLowerCase();
+      return name.includes('rasa') || (name.includes('susu') && !name.includes('original') && !name.includes('yogurt') && !name.includes('keju'));
+    });
+  }, [packagings]);
+
+  const susuOriginalItems = useMemo(() => {
+    return packagings.filter((p) => {
+      const name = (p.jenisProduk || '').toLowerCase();
+      return name.includes('original') || name.includes('plain');
+    });
+  }, [packagings]);
+
+  const yogurtItems = useMemo(() => {
+    return packagings.filter((p) => (p.jenisProduk || '').toLowerCase().includes('yogurt'));
+  }, [packagings]);
+
+  const kejuItems = useMemo(() => {
+    return packagings.filter((p) => (p.jenisProduk || '').toLowerCase().includes('keju'));
+  }, [packagings]);
+
+  // Counts for Tabs
+  const pendingRasaCount = susuRasaItems.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
+  const pendingOriCount = susuOriginalItems.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
+  const pendingYogurtCount = yogurtItems.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
+  const pendingKejuCount = kejuItems.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
+
+  // Active dataset according to activeTab
+  const rawActiveItems = useMemo(() => {
+    if (activeTab === 'susu_rasa') return susuRasaItems;
+    if (activeTab === 'susu_original') return susuOriginalItems;
+    if (activeTab === 'yogurt') return yogurtItems;
+    return kejuItems;
+  }, [activeTab, susuRasaItems, susuOriginalItems, yogurtItems, kejuItems]);
+
+  // Helper to extract numeric volume for sorting from smallest to largest
+  const getSizeVolume = (sizeStr = '') => {
+    const match = sizeStr.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : 9999;
+  };
+
+  // Unique sizes in current tab sorted from smallest to largest (115ml -> 130ml -> 200ml -> 250ml)
+  const availableSizes = useMemo(() => {
+    const set = new Set();
+    rawActiveItems.forEach((p) => {
+      if (p.kemasan) set.add(p.kemasan);
+    });
+    return Array.from(set).sort((a, b) => getSizeVolume(a) - getSizeVolume(b));
+  }, [rawActiveItems]);
+
+  // Filter Active Items with time, search, status, and size
+  const filteredActiveItems = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const d7 = new Date();
+    d7.setDate(d7.getDate() - 7);
+    const d7Str = d7.toISOString().slice(0, 10);
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+    return rawActiveItems
+      .filter((p) => {
+        const dStr = new Date(p.tanggal || p.date).toISOString().slice(0, 10);
+
+        let matchTime = true;
+        if (timeFilter === 'TODAY') matchTime = dStr === today;
+        else if (timeFilter === '7DAYS') matchTime = dStr >= d7Str;
+        else if (timeFilter === 'MONTH') matchTime = dStr >= monthStart && dStr <= monthEnd;
+        else if (timeFilter === 'CUSTOM') {
+          if (startDate && dStr < startDate) matchTime = false;
+          if (endDate && dStr > endDate) matchTime = false;
+        }
+
+        const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
+        const matchSize = selectedSizeFilter === 'ALL' || p.kemasan === selectedSizeFilter;
+        const matchSearch =
+          !searchTerm ||
+          p.jenisProduk?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.kemasan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          dStr.includes(searchTerm);
+
+        return matchTime && matchStatus && matchSize && matchSearch;
+      })
+      .sort((a, b) => {
+        return new Date(a.tanggal || a.date) - new Date(b.tanggal || b.date);
+      });
+  }, [rawActiveItems, timeFilter, startDate, endDate, statusFilter, selectedSizeFilter, searchTerm]);
+
+  // Group filtered items by Packaging Size for separate distinct tables (sorted smallest to largest)
+  const groupedByPackaging = useMemo(() => {
+    const groups = {};
+    filteredActiveItems.forEach((item) => {
+      const sizeKey = item.kemasan || 'Lainnya';
+      if (!groups[sizeKey]) groups[sizeKey] = [];
+      groups[sizeKey].push(item);
+    });
+
+    const sortedEntries = Object.entries(groups).sort(([sizeA], [sizeB]) => {
+      return getSizeVolume(sizeA) - getSizeVolume(sizeB);
+    });
+
+    return Object.fromEntries(sortedEntries);
+  }, [filteredActiveItems]);
+
+  // Tab Summary Metrics
+  const tabTotalQty = useMemo(() => {
+    return filteredActiveItems.reduce((acc, p) => acc + (p.jumlah || p.totalPackagedQty || 0), 0);
+  }, [filteredActiveItems]);
+
+  const tabPendingCount = useMemo(() => {
+    return filteredActiveItems.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
+  }, [filteredActiveItems]);
+
   const handleOpenConfirmPkgModal = (pkg) => {
     setSelectedPkg(pkg);
-    setPkgNotes('');
+    setPkgNotes(pkg.notes || 'Batch produk olahan telah diterima dan sesuai standar.');
     setShowConfirmPkgModal(true);
   };
 
@@ -60,24 +195,14 @@ export default function TerimaDataPemasaranPage() {
     if (!selectedPkg) return;
     setSubmittingPkg(true);
     try {
-      let res;
-      if (selectedPkg.isFarmPkg) {
-        res = await api.put(`/farm/packaging/${selectedPkg.id}`, {
-          action: 'RECEIVE',
-          quantityReceived: selectedPkg.jumlah || selectedPkg.totalPackagedQty,
-          condition: 'Sesuai',
-          receptionNotes: pkgNotes,
-        });
-      } else {
-        res = await api.post(`/packaged-products/${selectedPkg.id}/confirm`, {
-          notes: pkgNotes,
-        });
-      }
+      const res = await api.post(`/packaged-products/${selectedPkg.id}/confirm`, {
+        notes: pkgNotes,
+      });
 
-      if (res.data.success) {
+      if (res.data?.success) {
         setToast({
           type: 'success',
-          message: `Berhasil mengonfirmasi penerimaan ${selectedPkg.jenisProduk} ke stok siap jual!`,
+          message: `Berhasil mengonfirmasi penerimaan ${selectedPkg.jenisProduk} (${selectedPkg.kemasan}) ke persediaan siap jual!`,
         });
         setShowConfirmPkgModal(false);
         setPkgNotes('');
@@ -88,168 +213,15 @@ export default function TerimaDataPemasaranPage() {
       console.error('Error confirming Packaged Product:', err);
       setToast({
         type: 'error',
-        message: err.response?.data?.message || 'Gagal mengonfirmasi produk olahan.'
+        message: err.response?.data?.message || 'Gagal mengonfirmasi produk olahan.',
       });
     } finally {
       setSubmittingPkg(false);
     }
   };
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [prodRes, pkgRes, bastRes, farmPkgRes] = await Promise.all([
-        api.get('/milk-production').catch(() => ({ data: { data: [] } })),
-        api.get('/packaged-products').catch(() => ({ data: { data: [] } })),
-        api.get('/bast').catch(() => ({ data: { data: [] } })),
-        api.get('/farm/packaging').catch(() => ({ data: { data: [] } })),
-      ]);
-
-      if (prodRes.data.success) {
-        setProductions(prodRes.data.data || []);
-      }
-
-      const normalPkgList = (pkgRes.data?.data || []).map(p => ({
-        ...p,
-        isFarmPkg: false,
-        productCategory: p.jenisProduk?.includes('Yogurt') ? 'Yogurt' : p.jenisProduk?.includes('Keju') ? 'Keju' : 'Susu',
-        productSubtype: p.jenisProduk || 'Susu Olahan',
-        origin: 'Sapi',
-        variant: 'Original',
-        kemasanStr: p.kemasan || 'Botol (250 ml)',
-        jumlah: p.jumlah || 0,
-        tanggal: p.tanggal || p.createdAt,
-      }));
-
-      const farmPkgList = (farmPkgRes.data?.data || []).map(p => {
-        let items = [];
-        try {
-          if (p.packagingDetails) items = JSON.parse(p.packagingDetails);
-        } catch (e) {}
-
-        let kemasanStr = `${p.packagingType || 'Botol'} (${p.packageSize || '250 ml'}) - ${p.totalPackagedQty || 0} pcs`;
-        if (items.length > 0) {
-          kemasanStr = items.map(it => `${it.packagingType || 'Botol'} (${it.size || '250 ml'}) - ${it.quantity || 0} pcs`).join(', ');
-        }
-
-        return {
-          ...p,
-          isFarmPkg: true,
-          jenisProduk: p.productSubtype || p.productCategory || 'Susu Olahan',
-          productCategory: p.productCategory || 'Susu',
-          productSubtype: p.productSubtype || 'Susu Olahan',
-          origin: p.origin || 'Sapi',
-          variant: p.variant || 'Original',
-          kemasanStr: kemasanStr,
-          kemasan: kemasanStr,
-          jumlah: p.totalPackagedQty || 0,
-          tanggal: p.date || p.createdAt,
-        };
-      });
-
-      setPackagings([...farmPkgList, ...normalPkgList]);
-
-      if (bastRes.data.success) {
-        setBasts(bastRes.data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching terima data:', err);
-      setToast({ type: 'error', message: 'Gagal memuat data dari Admin Farm/Pengemasan.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleConfirmBast = async () => {
-    if (!selectedBast) return;
-    setSubmitting(true);
-    try {
-      const res = await api.post(`/bast/${selectedBast.id}/confirm`, {
-        catatan: confirmNotes,
-      });
-
-      if (res.data.success) {
-        setToast({ type: 'success', message: 'Berhasil mengonfirmasi serah terima Surat BAST Susu Segar!' });
-        setShowConfirmModal(false);
-        setConfirmNotes('');
-        setSelectedBast(null);
-        fetchData();
-      }
-    } catch (err) {
-      console.error('Error confirming BAST:', err);
-      setToast({
-        type: 'error',
-        message: err.response?.data?.message || 'Gagal mengonfirmasi Surat BAST.'
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Groupings for Packagings
-  const susuRasaItems = packagings.filter(p => {
-    const name = (p.jenisProduk || '').toLowerCase();
-    return (name.includes('susu') || !name.includes('yogurt')) && !name.includes('yogurt') && !name.includes('keju');
-  });
-  const yogurtItems = packagings.filter(p => (p.jenisProduk || '').toLowerCase().includes('yogurt'));
-  const kejuItems = packagings.filter(p => (p.jenisProduk || '').toLowerCase().includes('keju'));
-
-  // Notification Counts
-  const pendingBastCount = basts.filter(b => b.status === 'MENUNGGU_KONFIRMASI').length;
-  const pendingRasaCount = susuRasaItems.filter(p => p.status === 'MENUNGGU_PENERIMAAN').length;
-  const pendingYogurtCount = yogurtItems.filter(p => p.status === 'MENUNGGU_PENERIMAAN').length;
-  const pendingKejuCount = kejuItems.filter(p => p.status === 'MENUNGGU_PENERIMAAN').length;
-
-  // Calculations for Susu Fresh & BAST Auto-Deductions
-  const totalSusuMasuk = useMemo(() => {
-    return productions.reduce((acc, p) => acc + (p.kirimKePI || p.rawVolumeLiters || 0), 0);
-  }, [productions]);
-
-  const totalBastLiters = useMemo(() => {
-    return basts.reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
-  }, [basts]);
-
-  const totalBastHibah = useMemo(() => {
-    return basts.filter(b => b.jenisPermintaan === 'HIBAH').reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
-  }, [basts]);
-
-  const totalBastPenjualan = useMemo(() => {
-    return basts.filter(b => b.jenisPermintaan === 'PENJUALAN_LANGSUNG' || !b.jenisPermintaan).reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
-  }, [basts]);
-
-  const totalBastKerjasama = useMemo(() => {
-    return basts.filter(b => b.jenisPermintaan === 'KERJASAMA' || b.jenisPermintaan === 'DISTRIBUSI_INTERNAL').reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
-  }, [basts]);
-
-  const netSusuFreshTersedia = Math.max(0, totalSusuMasuk - totalBastLiters);
-
-  // Map BAST by Date for Row Deductions
-  const bastByDate = useMemo(() => {
-    const map = {};
-    basts.forEach(b => {
-      const dStr = new Date(b.tanggal).toISOString().slice(0, 10);
-      if (!map[dStr]) map[dStr] = [];
-      map[dStr].push(b);
-    });
-    return map;
-  }, [basts]);
-
-  // Filtered BASTs for Tab 2
-  const filteredBasts = useMemo(() => {
-    if (bastFilterType === 'ALL') return basts;
-    return basts.filter(b => b.jenisPermintaan === bastFilterType);
-  }, [basts, bastFilterType]);
-
   if (loading) {
-    return <LoadingSpinner text="Memuat Data Penerimaan dari Farm & Pengemasan..." />;
+    return <LoadingSpinner text="Memuat Data Produk Olahan UHT..." />;
   }
 
   return (
@@ -262,15 +234,23 @@ export default function TerimaDataPemasaranPage() {
         />
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-emerald-100 text-emerald-800 rounded-2xl">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm print:hidden">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3.5 bg-[#1E3F20] text-white rounded-2xl shadow-md">
             <PackageCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-slate-800">Terima Data (Farm & Pengemasan)</h1>
-            <p className="text-xs text-slate-500">Penerimaan & pengesahan data penyerahan susu segar (Farm), BAST permintaan langsung, dan produk olahan (Pengemasan)</p>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl font-extrabold text-slate-800">UHT (Produk Olahan & Pengemasan)</h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-black rounded-full border border-emerald-300">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Tabel Terpisah per Ukuran Kemasan</span>
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Penerimaan & konfirmasi produk olahan <strong>Susu Rasa</strong>, <strong>Susu Original</strong>, <strong>Yogurt</strong>, dan <strong>Keju</strong> dengan tabel terpisah per ukuran kemasan.
+            </p>
           </div>
         </div>
 
@@ -283,982 +263,485 @@ export default function TerimaDataPemasaranPage() {
         </button>
       </div>
 
-      {/* Navigation Tabs (5 Distinct Tabs) */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200">
-        {/* TAB 1: SUSU FRESH */}
+      {/* 3 Metric Cards for Current Tab */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Total Unit Produk (Filter Aktif)
+          </span>
+          <h3 className="text-2xl font-black text-slate-800 mt-1">
+            {tabTotalQty.toLocaleString('id-ID')}{' '}
+            <span className="text-xs font-semibold text-slate-400">Botol/Cup</span>
+          </h3>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+            {filteredActiveItems.length} Batch terdaftar pada kategori ini
+          </p>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm">
+          <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">Menunggu Konfirmasi</span>
+          <h3 className="text-2xl font-black text-amber-900 mt-1">
+            {tabPendingCount}{' '}
+            <span className="text-xs font-semibold text-amber-700">Batch Produk</span>
+          </h3>
+          <p className="text-[11px] text-amber-600 font-semibold mt-1">Perlu diverifikasi bagian pemasaran</p>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm">
+          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Sudah Diterima (Siap Jual)</span>
+          <h3 className="text-2xl font-black text-emerald-950 mt-1">
+            {(tabTotalQty - filteredActiveItems.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').reduce((acc, p) => acc + (p.jumlah || p.totalPackagedQty || 0), 0)).toLocaleString('id-ID')}{' '}
+            <span className="text-xs font-semibold text-emerald-700">Botol/Cup</span>
+          </h3>
+          <p className="text-[11px] text-emerald-700 font-semibold mt-1">Tersedia dalam persediaan pemasaran</p>
+        </div>
+      </div>
+
+      {/* Main 4 Categories Switcher Tabs */}
+      <div className="bg-slate-100 p-1.5 rounded-2xl flex flex-wrap items-center gap-1">
         <button
-          onClick={() => setActiveTab('susu_fresh')}
-          className={`inline-flex items-center gap-2 px-5 py-3 font-bold text-xs border-b-2 transition-all ${
-            activeTab === 'susu_fresh'
-              ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-xl'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+          onClick={() => {
+            setActiveTab('susu_rasa');
+            setSelectedSizeFilter('ALL');
+          }}
+          className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 ${
+            activeTab === 'susu_rasa'
+              ? 'bg-white text-emerald-900 shadow-sm border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Milk className="w-4 h-4 text-emerald-600" />
+          <span>🍼 Susu Pasteurisasi Rasa</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold">
+            {susuRasaItems.length} Batch {pendingRasaCount > 0 && `(${pendingRasaCount} Baru)`}
+          </span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('susu_original');
+            setSelectedSizeFilter('ALL');
+          }}
+          className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 ${
+            activeTab === 'susu_original'
+              ? 'bg-white text-blue-900 shadow-sm border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Milk className="w-4 h-4 text-blue-600" />
-          <span>🥛 Susu Fresh (Farm) ({productions.length})</span>
+          <span>🥛 Susu Pasteurisasi Original</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-800 font-bold">
+            {susuOriginalItems.length} Batch {pendingOriCount > 0 && `(${pendingOriCount} Baru)`}
+          </span>
         </button>
 
-        {/* TAB 2: SURAT BAST */}
         <button
-          onClick={() => setActiveTab('bast')}
-          className={`inline-flex items-center gap-2 px-5 py-3 font-bold text-xs border-b-2 transition-all ${
-            activeTab === 'bast'
-              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50 rounded-t-xl'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <FileText className="w-4 h-4 text-indigo-600" />
-          <span>📋 Surat BAST Permintaan ({basts.length})</span>
-          {pendingBastCount > 0 && (
-            <span className="px-2 py-0.5 text-[10px] font-black bg-amber-500 text-white rounded-full animate-pulse">
-              {pendingBastCount} Baru
-            </span>
-          )}
-        </button>
-
-        {/* TAB 3: SUSU OLAHAN RASA */}
-        <button
-          onClick={() => setActiveTab('susu_rasa')}
-          className={`inline-flex items-center gap-2 px-5 py-3 font-bold text-xs border-b-2 transition-all ${
-            activeTab === 'susu_rasa'
-              ? 'border-pink-600 text-pink-700 bg-pink-50/50 rounded-t-xl'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Milk className="w-4 h-4 text-pink-600" />
-          <span>🥤 Susu Olahan Rasa ({susuRasaItems.length})</span>
-          {pendingRasaCount > 0 && (
-            <span className="px-2 py-0.5 text-[10px] font-black bg-pink-600 text-white rounded-full animate-pulse">
-              {pendingRasaCount} Baru
-            </span>
-          )}
-        </button>
-
-        {/* TAB 4: YOGURT */}
-        <button
-          onClick={() => setActiveTab('yogurt')}
-          className={`inline-flex items-center gap-2 px-5 py-3 font-bold text-xs border-b-2 transition-all ${
+          onClick={() => {
+            setActiveTab('yogurt');
+            setSelectedSizeFilter('ALL');
+          }}
+          className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 ${
             activeTab === 'yogurt'
-              ? 'border-purple-600 text-purple-700 bg-purple-50/50 rounded-t-xl'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'bg-white text-purple-900 shadow-sm border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <Package className="w-4 h-4 text-purple-600" />
-          <span>🍦 Yogurt ({yogurtItems.length})</span>
-          {pendingYogurtCount > 0 && (
-            <span className="px-2 py-0.5 text-[10px] font-black bg-purple-600 text-white rounded-full animate-pulse">
-              {pendingYogurtCount} Baru
-            </span>
-          )}
+          <Layers className="w-4 h-4 text-purple-600" />
+          <span>🍨 Yogurt</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-800 font-bold">
+            {yogurtItems.length} Batch {pendingYogurtCount > 0 && `(${pendingYogurtCount} Baru)`}
+          </span>
         </button>
 
-        {/* TAB 5: KEJU */}
         <button
-          onClick={() => setActiveTab('keju')}
-          className={`inline-flex items-center gap-2 px-5 py-3 font-bold text-xs border-b-2 transition-all ${
+          onClick={() => {
+            setActiveTab('keju');
+            setSelectedSizeFilter('ALL');
+          }}
+          className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 ${
             activeTab === 'keju'
-              ? 'border-amber-600 text-amber-700 bg-amber-50/50 rounded-t-xl'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'bg-white text-amber-900 shadow-sm border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <PackageCheck className="w-4 h-4 text-amber-600" />
-          <span>🧀 Keju ({kejuItems.length})</span>
-          {pendingKejuCount > 0 && (
-            <span className="px-2 py-0.5 text-[10px] font-black bg-amber-600 text-white rounded-full animate-pulse">
-              {pendingKejuCount} Baru
-            </span>
-          )}
+          <Layers className="w-4 h-4 text-amber-600" />
+          <span>🧀 Keju</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">
+            {kejuItems.length} Batch {pendingKejuCount > 0 && `(${pendingKejuCount} Baru)`}
+          </span>
         </button>
       </div>
 
-      {/* TAB 1: SUSU FRESH (FARM) WITH AUTOMATIC BAST DEDUCTION METRICS */}
-      {activeTab === 'susu_fresh' && (
-        <div className="space-y-6">
-          {/* Automatic Deduction Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-              <div className="p-3.5 rounded-2xl bg-blue-50 text-blue-600">
-                <Milk className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Susu Fresh Masuk</p>
-                <h3 className="text-2xl font-black text-slate-800">
-                  {totalSusuMasuk.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">Liter</span>
-                </h3>
-                <p className="text-[11px] text-blue-600 font-medium mt-0.5">Penyerahan dari Farm (Gross)</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-              <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-600">
-                <TrendingDown className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Potongan BAST Permintaan</p>
-                <h3 className="text-2xl font-black text-rose-700">
-                  - {totalBastLiters.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">Liter</span>
-                </h3>
-                <p className="text-[11px] text-rose-600 font-medium mt-0.5">
-                  Hibah ({totalBastHibah} L) • Penjualan ({totalBastPenjualan} L)
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm flex items-center gap-4 bg-gradient-to-br from-emerald-50/40 to-white">
-              <div className="p-3.5 rounded-2xl bg-emerald-600 text-white shadow-md">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Sisa Stok Fresh Bersih</p>
-                <h3 className="text-2xl font-black text-emerald-900">
-                  {netSusuFreshTersedia.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">Liter</span>
-                </h3>
-                <p className="text-[11px] text-emerald-700 font-medium mt-0.5">Siap olah / salur harian</p>
-              </div>
-            </div>
+      {/* Control Bar: Packaging Size Pills, Time Pills, Sort & Search */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 print:hidden">
+        {/* Row 1: Packaging Size Filter Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+            <span className="text-[11px] font-bold text-slate-500 px-2">Ukuran Kemasan:</span>
+            <button
+              onClick={() => setSelectedSizeFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                selectedSizeFilter === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua Kemasan ({availableSizes.length} Tabel)
+            </button>
+            {availableSizes.map((size) => (
+              <button
+                key={size}
+                onClick={() => setSelectedSizeFilter(size)}
+                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                  selectedSizeFilter === size
+                    ? 'bg-white text-emerald-800 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🏷️ {size}
+              </button>
+            ))}
           </div>
 
-          {/* Info Banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-900">
-            <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Otomatisasi Integrasi Stok Susu Fresh & BAST Permintaan:</p>
-              <p className="text-blue-800 mt-0.5 leading-relaxed">
-                Setiap dokumen <strong>Surat BAST</strong> diterbitkan dari Farm (baik untuk <strong>Susu Hibah CSR</strong>, <strong>Penjualan Susu Langsung</strong>, maupun <strong>Kerjasama Dinas</strong>), volume otomatis mengurangi saldo ketersediaan Susu Fresh pada laporan Pemasaran secara real-time.
-              </p>
-            </div>
-          </div>
-
-          {/* Table Hasil Perah Farm */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-extrabold text-slate-800 text-base">Tabel Penerimaan Susu Fresh dari Farm</h2>
-                <p className="text-xs text-slate-500">Data perah harian Sapi & Kambing yang dikirim dari Admin Farm</p>
-              </div>
-              <span className="text-xs font-bold bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-                {productions.length} Catatan Perah
-              </span>
-            </div>
-
-            {productions.length === 0 ? (
-              <EmptyState title="Belum Ada Data Perah" description="Admin Farm belum menginput data perah." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-y border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">Tanggal</th>
-                      <th className="px-4 py-3">Ternak</th>
-                      <th className="px-4 py-3">Total Perah</th>
-                      <th className="px-4 py-3">Setor Pedet</th>
-                      <th className="px-4 py-3">Rusak/Afkir</th>
-                      <th className="px-4 py-3">Kirim ke PI</th>
-                      <th className="px-4 py-3">Alokasi BAST</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {productions.map((p) => {
-                      const dStr = new Date(p.tanggal || p.date).toISOString().slice(0, 10);
-                      const relatedBasts = bastByDate[dStr] || [];
-                      const bastVolOnDate = relatedBasts.reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
-                      const grossVol = p.kirimKePI || p.rawVolumeLiters || 0;
-
-                      return (
-                        <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-3 font-semibold text-slate-700">
-                            {new Date(p.tanggal || p.date).toLocaleDateString('id-ID', {
-                              weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
-                            })}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-slate-800">
-                            {p.animalType === 'KAMBING' ? '🐐 Kambing' : '🐄 Sapi'}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-slate-800">
-                            {(p.produksi || p.grossVolumeLiters || 0).toLocaleString('id-ID')} Liter
-                          </td>
-                          <td className="px-4 py-3 text-amber-600">
-                            {(p.setorPedet || p.pedetVolumeLiters || 0).toLocaleString('id-ID')} Liter
-                          </td>
-                          <td className="px-4 py-3 text-rose-600">
-                            {(p.rusakAfkir || p.afkirVolumeLiters || 0).toLocaleString('id-ID')} Liter
-                          </td>
-                          <td className="px-4 py-3 font-black text-blue-700 bg-blue-50/40">
-                            {grossVol.toLocaleString('id-ID')} Liter
-                          </td>
-                          <td className="px-4 py-3">
-                            {bastVolOnDate > 0 ? (
-                              <div className="space-y-0.5">
-                                <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[11px]">
-                                  <ArrowDownRight className="w-3 h-3 text-rose-500" />
-                                  <span>-{bastVolOnDate} L (BAST)</span>
-                                </span>
-                                <div className="text-[10px] text-slate-400 font-mono">
-                                  {relatedBasts.map(b => b.nomorBast).join(', ')}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px]">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                              <CheckCircle className="w-3 h-3" />
-                              <span>Tercatat Farm</span>
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          {/* Time Pills */}
+          <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            {[
+              { id: 'ALL', label: 'Semua' },
+              { id: 'TODAY', label: 'Hari Ini' },
+              { id: '7DAYS', label: '7 Hari' },
+              { id: 'MONTH', label: 'Bulan Ini' },
+              { id: 'CUSTOM', label: 'Custom' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTimeFilter(t.id)}
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
+                  timeFilter === t.id
+                    ? 'bg-white text-emerald-800 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      {/* TAB 2: SURAT BAST PERMINTAAN (HIBAH, PENJUALAN, KERJASAMA) */}
-      {activeTab === 'bast' && (
-        <div className="space-y-6">
-          {/* BAST Metrics Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase">Total BAST</span>
-                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
-                  <FileText className="w-4 h-4" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black text-slate-900 mt-2">{basts.length} <span className="text-xs font-semibold text-slate-400">Surat</span></h3>
-              <p className="text-[11px] text-indigo-600 font-bold mt-1">Total {totalBastLiters} Liter</p>
-            </div>
+        {/* Row 2: Status, Sort, Search, Date Range */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+            >
+              <option value="ALL">Semua Status Batch</option>
+              <option value="MENUNGGU_PENERIMAAN">⏳ Menunggu Penerimaan</option>
+              <option value="DITERIMA">✓ Sudah Diterima</option>
+            </select>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase">Susu Hibah CSR</span>
-                <div className="p-2 rounded-xl bg-pink-50 text-pink-700">
-                  <Gift className="w-4 h-4" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black text-pink-700 mt-2">{totalBastHibah} <span className="text-xs font-semibold text-slate-400">Liter</span></h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">Program bantuan gizi</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase">Penjualan Langsung</span>
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-                  <ShoppingCart className="w-4 h-4" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black text-emerald-700 mt-2">{totalBastPenjualan} <span className="text-xs font-semibold text-slate-400">Liter</span></h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">Order beli resmi BAST</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase">Menunggu Fisik</span>
-                <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
-                  <Clock className="w-4 h-4" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black text-amber-700 mt-2">{pendingBastCount} <span className="text-xs font-semibold text-slate-400">Surat</span></h3>
-              <p className="text-[11px] text-amber-600 font-medium mt-1">Perlu pengesahan hardfile</p>
-            </div>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-600">Filter Keperluan:</span>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => setBastFilterType('ALL')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    bastFilterType === 'ALL'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Semua ({basts.length})
-                </button>
-                <button
-                  onClick={() => setBastFilterType('PENJUALAN_LANGSUNG')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    bastFilterType === 'PENJUALAN_LANGSUNG'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  }`}
-                >
-                  💰 Penjualan Langsung
-                </button>
-                <button
-                  onClick={() => setBastFilterType('HIBAH')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    bastFilterType === 'HIBAH'
-                      ? 'bg-pink-700 text-white shadow-sm'
-                      : 'bg-pink-50 text-pink-800 hover:bg-pink-100'
-                  }`}
-                >
-                  🎁 Susu Hibah CSR
-                </button>
-                <button
-                  onClick={() => setBastFilterType('KERJASAMA')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    bastFilterType === 'KERJASAMA'
-                      ? 'bg-blue-700 text-white shadow-sm'
-                      : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
-                  }`}
-                >
-                  🏢 Kerjasama / Dinas
-                </button>
-              </div>
-            </div>
-
-            <span className="text-xs text-slate-500 font-medium">
-              Menampilkan <strong>{filteredBasts.length}</strong> dokumen BAST
-            </span>
-          </div>
-
-          {/* Table Surat BAST */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div>
-              <h2 className="font-extrabold text-slate-800 text-base">Daftar Surat BAST Permintaan Susu Segar (Farm)</h2>
-              <p className="text-xs text-slate-500">Verifikasi fisik dokumen BAST penyerahan langsung untuk penjualan, hibah, ataupun dinas</p>
-            </div>
-
-            {filteredBasts.length === 0 ? (
-              <EmptyState
-                title="Belum Ada Catatan BAST"
-                description="Tidak ada dokumen BAST pada kategori filter ini."
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2" />
+              <input
+                type="text"
+                placeholder="Cari Batch / Kemasan / Tanggal..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 w-44 sm:w-60"
               />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-y border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">NO. BAST HARDFILE</th>
-                      <th className="px-4 py-3">TANGGAL PENYERAHAN</th>
-                      <th className="px-4 py-3">PENGIRIM (FARM)</th>
-                      <th className="px-4 py-3">PENERIMA / INSTANSI</th>
-                      <th className="px-4 py-3">KEPERLUAN / PERMINTAAN</th>
-                      <th className="px-4 py-3">VOLUME SUSU SEGAR</th>
-                      <th className="px-4 py-3">STATUS HARDFILE</th>
-                      <th className="px-4 py-3 text-right">AKSI</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {filteredBasts.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-4 py-3 font-bold text-blue-900 font-mono">{b.nomorBast}</td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {new Date(b.tanggal).toLocaleDateString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+            </div>
+
+            <button
+              onClick={fetchData}
+              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
+              title="Segarkan Data"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Custom Date Range Picker */}
+          {timeFilter === 'CUSTOM' && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-600">Rentang:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+              <span className="text-xs text-slate-400">s/d</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SEPARATED DISTINCT TABLES FOR EACH PACKAGING SIZE                         */}
+      {/* ========================================================================= */}
+      {Object.keys(groupedByPackaging).length === 0 ? (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm text-center">
+          <EmptyState
+            title="Tidak Ada Data Produk Olahan"
+            description="Tidak ditemukan batch produk olahan untuk kategori dan filter yang dipilih."
+          />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedByPackaging).map(([sizeName, items]) => {
+            const groupTotalQty = items.reduce((acc, p) => acc + (p.jumlah || p.totalPackagedQty || 0), 0);
+            const groupPendingCount = items.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
+
+            return (
+              <div
+                key={sizeName}
+                className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-4"
+              >
+                {/* Table Header Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-2xl ${
+                      activeTab === 'susu_rasa'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : activeTab === 'susu_original'
+                        ? 'bg-blue-100 text-blue-800'
+                        : activeTab === 'yogurt'
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      <PackageCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
+                        <span>Tabel Kemasan: {sizeName}</span>
+                        <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                          activeTab === 'susu_rasa'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : activeTab === 'susu_original'
+                            ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                            : activeTab === 'yogurt'
+                            ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                            : 'bg-amber-50 text-amber-800 border border-amber-200'
+                        }`}>
+                          {activeTab === 'susu_rasa'
+                            ? 'Susu Pasteurisasi Rasa'
+                            : activeTab === 'susu_original'
+                            ? 'Susu Pasteurisasi Original'
+                            : activeTab === 'yogurt'
+                            ? 'Yogurt'
+                            : 'Keju'}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        {items.length} Batch terdaftar • Total: <strong>{groupTotalQty.toLocaleString('id-ID')} Botol/Cup</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {groupPendingCount > 0 ? (
+                      <span className="px-3 py-1 text-xs font-bold bg-amber-100 text-amber-800 rounded-full border border-amber-300">
+                        ⏳ {groupPendingCount} Batch Menunggu Konfirmasi
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
+                        ✓ Semua Batch Diterima
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Table for this specific packaging size */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 uppercase font-bold border-y border-slate-200 text-[11px]">
+                      <tr>
+                        <th className="px-4 py-3 text-center w-12">No</th>
+                        <th className="px-4 py-3">Tanggal Produksi</th>
+                        <th className="px-4 py-3">Jenis Produk</th>
+                        <th className="px-4 py-3">Ukuran Kemasan</th>
+                        <th className="px-4 py-3 text-right">Jumlah Masuk</th>
+                        <th className="px-4 py-3">Catatan Batch Pengolahan</th>
+                        <th className="px-4 py-3 text-center">Status</th>
+                        <th className="px-4 py-3 text-center">Aksi Konfirmasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                      {items.map((pkg, idx) => {
+                        const isPending = pkg.status === 'MENUNGGU_PENERIMAAN';
+                        return (
+                          <tr key={pkg.id || idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3.5 text-center text-slate-400 font-bold">{idx + 1}</td>
+                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                              {new Date(pkg.tanggal || pkg.date).toLocaleDateString('id-ID', {
+                                weekday: 'short',
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-bold ${
+                                activeTab === 'susu_rasa'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : activeTab === 'susu_original'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : activeTab === 'yogurt'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {pkg.jenisProduk}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 font-semibold text-slate-700">{pkg.kemasan}</td>
+                            <td className="px-4 py-3.5 text-right font-black text-slate-900 text-sm whitespace-nowrap">
+                              {(pkg.jumlah || pkg.totalPackagedQty || 0).toLocaleString('id-ID')}{' '}
+                              <span className="text-[10px] font-medium text-slate-500">
+                                {sizeName.toLowerCase().includes('cup') ? 'Cup' : 'Botol'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-500 max-w-xs">
+                              <span className="text-xs">{pkg.notes || `Batch kemasan ${pkg.kemasan} siap masuk stok.`}</span>
+                              {pkg.receivedByName && (
+                                <span className="block text-[10px] text-slate-400 mt-0.5">
+                                  Diterima oleh: {pkg.receivedByName}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              {isPending ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">
+                                  <AlertCircle className="w-3 h-3 text-amber-600" />
+                                  <span>Menunggu Penerimaan</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Diterima & Siap Jual</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              {isPending ? (
+                                <button
+                                  onClick={() => handleOpenConfirmPkgModal(pkg)}
+                                  className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-xl text-[11px] font-extrabold shadow-sm transition-transform active:scale-95 flex items-center gap-1 mx-auto"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Konfirmasi Terima</span>
+                                </button>
+                              ) : (
+                                <span className="text-[11px] font-bold text-slate-400 italic">
+                                  Sudah Masuk Stok
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+
+                    {/* Table Footer Total for this Packaging Size */}
+                    <tfoot className="bg-amber-100/90 text-slate-900 font-black border-t-2 border-slate-300">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-2.5 text-center bg-amber-200">
+                          TOTAL KEMASAN {sizeName.toUpperCase()} ({items.length} Hari Produksi)
                         </td>
-                        <td className="px-4 py-3 text-slate-800 font-semibold">{b.pengirimNama}</td>
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-slate-800">{b.instansiPenerima || b.penerimaNama || 'Pemasaran & Pembeli'}</div>
-                          <div className="text-[10px] text-slate-400">{b.penerimaRole || 'Pihak Kedua'}</div>
+                        <td className="px-4 py-2.5 text-right font-black text-slate-950 text-sm">
+                          {groupTotalQty.toLocaleString('id-ID')}{' '}
+                          <span className="text-xs font-semibold text-slate-600">
+                            {sizeName.toLowerCase().includes('cup') ? 'Cup' : 'Botol'}
+                          </span>
                         </td>
-                        <td className="px-4 py-3">
-                          {b.jenisPermintaan === 'HIBAH' ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-800 bg-pink-100 border border-pink-200 px-2.5 py-0.5 rounded-full">
-                              <Gift className="w-3 h-3" />
-                              <span>Susu Hibah CSR</span>
-                            </span>
-                          ) : b.jenisPermintaan === 'KERJASAMA' ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-800 bg-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                              <Building2 className="w-3 h-3" />
-                              <span>Kerjasama Dinas</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                              <ShoppingCart className="w-3 h-3" />
-                              <span>Penjualan Langsung</span>
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-black text-blue-700">{b.volumeLiters} Liter</td>
-                        <td className="px-4 py-3">
-                          {b.status === 'DITERIMA' ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                              <CheckCircle className="w-3 h-3" />
-                              <span>Hardfile Diterima</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                              <Clock className="w-3 h-3" />
-                              <span>Menunggu Hardfile Fisik</span>
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          {b.status !== 'DITERIMA' && (
-                            <button
-                              onClick={() => {
-                                setSelectedBast(b);
-                                setShowConfirmModal(true);
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all shadow-sm active:scale-95"
-                            >
-                              Konfirmasi Hardfile Diterima
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              setSelectedBast(b);
-                              setShowPrintModal(true);
-                            }}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all inline-flex items-center gap-1"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>Detail / Pratinjau Salinan</span>
-                          </button>
+                        <td colSpan={3} className="px-4 py-2.5 text-xs text-slate-600 font-semibold">
+                          {groupTotalQty - groupPendingCount} unit siap dijual di pemasaran
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {/* TAB 3: SUSU OLAHAN RASA */}
-      {activeTab === 'susu_rasa' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-extrabold text-slate-800 text-base">Tabel Hasil Pengemasan — Susu Olahan Rasa</h2>
-              <p className="text-xs text-slate-500">Konfirmasi penerimaan varian Susu Olahan Rasa dari Admin Pengemasan</p>
-            </div>
-            <span className="text-xs font-bold bg-pink-100 text-pink-800 px-3 py-1 rounded-full">
-              {susuRasaItems.length} Entry
-            </span>
-          </div>
-
-          {susuRasaItems.length === 0 ? (
-            <EmptyState
-              title="Belum Ada Data Susu Rasa"
-              description="Admin Pengemasan belum menginput hasil kemasan Susu Rasa."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-y border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">TANGGAL</th>
-                    <th className="px-4 py-3">PRODUK</th>
-                    <th className="px-4 py-3">KATEGORI</th>
-                    <th className="px-4 py-3">KEMASAN & UKURAN</th>
-                    <th className="px-4 py-3">JUMLAH</th>
-                    <th className="px-4 py-3">STATUS</th>
-                    <th className="px-4 py-3 text-right">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {susuRasaItems.map((pkg) => (
-                    <tr key={pkg.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-slate-800">
-                        {new Date(pkg.tanggal || pkg.createdAt).toLocaleDateString('id-ID', {
-                          day: '2-digit', month: '2-digit', year: 'numeric'
-                        })}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-extrabold text-slate-900">{pkg.jenisProduk}</div>
-                        <div className="text-[11px] text-slate-500 font-semibold">{pkg.origin || 'Sapi'} — {pkg.variant || pkg.productSubtype || 'Original'}</div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          {pkg.productCategory || 'Susu'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-700 font-medium font-mono text-[11px]">
-                        {pkg.kemasanStr || pkg.kemasan}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-900 text-white shadow-sm inline-block">
-                          {pkg.jumlah || 0} pcs
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {pkg.status === 'DITERIMA' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Diterima Pemasaran</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-3 py-1 rounded-full">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>Menunggu</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right space-x-2">
-                        {pkg.status !== 'DITERIMA' && (
-                          <button
-                            onClick={() => handleOpenConfirmPkgModal(pkg)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all shadow-sm active:scale-95"
-                          >
-                            Konfirmasi Terima
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleOpenConfirmPkgModal(pkg)}
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all inline-flex items-center"
-                          title="Lihat Detail"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 4: YOGURT */}
-      {activeTab === 'yogurt' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-extrabold text-slate-800 text-base">Tabel Hasil Pengemasan — Yogurt</h2>
-              <p className="text-xs text-slate-500">Konfirmasi penerimaan varian Yogurt dari Admin Pengemasan</p>
-            </div>
-            <span className="text-xs font-bold bg-purple-100 text-purple-800 px-3 py-1 rounded-full">
-              {yogurtItems.length} Entry
-            </span>
-          </div>
-
-          {yogurtItems.length === 0 ? (
-            <EmptyState
-              title="Belum Ada Data Yogurt"
-              description="Admin Pengemasan belum menginput hasil kemasan Yogurt."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-y border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">TANGGAL</th>
-                    <th className="px-4 py-3">PRODUK</th>
-                    <th className="px-4 py-3">KATEGORI</th>
-                    <th className="px-4 py-3">KEMASAN & UKURAN</th>
-                    <th className="px-4 py-3">JUMLAH</th>
-                    <th className="px-4 py-3">STATUS</th>
-                    <th className="px-4 py-3 text-right">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {yogurtItems.map((pkg) => (
-                    <tr key={pkg.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-slate-800">
-                        {new Date(pkg.tanggal || pkg.createdAt).toLocaleDateString('id-ID', {
-                          day: '2-digit', month: '2-digit', year: 'numeric'
-                        })}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-extrabold text-slate-900">{pkg.jenisProduk}</div>
-                        <div className="text-[11px] text-slate-500 font-semibold">{pkg.origin || 'Sapi'} — {pkg.variant || pkg.productSubtype || 'Original'}</div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                          {pkg.productCategory || 'Yogurt'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-700 font-medium font-mono text-[11px]">
-                        {pkg.kemasanStr || pkg.kemasan}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-900 text-white shadow-sm inline-block">
-                          {pkg.jumlah || 0} pcs
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {pkg.status === 'DITERIMA' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Diterima Pemasaran</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-3 py-1 rounded-full">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>Menunggu</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right space-x-2">
-                        {pkg.status !== 'DITERIMA' && (
-                          <button
-                            onClick={() => handleOpenConfirmPkgModal(pkg)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all shadow-sm active:scale-95"
-                          >
-                            Konfirmasi Terima
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleOpenConfirmPkgModal(pkg)}
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all inline-flex items-center"
-                          title="Lihat Detail"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 5: KEJU */}
-      {activeTab === 'keju' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-extrabold text-slate-800 text-base">Tabel Hasil Pengemasan — Keju</h2>
-              <p className="text-xs text-slate-500">Konfirmasi penerimaan varian Keju dari Admin Pengemasan</p>
-            </div>
-            <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
-              {kejuItems.length} Entry
-            </span>
-          </div>
-
-          {kejuItems.length === 0 ? (
-            <EmptyState
-              title="Belum Ada Data Keju"
-              description="Admin Pengemasan belum menginput hasil kemasan Keju."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-y border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">TANGGAL</th>
-                    <th className="px-4 py-3">PRODUK</th>
-                    <th className="px-4 py-3">KATEGORI</th>
-                    <th className="px-4 py-3">KEMASAN & UKURAN</th>
-                    <th className="px-4 py-3">JUMLAH</th>
-                    <th className="px-4 py-3">STATUS</th>
-                    <th className="px-4 py-3 text-right">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {kejuItems.map((pkg) => (
-                    <tr key={pkg.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-slate-800">
-                        {new Date(pkg.tanggal || pkg.createdAt).toLocaleDateString('id-ID', {
-                          day: '2-digit', month: '2-digit', year: 'numeric'
-                        })}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-extrabold text-slate-900">{pkg.jenisProduk}</div>
-                        <div className="text-[11px] text-slate-500 font-semibold">{pkg.origin || 'Sapi'} — {pkg.variant || pkg.productSubtype || 'Original'}</div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          {pkg.productCategory || 'Keju'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-700 font-medium font-mono text-[11px]">
-                        {pkg.kemasanStr || pkg.kemasan}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-900 text-white shadow-sm inline-block">
-                          {pkg.jumlah || 0} pcs
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {pkg.status === 'DITERIMA' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Diterima Pemasaran</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-3 py-1 rounded-full">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>Menunggu</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right space-x-2">
-                        {pkg.status !== 'DITERIMA' && (
-                          <button
-                            onClick={() => handleOpenConfirmPkgModal(pkg)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all shadow-sm active:scale-95"
-                          >
-                            Konfirmasi Terima
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleOpenConfirmPkgModal(pkg)}
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all inline-flex items-center"
-                          title="Lihat Detail"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* MODAL 1: KONFIRMASI PENERIMAAN BAST HARDFILE */}
-      {showConfirmModal && selectedBast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-800 text-base">Pengesahan Penerimaan BAST Hardfile</h3>
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-indigo-50 border border-indigo-200 p-3.5 rounded-2xl text-xs space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">No. BAST Hardfile:</span>
-                <span className="font-mono font-bold text-indigo-900">{selectedBast.nomorBast}</span>
+      {/* Confirmation Modal for Packaged Product */}
+      {showConfirmPkgModal && selectedPkg && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3 text-emerald-700">
+              <div className="p-2 bg-emerald-100 rounded-xl">
+                <PackageCheck className="w-6 h-6 text-emerald-800" />
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Keperluan / Permintaan:</span>
-                <span className="font-bold text-slate-900">
-                  {selectedBast.jenisPermintaan === 'HIBAH' ? '🎁 Susu Hibah CSR' : selectedBast.jenisPermintaan === 'KERJASAMA' ? '🏢 Kerjasama / Dinas' : '💰 Penjualan Langsung'}
+              <div>
+                <h3 className="text-base font-black text-slate-800">Konfirmasi Terima Produk Olahan</h3>
+                <p className="text-xs text-slate-500">Masukkan produk ke persediaan siap jual</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs space-y-2">
+              <div className="grid grid-cols-3">
+                <span className="text-slate-500">Jenis Produk</span>
+                <span className="col-span-2 font-bold text-slate-900">: {selectedPkg.jenisProduk}</span>
+              </div>
+              <div className="grid grid-cols-3">
+                <span className="text-slate-500">Kemasan</span>
+                <span className="col-span-2 font-bold text-slate-800">: {selectedPkg.kemasan}</span>
+              </div>
+              <div className="grid grid-cols-3">
+                <span className="text-slate-500">Jumlah Masuk</span>
+                <span className="col-span-2 font-black text-emerald-800 text-sm">
+                  : {(selectedPkg.jumlah || selectedPkg.totalPackagedQty || 0).toLocaleString('id-ID')} Botol/Cup
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Penerima / Instansi:</span>
-                <span className="font-bold text-slate-900">{selectedBast.instansiPenerima || selectedBast.penerimaNama || 'Pemasaran'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Pengirim (Farm):</span>
-                <span className="font-bold text-slate-800">{selectedBast.pengirimNama}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Volume Susu Segar:</span>
-                <span className="font-black text-indigo-700">{selectedBast.volumeLiters} Liter</span>
+              <div className="grid grid-cols-3">
+                <span className="text-slate-500">Tanggal Batch</span>
+                <span className="col-span-2 font-semibold text-slate-800">
+                  : {new Date(selectedPkg.tanggal || selectedPkg.date).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </span>
               </div>
             </div>
 
-            <div className="space-y-2 text-xs">
-              <label className="block font-bold text-slate-700">Catatan Penerimaan Hardfile (Opsional)</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Penerimaan / Kondisi Barang:</label>
               <textarea
-                rows="2"
-                placeholder="Contoh: Dokumen fisik BAST telah diterima & fisik susu sesuai..."
-                value={confirmNotes}
-                onChange={(e) => setConfirmNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleConfirmBast}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md disabled:opacity-50"
-              >
-                {submitting ? 'Mengonfirmasi...' : 'Konfirmasi Hardfile Diterima'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: PRATINJAU & CETAK SURAT BAST RESMI */}
-      {showPrintModal && selectedBast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-3xl shadow-2xl border border-slate-200 space-y-6 my-8 print:p-0 print:shadow-none print:border-none">
-            {/* Modal Controls (Hidden when printing) */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 print:hidden">
-              <div className="flex items-center gap-2 text-slate-800 font-extrabold text-lg">
-                <FileText className="w-5 h-5 text-indigo-700" />
-                <span>Dokumen Berita Acara Serah Terima (BAST)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrint}
-                  className="bg-[#1E3F20] hover:bg-[#2b592e] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-1.5"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Cetak Surat (Print/PDF)</span>
-                </button>
-                <button
-                  onClick={() => setShowPrintModal(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* SURAT BAST DOCUMENT CONTENT */}
-            <div className="p-8 border border-slate-300 rounded-2xl bg-white space-y-6 text-slate-900 font-serif">
-              {/* Kop Surat Header */}
-              <div className="border-b-4 border-double border-slate-900 pb-4 text-center space-y-1">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-slate-700 font-sans">KEMENTERIAN PERTANIAN</h2>
-                <h1 className="text-lg font-black uppercase text-slate-950 font-sans">BALAI BESAR PEMBIBITAN TERNAK UNGGUL DAN HIJAUAN PAKAN TERNAK (BBPTUHPT)</h1>
-                <p className="text-[11px] font-sans text-slate-600">Jl. Raya Peternakan No. 1, Baturraden - Jawa Tengah | Telp: (0281) 681023</p>
-              </div>
-
-              {/* Document Title */}
-              <div className="text-center space-y-1 pt-2">
-                <h3 className="text-base font-bold uppercase underline tracking-wider font-sans">BERITA ACARA SERAH TERIMA (BAST) SUSU SEGAR</h3>
-                <p className="text-xs font-mono font-semibold text-slate-700 font-sans">Nomor: {selectedBast.nomorBast}</p>
-              </div>
-
-              {/* Statement text */}
-              <p className="text-xs leading-relaxed text-justify">
-                Pada hari ini, <span className="font-bold">{new Date(selectedBast.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>, kami yang bertanda tangan di bawah ini telah melakukan serah terima fisik produk susu segar murni (Fresh Milk) sesuai dengan rincian data sebagai berikut:
-              </p>
-
-              {/* Handover Details Table */}
-              <table className="w-full text-xs border border-slate-400 border-collapse font-sans">
-                <tbody>
-                  <tr className="border-b border-slate-300">
-                    <td className="p-2.5 font-bold bg-slate-100 w-1/3">Jenis Komoditas</td>
-                    <td className="p-2.5 font-semibold">Susu Murni Segar / Susu Mentah (Fresh Milk)</td>
-                  </tr>
-                  <tr className="border-b border-slate-300">
-                    <td className="p-2.5 font-bold bg-slate-100">Volume Diserahkan</td>
-                    <td className="p-2.5 font-black text-sm text-blue-900">{selectedBast.volumeLiters} Liter</td>
-                  </tr>
-                  <tr className="border-b border-slate-300">
-                    <td className="p-2.5 font-bold bg-slate-100">Keperluan / Permintaan</td>
-                    <td className="p-2.5 font-bold text-indigo-900">
-                      {selectedBast.jenisPermintaan === 'HIBAH' ? '🎁 Penyaluran Susu Hibah / Program CSR Gizi' : selectedBast.jenisPermintaan === 'KERJASAMA' ? '🏢 Permintaan Kerjasama / Dinas / Universitas' : '💰 Penjualan Susu Langsung'}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-slate-300">
-                    <td className="p-2.5 font-bold bg-slate-100">Unit Pengirim (Pihak I)</td>
-                    <td className="p-2.5 font-semibold">{selectedBast.pengirimNama} ({selectedBast.pengirimRole})</td>
-                  </tr>
-                  <tr className="border-b border-slate-300">
-                    <td className="p-2.5 font-bold bg-slate-100">Penerima / Instansi (Pihak II)</td>
-                    <td className="p-2.5 font-semibold">{selectedBast.instansiPenerima || selectedBast.penerimaNama || 'Admin Pemasaran & Pembeli'} ({selectedBast.penerimaRole || 'PIHAK_KEDUA'})</td>
-                  </tr>
-                  <tr className="border-b border-slate-300">
-                    <td className="p-2.5 font-bold bg-slate-100">Status Hardfile</td>
-                    <td className="p-2.5 font-bold text-emerald-700">{selectedBast.status}</td>
-                  </tr>
-                  {selectedBast.catatan && (
-                    <tr>
-                      <td className="p-2.5 font-bold bg-slate-100">Catatan Khusus</td>
-                      <td className="p-2.5 italic text-slate-700">{selectedBast.catatan}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-
-              <p className="text-xs leading-relaxed">
-                Demikian Berita Acara Serah Terima ini dibuat secara sah dan sebenarnya untuk dipergunakan sebagai bukti fisik serah terima barang operasional di lingkungan BBPTUHPT.
-              </p>
-
-              {/* Signature Section */}
-              <div className="grid grid-cols-2 gap-8 pt-8 font-sans text-xs">
-                <div className="text-center space-y-12">
-                  <div>
-                    <p className="font-semibold text-slate-600">Pihak Pertama (Pengirim / Farm)</p>
-                    <p className="font-bold text-slate-900 mt-0.5">{selectedBast.pengirimNama}</p>
-                  </div>
-                  <div className="border-b border-slate-900 w-3/4 mx-auto pt-8"></div>
-                  <p className="text-[10px] text-slate-500 font-mono">NIP / ID: {selectedBast.pengirimRole}</p>
-                </div>
-
-                <div className="text-center space-y-12">
-                  <div>
-                    <p className="font-semibold text-slate-600">Pihak Kedua (Penerima / Instansi / Pemasaran)</p>
-                    <p className="font-bold text-slate-900 mt-0.5">{selectedBast.instansiPenerima || selectedBast.penerimaNama || '(Menunggu Pengesahan)'}</p>
-                  </div>
-                  <div className="border-b border-slate-900 w-3/4 mx-auto pt-8"></div>
-                  <p className="text-[10px] text-slate-500 font-mono">Penerima Resmi</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: KONFIRMASI PENERIMAAN PRODUK OLAHAN */}
-      {showConfirmPkgModal && selectedPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-800 text-base">Konfirmasi Terima Produk Olahan</h3>
-              <button
-                onClick={() => setShowConfirmPkgModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 p-3.5 rounded-2xl text-xs space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Jenis Produk Olahan:</span>
-                <span className="font-bold text-purple-950">{selectedPkg.jenisProduk}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Ukuran Kemasan:</span>
-                <span className="font-bold text-purple-900">{selectedPkg.kemasan}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Jumlah Diterima:</span>
-                <span className="font-black text-purple-700">{selectedPkg.jumlah} Pcs</span>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <label className="block font-bold text-slate-700">Catatan Penerimaan (Opsional)</label>
-              <textarea
-                rows="2"
-                placeholder="Contoh: Kondisi kemasan baik & lengkap..."
                 value={pkgNotes}
                 onChange={(e) => setPkgNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500"
+                placeholder="Contoh: Kondisi kemasan baik, dingin, tersegel rapi..."
+                rows={2}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setShowConfirmPkgModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs"
+                onClick={() => {
+                  setShowConfirmPkgModal(false);
+                  setSelectedPkg(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
               >
                 Batal
               </button>
               <button
                 type="button"
-                disabled={submittingPkg}
                 onClick={handleConfirmPkg}
-                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold text-xs shadow-md disabled:opacity-50"
+                disabled={submittingPkg}
+                className="px-5 py-2 text-xs font-extrabold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow transition-transform active:scale-95"
               >
-                {submittingPkg ? 'Mengonfirmasi...' : 'Konfirmasi Terima Olahan'}
+                {submittingPkg ? 'Memproses...' : '✓ Konfirmasi Masuk Stok'}
               </button>
             </div>
           </div>

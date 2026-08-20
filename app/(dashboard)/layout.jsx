@@ -41,7 +41,7 @@ function isRouteAllowed(role, pathname) {
   if (pathname.startsWith('/reports')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/rekapan-farm', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -55,7 +55,10 @@ function isRouteAllowed(role, pathname) {
       '/dashboard',
       '/pemasaran',
       '/pemasaran/dashboard',
+      '/pemasaran/terima-susu-segar',
+      '/pemasaran/bast',
       '/pemasaran/terima-data',
+      '/pemasaran/rekapan-farm',
       '/pemasaran/jual-fresh',
       '/pemasaran/jual-olahan',
       '/pemasaran/piutang',
@@ -130,11 +133,10 @@ export default function DashboardLayout({ children }) {
         { label: 'Dashboard Main', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
         { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: Boxes },
-        { label: 'Terima Data', path: '/pemasaran/terima-data', icon: PackageCheck },
-        { label: 'Jual Fresh', path: '/pemasaran/jual-fresh', icon: Milk },
-        { label: 'Jual Olahan', path: '/pemasaran/jual-olahan', icon: Package },
-        { label: 'Kelola Piutang', path: '/pemasaran/piutang', icon: ShoppingCart },
-        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
+        { label: 'Terima Susu Segar', path: '/pemasaran/terima-susu-segar', icon: Milk },
+        { label: 'Surat BAST Permintaan', path: '/pemasaran/bast', icon: FileText },
+        { label: 'UHT', path: '/pemasaran/terima-data', icon: PackageCheck },
+        { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -154,8 +156,9 @@ export default function DashboardLayout({ children }) {
     if (role === 'ADMIN_PEMASARAN') {
       return [
         { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: LayoutDashboard },
-        { label: 'Terima Data (Farm & Packaging)', path: '/pemasaran/terima-data', icon: PackageCheck },
-        { label: 'Kelola Piutang & Pelunasan', path: '/pemasaran/piutang', icon: ShoppingCart },
+        { label: 'Terima Susu Segar', path: '/pemasaran/terima-susu-segar', icon: Milk },
+        { label: 'Surat BAST Permintaan', path: '/pemasaran/bast', icon: FileText },
+        { label: 'UHT', path: '/pemasaran/terima-data', icon: PackageCheck },
         { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
