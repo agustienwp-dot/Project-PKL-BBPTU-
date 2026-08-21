@@ -31,32 +31,337 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [statsData, setStatsData] = useState(null);
+  const [packagingDash, setPackagingDash] = useState(null);
   const [chartFilter, setChartFilter] = useState('7'); // '7' or '30'
   const [toast, setToast] = useState(null);
 
   const fetchDashboardData = async () => {
+    if (!user) return;
+    setLoading(true);
     try {
-      const res = await api.get('/dashboard/stats');
-      if (res.data.success) {
+      const res = await api.get(`/dashboard/stats?t=${Date.now()}`);
+      if (res.data?.success) {
         setStatsData(res.data.data);
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
+      if (err.response?.status !== 401) {
+        setToast({ type: 'error', message: 'Gagal memuat data statistik dashboard.' });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(() => fetchDashboardData(), 5000);
-    const handleFocus = () => fetchDashboardData();
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-    };
+    if (user) {
+      fetchDashboardData();
+      const interval = setInterval(() => fetchDashboardData(), 5000);
+      const handleFocus = () => fetchDashboardData();
+      window.addEventListener('focus', handleFocus);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('focus', handleFocus);
+      };
+    }
   }, [user]);
+  if (loading) {
+    return <LoadingSpinner text="Memuat Dashboard..." />;
+  }
+
+  // Format date today (e.g. 13 Agustus 2026)
+  const todayFormatted = new Date().toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  // ADMIN PENGEMASAN SPECIFIC DASHBOARD
+  if (user?.role === 'ADMIN_PENGEMASAN') {
+    const pkgStats = statsData?.packagingStats || {};
+    const {
+      stokAwalPcs = 0,
+      stokAkhirPcs = 0,
+      sisaBahanLiters = 0,
+      jumlahStokPcs = 0,
+      chart7Days = [],
+      chart30Days = [],
+      recentPackagings = [],
+      recentActivities = [],
+    } = pkgStats;
+
+    const displayActivities = recentActivities.length > 0 ? recentActivities : recentPackagings.map(act => ({
+      id: act.id,
+      title: `Hasil pengemasan ${act.productSubtype || act.productCategory}`,
+      detail: `Sebanyak ${act.totalPackagedQty || 0} pcs diproduksi`,
+      icon: '📦',
+      status: act.status || 'DRAFT',
+      user: act.createdBy?.name || 'Admin Pengemasan',
+      timestamp: act.updatedAt || act.date,
+    }));
+
+    const chartData = chartFilter === '30' ? (chart30Days || []) : (chart7Days || []);
+    const maxVal = Math.max(...chartData.map((d) => d.totalPackagedPcs || 0), 10);
+
+    return (
+      <div className="space-y-8 pb-12">
+        {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+
+        {/* 1. HEADER DASHBOARD GREETING */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1E3F20] text-white rounded-full text-xs font-bold mb-2">
+              <Package className="w-4 h-4 text-emerald-200" />
+              <span>Dashboard Admin Pengemasan</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              Hi, Admin Pengemasan!
+            </h1>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>Ringkasan aktivitas pengemasan & stok produk • {todayFormatted}</span>
+            </p>
+          </div>
+
+          <Link
+            href="/pengemasan"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Mulai Pengemasan</span>
+          </Link>
+        </div>
+
+        {/* 2. SUMMARY CARDS (4 CARDS) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Card 1: STOK AWAL */}
+          <div className="bg-[#1E3F20] text-white p-6 rounded-3xl shadow-sm space-y-3 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-200 block">STOK AWAL</span>
+              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
+                <Package className="w-4 h-4 text-emerald-200" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-white">
+                {stokAwalPcs.toLocaleString()} <span className="text-xs font-bold text-emerald-200">pcs</span>
+              </p>
+              <p className="text-[11px] text-emerald-200 font-semibold mt-1">Stok awal hari ini</p>
+            </div>
+          </div>
+
+          {/* Card 2: STOK AKHIR */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block">STOK AKHIR</span>
+              <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-emerald-700">
+                {stokAkhirPcs.toLocaleString()} <span className="text-xs font-bold text-slate-500">pcs</span>
+              </p>
+              <p className="text-[11px] text-slate-400 font-semibold mt-1">Stok akhir hari ini</p>
+            </div>
+          </div>
+
+          {/* Card 3: SISA BAHAN */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block">SISA BAHAN</span>
+              <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
+                <Milk className="w-4 h-4 text-purple-600" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-purple-700">
+                {sisaBahanLiters.toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span>
+              </p>
+              <p className="text-[11px] text-slate-400 font-semibold mt-1">Bahan siap digunakan</p>
+            </div>
+          </div>
+
+          {/* Card 4: JUMLAH STOK */}
+          <div className="bg-gradient-to-br from-[#0D5C3A] to-[#084229] text-white p-6 rounded-3xl shadow-sm space-y-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-200 block">JUMLAH STOK</span>
+              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
+                <Layers className="w-4 h-4 text-emerald-200" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-amber-300">
+                {jumlahStokPcs.toLocaleString()} <span className="text-xs font-bold text-emerald-200">pcs</span>
+              </p>
+              <p className="text-[11px] text-emerald-200 font-semibold mt-1">Total produk tersedia</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. MAIN SECTION: GRAFIK & CATATAN AKTIVITAS TERAKHIR */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT 2-COLS: GRAFIK AKTIVITAS PENGEMASAN */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-600" />
+                  <span>Grafik Aktivitas Pengemasan</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Rekapitulasi aktivitas pengemasan produk
+                </p>
+              </div>
+
+              {/* Filter 7 Hari / Bulan Ini */}
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl">
+                <button
+                  onClick={() => setChartFilter('7')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    chartFilter === '7' ? 'bg-[#1E3F20] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  7 Hari
+                </button>
+                <button
+                  onClick={() => setChartFilter('30')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    chartFilter === '30' ? 'bg-[#1E3F20] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Bulan Ini
+                </button>
+              </div>
+            </div>
+
+            {/* BAR CHART GRAPHIC */}
+            <div className="h-64 flex items-end justify-between gap-2 pt-6 px-2 border-b border-slate-100">
+              {chartData.length > 0 ? (
+                chartData.map((item, idx) => {
+                  const val = item.totalPackagedPcs || 0;
+                  const pct = Math.min(100, Math.max(8, Math.round((val / maxVal) * 100)));
+
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end relative">
+                      {/* Tooltip on Hover */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-slate-900 text-white p-2.5 rounded-xl text-[10px] font-bold shadow-xl z-20 pointer-events-none whitespace-nowrap text-center">
+                        <div className="text-slate-300 font-normal">{item.formattedDate || item.label}</div>
+                        <div className="text-emerald-400 font-extrabold">Dikemas: {val} pcs</div>
+                        <div className="text-amber-300 font-bold">Stok Bertambah: {item.stokAdded || 0} pcs</div>
+                      </div>
+
+                      {/* Value Label */}
+                      <span className="text-[10px] font-black text-slate-500 group-hover:text-emerald-700 transition-colors">
+                        {val > 0 ? `${val}` : ''}
+                      </span>
+
+                      {/* Bar Container */}
+                      <div
+                        style={{ height: `${pct}%` }}
+                        className={`w-full rounded-2xl transition-all duration-300 group-hover:scale-105 shadow-sm ${
+                          val > 0 ? 'bg-gradient-to-t from-[#1E3F20] to-emerald-500' : 'bg-slate-100'
+                        }`}
+                      ></div>
+
+                      {/* X Label */}
+                      <span className="text-[10px] font-bold text-slate-500 truncate max-w-full group-hover:text-slate-900">
+                        {chartFilter === '30' ? item.dayNum : (item.dayName?.slice(0, 3) || item.formattedDate)}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 font-medium">
+                  Belum ada data aktivitas pengemasan.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 pt-1">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-[#1E3F20]"></span>
+                <span>Jumlah Hasil Pengemasan (pcs)</span>
+              </div>
+              <span>Tinggi grafik proporsional dengan jumlah produk</span>
+            </div>
+          </div>
+
+          {/* RIGHT 1-COL: CATATAN AKTIVITAS TERAKHIR */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
+            <div>
+              <div className="border-b border-slate-100 pb-3 mb-4">
+                <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-600" />
+                  <span>Catatan Aktivitas Terakhir</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Aktivitas pengemasan terbaru
+                </p>
+              </div>
+
+              {/* Activity List */}
+              <div className="space-y-3.5">
+                {displayActivities.length > 0 ? (
+                  displayActivities.map((act) => {
+                    const st = act.status || 'Berhasil';
+                    let icon = act.icon || '📦';
+                    let statusLabel = 'Tercatat';
+                    let badgeClass = 'bg-emerald-100 text-emerald-900 border border-emerald-200';
+
+                    if (st === 'MENUNGGU_PENERIMAAN') {
+                      statusLabel = 'Menunggu Penerimaan';
+                      badgeClass = 'bg-amber-100 text-amber-900 border border-amber-200';
+                    } else if (st === 'DITERIMA' || st === 'SELESAI' || st === 'Berhasil') {
+                      statusLabel = 'Selesai';
+                      badgeClass = 'bg-emerald-100 text-emerald-900 border border-emerald-200';
+                    }
+
+                    const formattedTime = new Date(act.timestamp || new Date()).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+
+                    return (
+                      <div key={act.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5 hover:bg-slate-100/80 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm">{icon}</span>
+                          <span className={`px-2 py-0.5 text-[9px] font-black rounded-md uppercase tracking-wider ${badgeClass}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 leading-snug">
+                          {act.title} — {act.detail}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          Oleh {act.user || 'Admin Pengemasan'} • {formattedTime}
+                        </p>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 text-center text-xs text-slate-400 font-medium space-y-2">
+                    <p className="text-2xl">📋</p>
+                    <p>Belum ada aktivitas terbaru hari ini.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Link
+              href="/pengemasan"
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-center rounded-2xl text-xs font-bold transition-colors flex items-center justify-center gap-1 mt-4"
+            >
+              <span>Kelola Pengemasan</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const farmStats = statsData?.farm || {};
   const todaySapi = farmStats.todaySapiLiters || 0;
@@ -81,7 +386,6 @@ export default function DashboardPage() {
     month: 'long',
     year: 'numeric'
   });
-
   return (
     <div className="space-y-6 pb-12 bg-[#F4F7FB] -m-6 p-6 min-h-screen">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}

@@ -16,10 +16,10 @@ export async function GET(request) {
     const date = searchParams.get('date');
 
     const where = {};
-    if (categoryId) where.category_id = categoryId;
-    if (animalType) where.animal_type = animalType;
-    if (productCategory) where.product_category = productCategory;
-    if (productSubtype) where.product_subtype = productSubtype;
+    if (categoryId) where.categoryId = categoryId;
+    if (animalType) where.animalType = animalType;
+    if (productCategory) where.productCategory = productCategory;
+    if (productSubtype) where.productSubtype = productSubtype;
     if (origin) where.origin = origin;
     if (status) where.status = status;
     if (date) {
@@ -33,16 +33,33 @@ export async function GET(request) {
       };
     }
 
-    const packagings = await prisma.milkPackaging.findMany({
-      where,
-      include: {
-        category: true,
-        created_by: {
-          select: { id: true, name: true, email: true },
+    let packagings;
+    try {
+      packagings = await prisma.milkPackaging.findMany({
+        where,
+        include: {
+          category: true,
+          production: {
+            include: { category: true }
+          },
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
         },
-      },
-      orderBy: { date: 'desc' },
-    });
+        orderBy: { date: 'desc' },
+      });
+    } catch (e) {
+      packagings = await prisma.milkPackaging.findMany({
+        where,
+        include: {
+          category: true,
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+    }
 
     return NextResponse.json({ success: true, data: packagings });
   } catch (error) {
@@ -54,13 +71,14 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const authUser = getAuthUser(request);
-    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN')) {
-      return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm atau Superadmin yang dapat menginput hasil pengemasan' }, { status: 403 });
+    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'ADMIN_PENGEMASAN' && authUser.role !== 'SUPERADMIN')) {
+      return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Pengemasan, Admin Farm, atau Superadmin yang dapat menginput pengemasan' }, { status: 403 });
     }
 
     const body = await request.json();
     const {
       date,
+      productionId,
       productCategory,
       productSubtype,
       origin,
@@ -75,6 +93,7 @@ export async function POST(request) {
       cupQty,
       plastikBantalQty,
       notes,
+      status: reqStatus,
     } = body;
 
     if (date) {
@@ -86,17 +105,32 @@ export async function POST(request) {
       }
     }
 
+    let selectedProduction = null;
+    if (productionId) {
+      selectedProduction = await prisma.milkProduction.findUnique({ where: { id: productionId } }).catch(() => null);
+    }
+
     const pCategory = productCategory || 'Susu';
     const pSubtype = productSubtype || null;
-    const pOrigin = origin || (animalType === 'KAMBING' ? 'Kambing' : 'Sapi');
+    const pOrigin = origin || (selectedProduction ? (selectedProduction.animalType === 'KAMBING' ? 'Kambing' : 'Sapi') : (animalType === 'KAMBING' ? 'Kambing' : 'Sapi'));
     const aType = pOrigin.toUpperCase() === 'KAMBING' ? 'KAMBING' : 'SAPI';
     const pVariant = variant || 'Original';
 
     const pAmount = parseFloat(processedAmount !== undefined ? processedAmount : processedLiters) || 0;
     const pUnit = processedUnit || (pCategory === 'Keju' ? 'Kg' : 'Liter');
 
-    if (pAmount < 0) {
-      return NextResponse.json({ success: false, message: 'Jumlah bahan diproses tidak boleh bernilai negatif' }, { status: 400 });
+    if (pAmount <= 0) {
+      return NextResponse.json({ success: false, message: 'Jumlah liter/bahan yang dikemas harus lebih besar dari 0' }, { status: 400 });
+    }
+
+    if (selectedProduction) {
+      const sisaVolume = Math.max(0, selectedProduction.rawVolumeLiters - (selectedProduction.processedLiters || 0));
+      if (pAmount > sisaVolume) {
+        return NextResponse.json({
+          success: false,
+          message: `Jumlah susu yang akan dikemas (${pAmount} Liter) melebihi stok susu yang tersedia (${sisaVolume} Liter).`
+        }, { status: 400 });
+      }
     }
 
     let itemsList = Array.isArray(packagingItems) ? packagingItems : [];
@@ -114,7 +148,7 @@ export async function POST(request) {
       
       bQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('botol')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
       cQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('cup')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
-      pQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('bantal')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
+      pQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('bantal') || (i.packagingType || '').toLowerCase().includes('pack')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
     } else {
       totalPackagedQty = bQty + cQty + pQty;
       itemsList = [];
@@ -123,60 +157,87 @@ export async function POST(request) {
       if (pQty > 0) itemsList.push({ packagingType: 'Plastik Bantal', size: '', quantity: pQty });
     }
 
-    if (totalPackagedQty <= 0 && pAmount <= 0) {
-      return NextResponse.json({ success: false, message: 'Harap masukkan jumlah bahan diproses atau rincian kemasan yang valid' }, { status: 400 });
+    if (totalPackagedQty <= 0) {
+      return NextResponse.json({ success: false, message: 'Minimal satu jenis kemasan (Botol, Cup, atau Plastik Bantal) harus diisi dengan jumlah > 0' }, { status: 400 });
     }
 
+    const finalStatus = reqStatus || 'MENUNGGU_PENERIMAAN';
     const validUserId = await resolveValidUserId(authUser);
 
     const packaging = await prisma.milkPackaging.create({
       data: {
         date: date ? new Date(date) : new Date(),
-        product_category: pCategory,
-        product_subtype: pSubtype,
+        productCategory: pCategory,
+        productSubtype: pSubtype,
         origin: pOrigin,
         variant: pVariant,
-        animal_type: aType,
-        category_id: categoryId || null,
-        processed_amount: pAmount,
-        processed_unit: pUnit,
-        processed_liters: pUnit === 'Liter' ? pAmount : 0,
-        packaging_details: JSON.stringify(itemsList),
-        packaging_type: primaryPkgType,
-        package_size: primaryPkgSize,
-        botol_qty: bQty,
-        cup_qty: cQty,
-        plastik_bantal_qty: pQty,
-        total_packaged_qty: totalPackagedQty,
-        quantity_sent: totalPackagedQty,
+        animalType: aType,
+        categoryId: categoryId || (selectedProduction ? selectedProduction.categoryId : null),
+        processedAmount: pAmount,
+        processedUnit: pUnit,
+        processedLiters: pUnit === 'Liter' ? pAmount : 0,
+        packagingDetails: JSON.stringify(itemsList),
+        packagingType: primaryPkgType,
+        packageSize: primaryPkgSize,
+        botolQty: bQty,
+        cupQty: cQty,
+        plastikBantalQty: pQty,
+        totalPackagedQty,
+        quantitySent: totalPackagedQty,
+        quantityReceived: totalPackagedQty,
+        status: finalStatus,
         notes: notes || '',
-        status: 'DRAFT',
-        created_by_id: validUserId,
+        createdById: validUserId,
       },
       include: {
         category: true,
-        created_by: {
+        createdBy: {
           select: { id: true, name: true, email: true },
         },
       },
     });
 
-    await prisma.systemLog.create({
-      data: {
-        user_id: validUserId,
-        user_email: authUser.email,
-        action: 'CREATE_PACKAGING',
-        details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (DRAFT)`,
-      },
-    });
+    if (selectedProduction) {
+      try {
+        await prisma.$executeRawUnsafe(
+          'UPDATE milk_packagings SET productionId = ? WHERE id = ?',
+          selectedProduction.id,
+          packaging.id
+        );
+      } catch (rawErr) {
+        console.error('Raw SQL productionId update error:', rawErr);
+      }
+
+      await prisma.milkProduction.update({
+        where: { id: selectedProduction.id },
+        data: {
+          processedLiters: {
+            increment: pAmount
+          }
+        }
+      }).catch(e => console.error('Error updating processedLiters:', e));
+    }
+
+    try {
+      await prisma.systemLog.create({
+        data: {
+          userId: validUserId,
+          userEmail: authUser.email || '',
+          action: 'CREATE_PACKAGING',
+          details: `Pengemasan ${pCategory} - Susu ${pOrigin}: ${pAmount} Liter diproses -> Total ${totalPackagedQty} pcs (Botol: ${bQty}, Cup: ${cQty}, Plastik Bantal: ${pQty})`,
+        },
+      });
+    } catch (logErr) {
+      console.error('Non-critical system log error:', logErr);
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Hasil pengemasan ${pCategory} (${totalPackagedQty} pcs) berhasil disimpan sebagai DRAFT!`,
+      message: `Data pengemasan Susu ${pOrigin} (${totalPackagedQty} pcs) berhasil disimpan & stok produk jadi bertambah!`,
       data: packaging,
     });
   } catch (error) {
     console.error('POST /api/farm/packaging error:', error);
-    return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

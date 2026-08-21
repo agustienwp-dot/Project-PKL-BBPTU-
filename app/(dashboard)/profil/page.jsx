@@ -13,6 +13,8 @@ export default function ProfilPage() {
         return { label: 'SUPERADMIN PENGELOLA', bg: 'bg-purple-100 text-purple-800 border-purple-200' };
       case 'ADMIN_FARM':
         return { label: 'ADMIN FARM PRODUKSI', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+      case 'ADMIN_PENGEMASAN':
+        return { label: 'ADMIN PENGEMASAN', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
       case 'ADMIN_PEMASARAN':
         return { label: 'ADMIN PEMASARAN & STOK', bg: 'bg-blue-100 text-blue-800 border-blue-200' };
       default:

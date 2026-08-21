@@ -75,6 +75,7 @@ export function AuthProvider({ children }) {
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isAdminFarm = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
   const isAdminPemasaran = user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN';
+  const isAdminPengemasan = user?.role === 'ADMIN_PENGEMASAN' || user?.role === 'SUPERADMIN';
 
   return (
     <AuthContext.Provider
@@ -87,6 +88,7 @@ export function AuthProvider({ children }) {
         isSuperAdmin,
         isAdminFarm,
         isAdminPemasaran,
+        isAdminPengemasan,
       }}
     >
       {children}

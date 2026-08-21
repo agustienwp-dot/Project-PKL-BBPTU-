@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { BBPTUHPTLogo } from '@/components/Logos';
+import NotificationBell from '@/components/NotificationBell';
 import { 
   LayoutDashboard, 
   Milk, 
@@ -29,7 +30,8 @@ import {
   Sparkles,
   ShoppingCart,
   BarChart3,
-  Bell
+  Bell,
+  FileCheck
 } from 'lucide-react';
 import api from '@/services/api';
 
@@ -54,6 +56,11 @@ function isRouteAllowed(role, pathname) {
 
   if (role === 'ADMIN_PEMASARAN') {
     const allowed = ['/dashboard', '/pemasaran', '/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  }
+
+  if (role === 'ADMIN_PENGEMASAN') {
+    const allowed = ['/dashboard', '/pengemasan', '/riwayat-pengemasan', '/reports/pengemasan', '/profil', '/berita-acara'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -106,6 +113,8 @@ export default function DashboardLayout({ children }) {
         return { label: 'ADMIN FARM PRODUKSI', bg: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' };
       case 'ADMIN_PEMASARAN':
         return { label: 'ADMIN PEMASARAN', bg: 'bg-blue-500/20 text-blue-200 border-blue-400/30' };
+      case 'ADMIN_PENGEMASAN':
+        return { label: 'ADMIN PENGEMASAN', bg: 'bg-amber-500/20 text-amber-200 border-amber-400/30' };
       default:
         return { label: role || 'USER', bg: 'bg-slate-500/20 text-slate-200 border-slate-400/30' };
     }
@@ -134,8 +143,11 @@ export default function DashboardLayout({ children }) {
       return [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Produksi Susu', path: '/produksi', icon: Milk },
-        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
-        { label: 'Laporan', path: '/reports', icon: FileText },
+        { label: 'Pengemasan', path: '/pengemasan', icon: Package },
+        { label: 'Riwayat Produksi', path: '/riwayat-produksi', icon: History },
+        { label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
+        { label: 'Berita Acara', path: '/berita-acara', icon: FileCheck },
+        { label: 'Laporan Produksi', path: '/reports', icon: FileText },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -149,6 +161,17 @@ export default function DashboardLayout({ children }) {
         { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
         { label: 'Profil', path: '/profil', icon: User }
+      ];
+    }
+
+    if (role === 'ADMIN_PENGEMASAN') {
+      return [
+        { section: 'DASHBOARD', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { section: 'PENGEMASAN', label: 'Pengemasan', path: '/pengemasan', icon: Package },
+        { section: 'PENGEMASAN', label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
+        { section: 'DOKUMEN', label: 'Berita Acara', path: '/berita-acara', icon: FileCheck },
+        { section: 'LAPORAN', label: 'Laporan Pengemasan', path: '/reports/pengemasan', icon: FileText },
+        { section: 'LAINNYA', label: 'Profil', path: '/profil', icon: User }
       ];
     }
 
@@ -173,12 +196,15 @@ export default function DashboardLayout({ children }) {
           <BBPTUHPTLogo className="w-9 h-9" />
           <span className="font-bold text-xs text-white tracking-wide">BBPTUHPT BATURRADEN</span>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 text-white hover:bg-white/10 rounded-lg"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell user={user} />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 text-white hover:bg-white/10 rounded-lg"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
@@ -197,33 +223,42 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
 
-          {/* Navigation Links Directly */}
+          {/* Navigation Links */}
           <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
               const Icon = item.icon;
               const basePath = item.path.split('?')[0];
               const isActive = pathname === basePath || (basePath !== '/dashboard' && pathname.startsWith(basePath));
+              const prevSection = index > 0 ? navItems[index - 1].section : null;
+              const showSectionHeader = item.section && item.section !== prevSection;
+
               return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    isActive
-                      ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
-                      : 'text-emerald-100 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-5 h-5 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-white/20 text-white font-bold tracking-wider uppercase shrink-0">
-                      {item.badge}
-                    </span>
+                <React.Fragment key={item.path}>
+                  {showSectionHeader && (
+                    <div className="pt-3 pb-1 px-3 text-[10px] font-black text-emerald-300/70 tracking-widest uppercase">
+                      {item.section}
+                    </div>
                   )}
-                </Link>
+                  <Link
+                    href={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                      isActive
+                        ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
+                        : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-5 h-5 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-white/20 text-white font-bold tracking-wider uppercase shrink-0">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                </React.Fragment>
               );
             })}
           </nav>
@@ -253,6 +288,24 @@ export default function DashboardLayout({ children }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#F5F5F0]">
+        {/* Desktop Header */}
+        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="h-3 w-3 rounded-full bg-[#1E3F20] animate-ping"></span>
+            <h1 className="text-sm font-black text-[#1E3F20] tracking-wide">
+              SISTEM MANAGEMENT STOK SUSU — Susu Segar & Susu Olahan
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <NotificationBell user={user} />
+            <div className="flex items-center gap-2 bg-[#F5F5F0] px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-[#1E3F20]">
+              <ShieldCheck className="w-4 h-4 text-emerald-700" />
+              <span>{user?.email}</span>
+            </div>
+          </div>
+        </header>
+
         {/* Content Viewport / Protected Access View */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {isAllowed ? (
@@ -268,7 +321,7 @@ export default function DashboardLayout({ children }) {
               </p>
               <Link
                 href="/dashboard"
-                className="px-5 py-2.5 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow transition-all transform hover:-translate-y-0.5"
+                className="px-5 py-2.5 bg-[#1E3F20] text-white font-bold text-xs rounded-xl shadow hover:bg-[#16331a] transition-all"
               >
                 Kembali ke Dashboard
               </Link>

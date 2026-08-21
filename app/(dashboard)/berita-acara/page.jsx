@@ -665,6 +665,749 @@ function BeritaAcaraContent() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+
+  // Reset Form
+  const resetForm = () => {
+    setEditingRecord(null);
+    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormPeriod('Pagi');
+    setFormLocation('Tegalsari');
+    setGiverName('Tim Kerja Layanan Pemasaran');
+    setGiverTitle('Tim Kerja Layanan Pemasaran');
+    setGiverDept('Tim Kerja Layanan Pemasaran');
+    setReceiverName('');
+    setReceiverTitle('');
+    setReceiverDept('');
+    setPurpose('');
+    setFormNotes('');
+    setHibahItems([{ quantity: '', notes: 'untuk seragam' }]);
+    setPembelianItems([
+      { productType: 'Susu', size: '110 ml', quantity: '600', unit: 'botol', notes: '' },
+      { productType: 'Susu', size: '250 ml', quantity: '450', unit: 'botol', notes: '' }
+    ]);
+  };
+
+  // Open Form New
+  const handleSelectType = (type) => {
+    setSelectedType(type);
+    resetForm();
+    setShowTypeModal(false);
+    setShowFormModal(true);
+  };
+
+  // Open Form Edit
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setSelectedType(rec.type);
+    setFormDate(rec.date ? new Date(rec.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setFormPeriod(rec.period || 'Pagi');
+    setFormLocation(rec.location || 'Tegalsari');
+    setGiverName(rec.giverName || 'Tim Kerja Layanan Pemasaran');
+    setGiverTitle(rec.giverTitle || '');
+    setGiverDept(rec.giverDept || 'Tim Kerja Layanan Pemasaran');
+    setReceiverName(rec.receiverName || '');
+    setReceiverTitle(rec.receiverTitle || '');
+    setReceiverDept(rec.receiverDept || '');
+    setPurpose(rec.purpose || '');
+    setFormNotes(rec.notes || '');
+
+    try {
+      const parsedItems = JSON.parse(rec.items || '[]');
+      if (rec.type === 'HIBAH') {
+        setHibahItems(parsedItems.length > 0 ? parsedItems : [{ quantity: '', notes: '' }]);
+      } else {
+        setPembelianItems(parsedItems.length > 0 ? parsedItems : [{ productType: 'Susu', size: '250 ml', quantity: '', unit: 'botol', notes: '' }]);
+      }
+    } catch (e) {
+      if (rec.type === 'HIBAH') {
+        setHibahItems([{ quantity: '', notes: '' }]);
+      } else {
+        setPembelianItems([{ productType: 'Susu', size: '250 ml', quantity: '', unit: 'botol', notes: '' }]);
+      }
+    }
+
+    setShowFormModal(true);
+  };
+
+  // Delete
+  const handleDelete = async (id) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus Berita Acara ini?')) return;
+    try {
+      const res = await api.delete(`/berita-acara/${id}`);
+      if (res.data.success) {
+        setToast({ type: 'success', message: 'Berita Acara berhasil dihapus' });
+        fetchData();
+      }
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Gagal menghapus Berita Acara' });
+    }
+  };
+
+  // View PDF Modal
+  const handleOpenPdf = (rec) => {
+    setViewingRecord(rec);
+    setShowPdfModal(true);
+  };
+
+  // Print PDF
+  const handlePrintPdf = () => {
+    window.print();
+  };
+
+  // Add Item Rows
+  const addHibahRow = () => {
+    setHibahItems([...hibahItems, { quantity: '', notes: '' }]);
+  };
+  const removeHibahRow = (idx) => {
+    if (hibahItems.length <= 1) return;
+    setHibahItems(hibahItems.filter((_, i) => i !== idx));
+  };
+
+  const addPembelianRow = () => {
+    setPembelianItems([...pembelianItems, { productType: 'Susu', size: '250 ml', quantity: '', unit: 'botol', notes: '' }]);
+  };
+  const removePembelianRow = (idx) => {
+    if (pembelianItems.length <= 1) return;
+    setPembelianItems(pembelianItems.filter((_, i) => i !== idx));
+  };
+
+  // Submit Form
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (submitting) return;
+
+    if (!receiverName || !receiverName.trim()) {
+      setToast({ type: 'error', message: 'Nama pihak yang menerima wajib diisi.' });
+      return;
+    }
+
+    if (!giverName || !giverName.trim()) {
+      setToast({ type: 'error', message: 'Nama pihak yang menyerahkan wajib diisi.' });
+      return;
+    }
+
+    const itemsToSave = selectedType === 'HIBAH' ? hibahItems : pembelianItems;
+    const validItems = itemsToSave.filter(it => (it.quantity && parseFloat(it.quantity) > 0));
+
+    if (validItems.length === 0) {
+      setToast({ type: 'error', message: 'Harap isi minimal 1 item detail susu dengan jumlah > 0.' });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        type: selectedType,
+        date: formDate,
+        period: selectedType === 'PEMBELIAN' ? formPeriod : null,
+        location: selectedType === 'PEMBELIAN' ? formLocation : null,
+        giverName,
+        giverTitle,
+        giverDept,
+        receiverName,
+        receiverTitle,
+        receiverDept,
+        purpose: selectedType === 'HIBAH' ? purpose : null,
+        notes: formNotes,
+        items: validItems,
+      };
+
+      let res;
+      if (editingRecord) {
+        res = await api.put(`/berita-acara/${editingRecord.id}`, payload);
+      } else {
+        res = await api.post('/berita-acara', payload);
+      }
+
+      if (res.data.success) {
+        setToast({
+          type: 'success',
+          message: editingRecord ? 'Berita acara berhasil diperbarui.' : 'Berita acara berhasil disimpan.',
+        });
+        setShowFormModal(false);
+        resetForm();
+        fetchData();
+      } else {
+        throw new Error(res.data.message || 'Gagal menyimpan Berita Acara');
+      }
+    } catch (err) {
+      console.error('Submit Berita Acara Error:', err);
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || err.message || 'Gagal menyimpan Berita Acara',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-12 print:p-0 print:bg-white print:text-black">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* HEADER SECTION (Hidden on print) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-[#1E3F20] text-white shadow-md">
+              <FileCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+                Berita Acara
+              </h1>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                Buat dan kelola berita acara serah terima susu
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowTypeModal(true)}
+          className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#1E3F20] hover:bg-[#16331a] text-white text-xs font-bold shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Buat Berita Acara</span>
+        </button>
+      </div>
+
+      {/* SEARCH & FILTER BAR (Hidden on print) */}
+      <div className="bg-white p-4 md:p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 print:hidden">
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder="Cari nomor BAST, pihak, lokasi..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-2xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-[#1E3F20] outline-none"
+          />
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="bg-transparent outline-none cursor-pointer font-bold"
+            >
+              <option value="">Semua Jenis</option>
+              <option value="HIBAH">BAST Hibah</option>
+              <option value="PEMBELIAN">BAST Pembelian</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="bg-transparent outline-none cursor-pointer font-semibold text-xs"
+            />
+            {filterDate && (
+              <button onClick={() => setFilterDate('')} className="text-slate-400 hover:text-slate-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* RIWAYAT TABLE (Hidden on print) */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden print:hidden">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#1E3F20]" />
+            <span>Riwayat Berita Acara</span>
+          </h2>
+          <span className="text-xs font-bold text-slate-400">Total: {records.length} dokumen</span>
+        </div>
+
+        {loading ? (
+          <div className="py-12 text-center text-xs text-slate-400 font-semibold">
+            Memuat daftar berita acara...
+          </div>
+        ) : records.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-5">Nomor BAST</th>
+                  <th className="py-3.5 px-5">Tanggal</th>
+                  <th className="py-3.5 px-5">Jenis Dokumen</th>
+                  <th className="py-3.5 px-5">Pihak Menerima</th>
+                  <th className="py-3.5 px-5">Lokasi / Keterangan</th>
+                  <th className="py-3.5 px-5">Dibuat Oleh</th>
+                  <th className="py-3.5 px-5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {records.map((rec) => {
+                  const isHibah = rec.type === 'HIBAH';
+                  let parsedItems = [];
+                  try {
+                    parsedItems = JSON.parse(rec.items || '[]');
+                  } catch (e) {}
+
+                  return (
+                    <tr key={rec.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3.5 px-5 font-black text-slate-900 font-mono">
+                        {rec.nomorBA}
+                      </td>
+                      <td className="py-3.5 px-5 font-semibold text-slate-600">
+                        {new Date(rec.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {rec.period && <span className="ml-1 text-[10px] text-slate-400 font-bold">({rec.period})</span>}
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <span
+                          className={`px-2.5 py-1 text-[10px] font-black rounded-lg uppercase tracking-wider ${
+                            isHibah
+                              ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                              : 'bg-blue-100 text-blue-900 border border-blue-200'
+                          }`}
+                        >
+                          {isHibah ? '🎁 HIBAH' : '🛒 PEMBELIAN'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">
+                        {rec.receiverName}
+                        {rec.receiverDept && <span className="block text-[10px] text-slate-400 font-normal">{rec.receiverDept}</span>}
+                      </td>
+                      <td className="py-3.5 px-5 font-semibold text-slate-600">
+                        {isHibah ? (
+                          <span>{rec.purpose || 'Serah Terima Susu Hibah'}</span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-emerald-600 inline" />
+                            {rec.location}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold text-[11px]">
+                        {rec.createdBy?.name || 'Admin'}
+                      </td>
+                      <td className="py-3.5 px-5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenPdf(rec)}
+                            title="Export PDF / Cetak"
+                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs flex items-center gap-1 transition-colors"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>PDF</span>
+                          </button>
+                          <button
+                            onClick={() => handleEdit(rec)}
+                            title="Edit"
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(rec.id)}
+                            title="Hapus"
+                            className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-16 text-center text-xs text-slate-400 font-medium space-y-2">
+            <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="font-bold text-slate-600">Belum ada berita acara.</p>
+            <p>Klik tombol "+ Buat Berita Acara" untuk membuat dokumen baru.</p>
+          </div>
+        )}
+      </div>
+
+      {/* 1. SELECTION MODAL: PILIH JENIS BERITA ACARA */}
+      {showTypeModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Pilih Jenis Berita Acara</h3>
+                <p className="text-xs text-slate-500 font-medium">Pilih jenis dokumen serah terima susu yang ingin dibuat</p>
+              </div>
+              <button onClick={() => setShowTypeModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Card 1: BAST HIBAH */}
+              <button
+                onClick={() => handleSelectType('HIBAH')}
+                className="w-full text-left p-5 rounded-2xl border-2 border-purple-100 hover:border-purple-500 bg-purple-50/40 hover:bg-purple-50 transition-all space-y-2 group shadow-sm cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow">
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm group-hover:text-purple-900">
+                        1. BERITA ACARA SERAH TERIMA SUSU HIBAH
+                      </h4>
+                      <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Format Resmi BAST Hibah</span>
+                    </div>
+                  </div>
+                  <span className="text-slate-400 group-hover:text-purple-600 text-lg font-black">→</span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium pl-11">
+                  Buat dokumen berita acara serah terima susu hibah dari Tim Kerja Layanan Pemasaran.
+                </p>
+              </button>
+
+              {/* Card 2: BAST PEMBELIAN */}
+              <button
+                onClick={() => handleSelectType('PEMBELIAN')}
+                className="w-full text-left p-5 rounded-2xl border-2 border-blue-100 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 transition-all space-y-2 group shadow-sm cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow">
+                      <ShoppingCart className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm group-hover:text-blue-900">
+                        2. BERITA ACARA SERAH TERIMA PEMBELIAN SUSU
+                      </h4>
+                      <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Format Resmi BAST Pembelian</span>
+                    </div>
+                  </div>
+                  <span className="text-slate-400 group-hover:text-blue-600 text-lg font-black">→</span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium pl-11">
+                  Buat dokumen berita acara serah terima susu hasil pembelian (Tegalsari, Limpakuwus, Manggala, Eduwisata).
+                </p>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setShowTypeModal(false)}
+                className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. FORM MODAL: DYNAMIC INPUT FOR HIBAH / PEMBELIAN */}
+      {showFormModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFormModal(false);
+                    if (!editingRecord) setShowTypeModal(true);
+                  }}
+                  className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Kembali</span>
+                </button>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">
+                    {editingRecord ? 'Edit Berita Acara' : selectedType === 'HIBAH' ? '🎁 BAST SUSU HIBAH' : '🛒 BAST PEMBELIAN SUSU'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Lengkapi seluruh informasi dokumen resmi serah terima</p>
+                </div>
+              </div>
+              <button onClick={() => setShowFormModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+              {/* SECTION A: INFORMASI WAKTU & LOKASI (KHUSUS PEMBELIAN) */}
+              {selectedType === 'PEMBELIAN' && (
+                <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
+                  <label className="block text-xs font-black text-blue-900 uppercase">A. WAKTU & LOKASI PEMBELIAN</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Tanggal</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Waktu / Periode</label>
+                      <select
+                        value={formPeriod}
+                        onChange={(e) => setFormPeriod(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Pagi">Pagi</option>
+                        <option value="Sore">Sore</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Lokasi / Sumber</label>
+                      <select
+                        value={formLocation}
+                        onChange={(e) => setFormLocation(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Tegalsari">Tegalsari</option>
+                        <option value="Limpakuwus">Limpakuwus</option>
+                        <option value="Manggala">Manggala</option>
+                        <option value="Eduwisata">Eduwisata</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION A: INFORMASI DOKUMEN (KHUSUS HIBAH) */}
+              {selectedType === 'HIBAH' && (
+                <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3">
+                  <label className="block text-xs font-black text-purple-900 uppercase">A. INFORMASI DOKUMEN HIBAH</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Dokumen</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Keterangan Tujuan / Keperluan</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: untuk seragam"
+                        value={purpose}
+                        onChange={(e) => setPurpose(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION B: PIHAK YANG SERAH TERIMA */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <label className="block text-xs font-black text-slate-900 uppercase">
+                  {selectedType === 'HIBAH' ? 'B. PIHAK SERAH TERIMA' : 'B. PIHAK SERAH TERIMA'}
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Pihak Menyerahkan */}
+                  <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200">
+                    <span className="block text-[11px] font-black text-emerald-800 uppercase border-b pb-1">PIHAK YANG MENYERAHKAN</span>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Nama / Instansi</label>
+                      <input
+                        type="text"
+                        value={giverName}
+                        onChange={(e) => setGiverName(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Jabatan (Opsional)</label>
+                      <input
+                        type="text"
+                        value={giverTitle}
+                        onChange={(e) => setGiverTitle(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold"
+                        placeholder="Jabatan..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pihak Menerima */}
+                  <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200">
+                    <span className="block text-[11px] font-black text-blue-800 uppercase border-b pb-1">PIHAK YANG MENERIMA</span>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Nama / Instansi Menerima *</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: BAG UMUM / PT ..."
+                        value={receiverName}
+                        onChange={(e) => setReceiverName(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Jabatan Menerima (Opsional)</label>
+                      <input
+                        type="text"
+                        placeholder="Jabatan..."
+                        value={receiverTitle}
+                        onChange={(e) => setReceiverTitle(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION C: DETAIL ITEM SUSU (DYNAMIC ROWS) */}
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-black text-amber-900 uppercase">
+                    C. DETAIL SUSU SERAH TERIMA
+                  </label>
+                  <button
+                    type="button"
+                    onClick={selectedType === 'HIBAH' ? addHibahRow : addPembelianRow}
+                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Baris</span>
+                  </button>
+                </div>
+
+                {/* DYNAMIC ROWS FOR HIBAH */}
+                {selectedType === 'HIBAH' && (
+                  <div className="space-y-2">
+                    {hibahItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-amber-200">
+                        <span className="text-xs font-black text-amber-800 w-5 text-center">{idx + 1}.</span>
+                        <div className="w-32">
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Jumlah (Liter)"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const updated = [...hibahItems];
+                              updated[idx].quantity = e.target.value;
+                              setHibahItems(updated);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold font-mono"
+                            required
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-slate-500">Liter</span>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Keterangan (contoh: untuk seragam, ambil perah tgs 07.05)"
+                            value={item.notes}
+                            onChange={(e) => {
+                              const updated = [...hibahItems];
+                              updated[idx].notes = e.target.value;
+                              setHibahItems(updated);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold"
+                          />
+                        </div>
+                        {hibahItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeHibahRow(idx)}
+                            className="p-1 text-rose-500 hover:text-rose-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* DYNAMIC ROWS FOR PEMBELIAN */}
+                {selectedType === 'PEMBELIAN' && (
+                  <div className="space-y-2">
+                    {pembelianItems.map((item, idx) => (
+                      <div key={idx} className="grid grid-cols-12 gap-2 bg-white p-2.5 rounded-xl border border-amber-200 items-center">
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            placeholder="Jenis Susu"
+                            value={item.productType}
+                            onChange={(e) => {
+                              const updated = [...pembelianItems];
+                              updated[idx].productType = e.target.value;
+                              setPembelianItems(updated);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <select
+                            value={item.size}
+                            onChange={(e) => {
+                              const updated = [...pembelianItems];
+                              updated[idx].size = e.target.value;
+                              setPembelianItems(updated);
+                            }}
+                            className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-bold"
+                          >
+                            <option value="110 ml">110 ml</option>
+                            <option value="115 ml">115 ml</option>
+                            <option value="130 ml">130 ml</option>
+                            <option value="200 ml">200 ml</option>
+                            <option value="250 ml">250 ml</option>
+                            <option value="1 Liter">1 Liter</option>
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="number"
+                            placeholder="Jumlah"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const updated = [...pembelianItems];
+                              updated[idx].quantity = e.target.value;
+                              setPembelianItems(updated);
+                            }}
+                            className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-bold font-mono"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="text"
+                            placeholder="Satuan"
+                            value={item.unit}
+                            onChange={(e) => {
+                              const updated = [...pembelianItems];
+                              updated[idx].unit = e.target.value;
+                              setPembelianItems(updated);
+                            }}
+                            className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold"
+                          />
+                        </div>
+                        <div className="col-span-2 flex items-center justify-end gap-1">
+                          {pembelianItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePembelianRow(idx)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -1043,6 +1786,204 @@ function BeritaAcaraContent() {
         </div>
       )}
 
+            {/* PRINTABLE DOCUMENT BODY (MATCHES PHYSICAL BAST TEMPLATES) */}
+            <div className="p-8 sm:p-12 border border-slate-200 rounded-2xl bg-white text-black font-serif space-y-6 print:border-none print:p-6 print:m-0 text-sm leading-relaxed">
+              
+              {/* TYPE 1: HIBAH PDF LAYOUT */}
+              {viewingRecord.type === 'HIBAH' && (
+                <div className="space-y-6">
+                  {/* Header Title */}
+                  <div className="text-center space-y-1 border-b-2 border-black pb-3">
+                    <h2 className="font-bold text-base uppercase tracking-wide">
+                      BERITA ACARA SERAH TERIMA SUSU HIBAH
+                    </h2>
+                    <p className="font-bold text-xs uppercase">
+                      DARI {viewingRecord.giverName || 'TIM KERJA LAYANAN PEMASARAN'} KE {viewingRecord.receiverName}
+                    </p>
+                  </div>
+
+                  {/* Document Meta Info */}
+                  <div className="text-xs space-y-1 pt-2">
+                    <div className="flex">
+                      <span className="w-24 font-bold">Tanggal</span>
+                      <span className="w-4">:</span>
+                      <span>{new Date(viewingRecord.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                    </div>
+                    {viewingRecord.purpose && (
+                      <div className="flex">
+                        <span className="w-24 font-bold">Keperluan</span>
+                        <span className="w-4">:</span>
+                        <span>{viewingRecord.purpose}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Items Table */}
+                  <div className="pt-2">
+                    <table className="w-full border-collapse border border-black text-xs">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-black px-3 py-2 text-center w-12 font-bold">No</th>
+                          <th className="border border-black px-3 py-2 text-center font-bold">Jumlah Yang Diterima (Ltr)</th>
+                          <th className="border border-black px-3 py-2 text-center font-bold">Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          let items = [];
+                          try { items = JSON.parse(viewingRecord.items || '[]'); } catch (e) {}
+                          if (items.length === 0) return <tr><td colSpan="3" className="border border-black p-2 text-center">Tidak ada data item</td></tr>;
+                          return items.map((it, idx) => (
+                            <tr key={idx}>
+                              <td className="border border-black px-3 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="border border-black px-3 py-2 text-center font-bold font-mono">{it.quantity} Liter</td>
+                              <td className="border border-black px-3 py-2">{it.notes || '-'}</td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Notes */}
+                  {viewingRecord.notes && (
+                    <div className="text-xs italic pt-1">
+                      <span className="font-bold">Catatan:</span> {viewingRecord.notes}
+                    </div>
+                  )}
+
+                  {/* Signature Section */}
+                  <div className="pt-12 text-xs">
+                    <div className="grid grid-cols-2 gap-8 text-center">
+                      {/* Yang Menerima */}
+                      <div className="space-y-16">
+                        <div>
+                          <p className="font-bold">Yang Menerima</p>
+                          {viewingRecord.receiverDept && <p className="text-[11px] font-semibold">{viewingRecord.receiverDept}</p>}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-bold text-slate-800">( {viewingRecord.receiverName} )</p>
+                          {viewingRecord.receiverTitle && <p className="text-[10px]">{viewingRecord.receiverTitle}</p>}
+                        </div>
+                      </div>
+
+                      {/* Yang Menyerahkan */}
+                      <div className="space-y-16">
+                        <div>
+                          <p className="font-bold">Yang Menyerahkan</p>
+                          <p className="text-[11px] font-semibold">{viewingRecord.giverDept || 'Tim Kerja Layanan Pemasaran'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-bold text-slate-800">( {viewingRecord.giverName} )</p>
+                          {viewingRecord.giverTitle && <p className="text-[10px]">{viewingRecord.giverTitle}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TYPE 2: PEMBELIAN PDF LAYOUT */}
+              {viewingRecord.type === 'PEMBELIAN' && (
+                <div className="space-y-6">
+                  {/* Header Title */}
+                  <div className="text-center space-y-1 border-b-2 border-black pb-3">
+                    <h2 className="font-bold text-base uppercase tracking-wide">
+                      BERITA ACARA SERAH TERIMA SUSU
+                    </h2>
+                    <p className="font-bold text-xs uppercase">
+                      SERAH TERIMA SUSU HASIL PEMBELIAN ({viewingRecord.location})
+                    </p>
+                  </div>
+
+                  {/* Header Info Grid */}
+                  <div className="grid grid-cols-2 gap-4 text-xs font-semibold pt-1">
+                    <div className="space-y-1">
+                      <div className="flex">
+                        <span className="w-24 font-bold">Waktu</span>
+                        <span className="w-4">:</span>
+                        <span className="font-bold uppercase">{viewingRecord.period || 'Pagi'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-24 font-bold">Lokasi</span>
+                        <span className="w-4">:</span>
+                        <span>{viewingRecord.location}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex">
+                        <span className="w-24 font-bold">Tanggal</span>
+                        <span className="w-4">:</span>
+                        <span>{new Date(viewingRecord.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Items Table */}
+                  <div className="pt-2">
+                    <table className="w-full border-collapse border border-black text-xs">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-black px-3 py-2 text-center w-12 font-bold">No</th>
+                          <th className="border border-black px-3 py-2 text-left font-bold">Jenis Susu</th>
+                          <th className="border border-black px-3 py-2 text-center font-bold">Ukuran / Kemasan</th>
+                          <th className="border border-black px-3 py-2 text-center font-bold">Jumlah</th>
+                          <th className="border border-black px-3 py-2 text-center font-bold">Satuan</th>
+                          <th className="border border-black px-3 py-2 text-left font-bold">Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          let items = [];
+                          try { items = JSON.parse(viewingRecord.items || '[]'); } catch (e) {}
+                          if (items.length === 0) return <tr><td colSpan="6" className="border border-black p-2 text-center">Tidak ada data detail</td></tr>;
+                          return items.map((it, idx) => (
+                            <tr key={idx}>
+                              <td className="border border-black px-3 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="border border-black px-3 py-2 font-semibold">{it.productType || 'Susu'}</td>
+                              <td className="border border-black px-3 py-2 text-center font-semibold">{it.size || '-'}</td>
+                              <td className="border border-black px-3 py-2 text-center font-bold font-mono">{it.quantity}</td>
+                              <td className="border border-black px-3 py-2 text-center">{it.unit || 'botol'}</td>
+                              <td className="border border-black px-3 py-2">{it.notes || '-'}</td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Notes */}
+                  {viewingRecord.notes && (
+                    <div className="text-xs italic pt-1">
+                      <span className="font-bold">Catatan:</span> {viewingRecord.notes}
+                    </div>
+                  )}
+
+                  {/* Signature Section */}
+                  <div className="pt-12 text-xs">
+                    <div className="grid grid-cols-2 gap-8 text-center">
+                      {/* Yang Menerima */}
+                      <div className="space-y-16">
+                        <div>
+                          <p className="font-bold">Yang Menerima</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-bold text-slate-800">( {viewingRecord.receiverName} )</p>
+                          {viewingRecord.receiverTitle && <p className="text-[10px]">{viewingRecord.receiverTitle}</p>}
+                        </div>
+                      </div>
+
+                      {/* Yang Menyerahkan */}
+                      <div className="space-y-16">
+                        <div>
+                          <p className="font-bold">Yang Menyerahkan</p>
+                          <p className="text-[11px] font-semibold">{viewingRecord.giverDept || 'Tim Kerja Layanan Pemasaran'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-bold text-slate-800">( {viewingRecord.giverName} )</p>
+                          {viewingRecord.giverTitle && <p className="text-[10px]">{viewingRecord.giverTitle}</p>}
+                        </div>
+                      </div>
       {/* CONFIRM DELETE MODAL */}
       <ConfirmModal
         isOpen={!!deletingBa}

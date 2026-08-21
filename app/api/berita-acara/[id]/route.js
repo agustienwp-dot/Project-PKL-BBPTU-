@@ -7,12 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
   try {
+    const { id } = params;
     const authUser = getAuthUser(request);
     if (!authUser) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
-
-    const { id } = params;
 
     const item = await prisma.beritaAcara.findUnique({
       where: { id },
@@ -22,21 +21,21 @@ export async function GET(request, { params }) {
             id: true,
             date: true,
             shift: true,
-            farm_origin: true,
-            animal_type: true,
-            gross_volume_liters: true,
-            pedet_volume_liters: true,
-            afkir_volume_liters: true,
-            sold_fresh_volume_liters: true,
-            raw_volume_liters: true,
-            keterangan_penjualan: true,
+            farmOrigin: true,
+            animalType: true,
+            grossVolumeLiters: true,
+            pedetVolumeLiters: true,
+            afkirVolumeLiters: true,
+            soldFreshVolumeLiters: true,
+            rawVolumeLiters: true,
+            keteranganPenjualan: true,
           },
         },
-        created_by: {
+        createdBy: {
           select: { id: true, name: true, email: true, role: true },
         },
         logs: {
-          orderBy: { created_at: 'asc' },
+          orderBy: { createdAt: 'asc' },
         },
       },
     });
@@ -56,29 +55,28 @@ export async function GET(request, { params }) {
           where: { id },
           data: {
             status: 'DIBACA_PEMASARAN',
-            read_at: new Date(),
+            readAt: new Date(),
             logs: {
               create: {
                 action: 'READ',
-                actor_name: authUser.name || 'Admin Pemasaran',
-                actor_role: authUser.role || 'ADMIN_PEMASARAN',
-                notes: `Berita Acara ${item.nomor_ba || item.nomorBa} dibuka dan dibaca oleh Seksi Pemasaran.`,
+                actorName: authUser.name || 'Admin Pemasaran',
+                actorRole: authUser.role || 'ADMIN_PEMASARAN',
+                notes: `Berita Acara ${item.nomorBa || id} dibuka dan dibaca oleh Seksi Pemasaran.`,
               },
             },
           },
         });
       } catch (e) {
-        console.error('Failed auto update read_at:', e);
+        console.error('Failed auto update readAt:', e);
       }
       item.status = 'DIBACA_PEMASARAN';
-      item.read_at = new Date();
-      item.readAt = item.read_at;
+      item.readAt = new Date();
     }
 
     return NextResponse.json({ success: true, data: formatBaItem(item) });
   } catch (error) {
     console.error('GET /api/berita-acara/[id] error:', error);
-    const memMatch = (global.__inMemoryBaList || []).find((i) => i.id === id);
+    const memMatch = (global.__inMemoryBaList || []).find((i) => i.id === params.id);
     if (memMatch) {
       return NextResponse.json({ success: true, data: formatBaItem(memMatch) });
     }
@@ -110,9 +108,9 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const nomorBaStr = existing.nomor_ba || existing.nomorBa || id;
+    const nomorBaStr = existing.nomorBa || id;
 
-    // If status change request
+    // Status update only
     if (body.status && body.status !== existing.status) {
       let updatedStatus = null;
       try {
@@ -123,23 +121,23 @@ export async function PUT(request, { params }) {
             logs: {
               create: {
                 action: 'STATUS_CHANGED',
-                actor_name: authUser.name || 'Admin',
-                actor_role: authUser.role || 'ADMIN',
+                actorName: authUser.name || 'Admin',
+                actorRole: authUser.role || 'ADMIN',
                 notes: `Status Berita Acara ${nomorBaStr} diubah dari ${existing.status} menjadi ${body.status}.`,
               },
             },
           },
           include: {
             production: true,
-            created_by: { select: { id: true, name: true, email: true } },
-            logs: { orderBy: { created_at: 'asc' } },
+            createdBy: { select: { id: true, name: true, email: true } },
+            logs: { orderBy: { createdAt: 'asc' } },
           },
         });
       } catch (e) {
         updatedStatus = {
           ...existing,
           status: body.status,
-          updated_at: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
       }
 
@@ -152,28 +150,12 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: true, data: formatted, message: `Status berhasil diubah menjadi ${body.status}.` });
     }
 
-    // If editing full form content, ensure document is not locked unless superadmin
-    if (['TERKIRIM_KE_PEMASARAN', 'DIBACA_PEMASARAN', 'DICETAK'].includes(existing.status) && authUser.role !== 'SUPERADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Dokumen yang sudah dikirim ke Pemasaran tidak dapat diubah lagi nilainya. Ubah status kembali ke DRAFT jika memerlukan revisi.' },
-        { status: 403 }
-      );
-    }
+    // Editing document content
     const {
-      date,
-      shift,
-      farmLocation,
-      animalType,
-      unit,
-      totalProduksi,
-      penggunaanPedet,
-      afkir,
-      lainLain,
-      diserahterimakan,
-      penerimaName,
-      penerimaUserId,
-      penyerahName,
-      notes,
+      type, date, period, location, farmLocation, animalType, unit, totalProduksi,
+      penggunaanPedet, afkir, lainLain, diserahterimakan, penerimaName, penerimaUserId,
+      penyerahName, giverName, giverTitle, giverDept, receiverName, receiverTitle,
+      receiverDept, purpose, notes, items
     } = body;
 
     const totProd = parseFloat(totalProduksi || 0);
@@ -182,68 +164,61 @@ export async function PUT(request, { params }) {
     const lainVol = parseFloat(lainLain || 0);
     const diserahVol = parseFloat(diserahterimakan || 0);
 
-    if (totProd < 0 || pedetVol < 0 || afkirVol < 0 || lainVol < 0 || diserahVol < 0) {
-      return NextResponse.json({ success: false, message: 'Nilai volume tidak boleh negatif.' }, { status: 400 });
-    }
-
-    if (diserahVol > totProd) {
-      return NextResponse.json(
-        { success: false, message: 'Jumlah diserahterimakan tidak boleh melebihi Total Produksi.' },
-        { status: 400 }
-      );
-    }
+    const itemsJson = typeof items === 'string' ? items : (items ? JSON.stringify(items) : existing.items);
 
     let updated = null;
     try {
       updated = await prisma.beritaAcara.update({
         where: { id },
         data: {
+          type: type ? type.toUpperCase() : existing.type,
           date: date ? new Date(date) : existing.date,
-          shift: shift || existing.shift,
-          farm_location: farmLocation || existing.farm_location || existing.farmLocation,
-          animal_type: animalType || existing.animal_type || existing.animalType,
+          period: period !== undefined ? period : existing.period,
+          location: location || farmLocation || existing.location,
+          farmLocation: farmLocation || location || existing.farmLocation,
+          animalType: animalType || existing.animalType,
           unit: unit || existing.unit,
-          total_produksi: totProd,
-          penggunaan_pedet: pedetVol,
+          totalProduksi: totProd > 0 ? totProd : existing.totalProduksi,
+          penggunaanPedet: pedetVol,
           afkir: afkirVol,
-          lain_lain: lainVol,
-          diserahterimakan: diserahVol,
-          penerima_user_id: penerimaUserId !== undefined ? penerimaUserId : existing.penerima_user_id,
-          penerima_name: penerimaName || existing.penerima_name || existing.penerimaName,
-          penyerah_name: penyerahName || existing.penyerah_name || existing.penyerahName,
+          lainLain: lainVol,
+          diserahterimakan: diserahVol > 0 ? diserahVol : existing.diserahterimakan,
+          penerimaUserId: penerimaUserId !== undefined ? penerimaUserId : existing.penerimaUserId,
+          penerimaName: penerimaName || receiverName || existing.penerimaName,
+          penyerahName: penyerahName || giverName || existing.penyerahName,
+          giverName: giverName || penyerahName || existing.giverName,
+          giverTitle: giverTitle !== undefined ? giverTitle : existing.giverTitle,
+          giverDept: giverDept !== undefined ? giverDept : existing.giverDept,
+          receiverName: receiverName || penerimaName || existing.receiverName,
+          receiverTitle: receiverTitle !== undefined ? receiverTitle : existing.receiverTitle,
+          receiverDept: receiverDept !== undefined ? receiverDept : existing.receiverDept,
+          purpose: purpose !== undefined ? purpose : existing.purpose,
           notes: notes !== undefined ? notes : existing.notes,
+          items: itemsJson,
           logs: {
             create: {
               action: 'EDITED',
-              actor_name: authUser.name || 'Admin Farm',
-              actor_role: authUser.role || 'ADMIN_FARM',
+              actorName: authUser.name || 'Admin',
+              actorRole: authUser.role || 'ADMIN',
               notes: `Data Berita Acara ${nomorBaStr} diperbarui.`,
             },
           },
         },
         include: {
           production: true,
-          created_by: { select: { id: true, name: true, email: true } },
-          logs: { orderBy: { created_at: 'asc' } },
+          createdBy: { select: { id: true, name: true, email: true } },
+          logs: { orderBy: { createdAt: 'asc' } },
         },
       });
     } catch (e) {
+      console.error('prisma.beritaAcara.update error:', e);
       updated = {
         ...existing,
+        type: type || existing.type,
         date: date || existing.date,
-        shift: shift || existing.shift,
-        farm_location: farmLocation || existing.farm_location || existing.farmLocation,
-        animal_type: animalType || existing.animal_type || existing.animalType,
-        unit: unit || existing.unit,
-        total_produksi: totProd,
-        penggunaan_pedet: pedetVol,
-        afkir: afkirVol,
-        lain_lain: lainVol,
-        diserahterimakan: diserahVol,
-        penerima_name: penerimaName || existing.penerima_name || existing.penerimaName,
-        penyerah_name: penyerahName || existing.penyerah_name || existing.penyerahName,
+        location: location || farmLocation || existing.location,
         notes: notes !== undefined ? notes : existing.notes,
-        updated_at: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
     }
 
@@ -256,13 +231,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: true, data: formatted, message: 'Berita Acara berhasil diperbarui.' });
   } catch (error) {
     console.error('PUT /api/berita-acara/[id] error:', error);
-    const fallbackUpdated = formatBaItem({
-      id,
-      nomor_ba: 'BA-20260819-001',
-      status: body?.status || 'DRAFT',
-      updated_at: new Date().toISOString(),
-    });
-    return NextResponse.json({ success: true, data: fallbackUpdated, message: 'Berita Acara berhasil diperbarui.' });
+    return NextResponse.json({ success: false, message: 'Gagal memperbarui Berita Acara' }, { status: 500 });
   }
 }
 
@@ -276,7 +245,7 @@ export async function DELETE(request, { params }) {
     const { id } = params;
     const existing = await prisma.beritaAcara.findUnique({ where: { id } }).catch(() => null);
 
-    if (existing && existing.status !== 'DRAFT' && authUser.role !== 'SUPERADMIN') {
+    if (existing && existing.status !== 'DRAFT' && authUser.role !== 'SUPERADMIN' && authUser.role !== 'ADMIN_PENGEMASAN') {
       return NextResponse.json(
         { success: false, message: 'Hanya dokumen berstatus DRAFT yang dapat dihapus.' },
         { status: 403 }
@@ -293,7 +262,7 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('DELETE /api/berita-acara/[id] error:', error);
     if (global.__inMemoryBaList) {
-      global.__inMemoryBaList = global.__inMemoryBaList.filter((i) => i.id !== id);
+      global.__inMemoryBaList = global.__inMemoryBaList.filter((i) => i.id !== params.id);
     }
     return NextResponse.json({ success: true, message: 'Berita Acara berhasil dihapus.' });
   }

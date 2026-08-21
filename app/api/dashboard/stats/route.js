@@ -16,21 +16,11 @@ export async function GET(request) {
     }
 
     const now = new Date();
-    const utcStartOfToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
-    const utcEndOfToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999));
-    const localStartOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const localEndOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-    const startOfToday = utcStartOfToday < localStartOfToday ? utcStartOfToday : localStartOfToday;
-    const endOfToday = utcEndOfToday > localEndOfToday ? utcEndOfToday : localEndOfToday;
-
-    const utcStartOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0));
-    const utcEndOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999));
-    const localStartOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    const localEndOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-    const startOfMonth = utcStartOfMonth < localStartOfMonth ? utcStartOfMonth : localStartOfMonth;
-    const endOfMonth = utcEndOfMonth > localEndOfMonth ? utcEndOfMonth : localEndOfMonth;
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     // Get categories for SEGAR vs OLAHAN
     const segarCategories = await prisma.milkCategory.findMany({ where: { product_type: 'SEGAR' }, orderBy: { name: 'asc' } });
@@ -183,60 +173,60 @@ export async function GET(request) {
     // Recent items
     const recentSegarRaw = await prisma.milkProduction.findMany({
       take: 8,
-      where: { product_type: 'SEGAR' },
+      where: { productType: 'SEGAR' },
       orderBy: { date: 'desc' },
-      include: { category: true, created_by: { select: { name: true } } },
+      include: { category: true, createdBy: { select: { name: true } } },
     });
     const recentSegarProductions = recentSegarRaw.map((item) => ({
       ...item,
-      grossVolumeLiters: item.gross_volume_liters ?? item.grossVolumeLiters,
-      pedetVolumeLiters: item.pedet_volume_liters ?? item.pedetVolumeLiters,
-      afkirVolumeLiters: item.afkir_volume_liters ?? item.afkirVolumeLiters,
-      rawVolumeLiters: item.raw_volume_liters ?? item.rawVolumeLiters,
-      farmOrigin: item.farm_origin || item.farmOrigin,
-      animalType: item.animal_type || item.animalType,
-      createdBy: item.created_by || item.createdBy,
+      grossVolumeLiters: item.grossVolumeLiters || item.rawVolumeLiters || 0,
+      pedetVolumeLiters: item.pedetVolumeLiters || 0,
+      afkirVolumeLiters: item.afkirVolumeLiters || 0,
+      rawVolumeLiters: item.rawVolumeLiters || 0,
+      farmOrigin: item.farmOrigin || 'Manggala',
+      animalType: item.animalType || 'SAPI',
+      createdBy: item.createdBy,
     }));
 
     const recentOlahanRaw = await prisma.milkProduction.findMany({
       take: 8,
-      where: { product_type: 'OLAHAN' },
+      where: { productType: 'OLAHAN' },
       orderBy: { date: 'desc' },
-      include: { category: true, created_by: { select: { name: true } } },
+      include: { category: true, createdBy: { select: { name: true } } },
     });
     const recentOlahanProductions = recentOlahanRaw.map((item) => ({
       ...item,
-      grossVolumeLiters: item.gross_volume_liters ?? item.grossVolumeLiters,
-      pedetVolumeLiters: item.pedet_volume_liters ?? item.pedetVolumeLiters,
-      afkirVolumeLiters: item.afkir_volume_liters ?? item.afkirVolumeLiters,
-      rawVolumeLiters: item.raw_volume_liters ?? item.rawVolumeLiters,
-      farmOrigin: item.farm_origin || item.farmOrigin,
-      animalType: item.animal_type || item.animalType,
-      createdBy: item.created_by || item.createdBy,
+      grossVolumeLiters: item.grossVolumeLiters || item.rawVolumeLiters || 0,
+      pedetVolumeLiters: item.pedetVolumeLiters || 0,
+      afkirVolumeLiters: item.afkirVolumeLiters || 0,
+      rawVolumeLiters: item.rawVolumeLiters || 0,
+      farmOrigin: item.farmOrigin || 'Manggala',
+      animalType: item.animalType || 'SAPI',
+      createdBy: item.createdBy,
     }));
 
     const recentSegarOutflowsRaw = await prisma.milkOutflow.findMany({
       take: 5,
-      where: { product_type: 'SEGAR' },
+      where: { productType: 'SEGAR' },
       orderBy: { date: 'desc' },
-      include: { category: true, created_by: { select: { name: true } } },
+      include: { category: true, createdBy: { select: { name: true } } },
     });
     const recentSegarOutflows = recentSegarOutflowsRaw.map((item) => ({
       ...item,
-      animalType: item.animal_type || item.animalType,
-      createdBy: item.created_by || item.createdBy,
+      animalType: item.animalType || 'SAPI',
+      createdBy: item.createdBy,
     }));
 
     const recentOlahanOutflowsRaw = await prisma.milkOutflow.findMany({
       take: 5,
-      where: { product_type: 'OLAHAN' },
+      where: { productType: 'OLAHAN' },
       orderBy: { date: 'desc' },
-      include: { category: true, created_by: { select: { name: true } } },
+      include: { category: true, createdBy: { select: { name: true } } },
     });
     const recentOlahanOutflows = recentOlahanOutflowsRaw.map((item) => ({
       ...item,
-      animalType: item.animal_type || item.animalType,
-      createdBy: item.created_by || item.createdBy,
+      animalType: item.animalType || 'SAPI',
+      createdBy: item.createdBy,
     }));
 
     // Superadmin overall summary
@@ -365,7 +355,7 @@ export async function GET(request) {
       keteranganPenjualan: item.keterangan_penjualan || item.keteranganPenjualan,
     }));
 
-    // Today Packaging Aggregates for Admin Farm (Total, Sapi, Kambing)
+    // Today Packaging Aggregates for Admin Farm
     const todayPackagingAgg = await prisma.milkPackaging.aggregate({
       where: { date: { gte: startOfToday, lte: endOfToday } },
       _sum: { botol_qty: true, cup_qty: true, plastik_bantal_qty: true, total_packaged_qty: true, processed_liters: true },
@@ -397,7 +387,7 @@ export async function GET(request) {
       return `${yyyy}-${mm}-${dd}`;
     };
 
-    // Chart Data Generation (7 Days & Current Month 1-30/31)
+    // Chart Data Generation (7 Days & Current Month)
     const getDailyChartData = async (daysCount) => {
       const chartData = [];
       const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -538,13 +528,19 @@ export async function GET(request) {
     const recentPackagingsRaw = await prisma.milkPackaging.findMany({
       take: 5,
       orderBy: { date: 'desc' },
-      include: { category: true, created_by: { select: { name: true } } },
-    });
+      include: { category: true, createdBy: { select: { name: true } } },
+    }).catch(() => []);
     const recentPackagings = recentPackagingsRaw.map((item) => ({
       ...item,
-      animalType: item.animal_type || item.animalType,
-      createdBy: item.created_by || item.createdBy,
+      animalType: item.animalType || 'SAPI',
+      createdBy: item.createdBy,
     }));
+
+    // --- ADMIN PENGEMASAN SPECIFIC DASHBOARD STATS ---
+    const productionsAll = await prisma.milkProduction.findMany().catch(() => []);
+    const packagingsAllForSisa = await prisma.milkPackaging.findMany({
+      where: { status: { not: 'DIBATALKAN' } }
+    }).catch(() => []);
 
     // Add in-memory production items into dashboard stats totals
     let memGrossTotal = 0;
@@ -570,9 +566,337 @@ export async function GET(request) {
       }
     }
 
+    const totalRawLitersReceived = productionsAll.reduce((acc, p) => {
+      const gross = (p.rawVolumeLiters && p.rawVolumeLiters > 0) ? p.rawVolumeLiters : (p.grossVolumeLiters || 0);
+      return acc + gross;
+    }, 0);
+
+    const totalLitersProcessedInPkg = packagingsAllForSisa.reduce((acc, p) => {
+      return acc + (p.processedAmount || p.processedLiters || 0);
+    }, 0);
+
+    const sisaBahanLiters = Math.max(0, totalRawLitersReceived - totalLitersProcessedInPkg);
+
+    // 2. Stok Awal (Packaged ready stock up to start of today)
+    const packagingsUpToYesterday = await prisma.milkPackaging.aggregate({
+      where: {
+        date: { lt: startOfToday },
+        status: { not: 'DIBATALKAN' }
+      },
+      _sum: { totalPackagedQty: true }
+    });
+
+    const productionPkgUpToYesterday = await prisma.milkProduction.aggregate({
+      where: {
+        date: { lt: startOfToday }
+      },
+      _sum: { packagedQty: true }
+    });
+
+    const outflowsUpToYesterday = await prisma.milkOutflow.aggregate({
+      where: { date: { lt: startOfToday } },
+      _sum: { quantity: true }
+    });
+
+    const salesUpToYesterday = await prisma.milkSale.aggregate({
+      where: { date: { lt: startOfToday }, status: { not: 'Dibatalkan' } },
+      _sum: { quantity: true }
+    });
+
+    const totalPackagedBeforeToday = (packagingsUpToYesterday._sum.totalPackagedQty || 0) + (productionPkgUpToYesterday._sum.packagedQty || 0);
+    const totalOutflowBeforeToday = (outflowsUpToYesterday._sum.quantity || 0) + (salesUpToYesterday._sum.quantity || 0);
+    const stokAwalPcs = Math.max(0, totalPackagedBeforeToday - totalOutflowBeforeToday);
+
+    // 3. Today's Packaging & Outflow Transactions
+    const todayPackaging = await prisma.milkPackaging.aggregate({
+      where: {
+        OR: [
+          { date: { gte: startOfToday, lte: endOfToday } },
+          { createdAt: { gte: startOfToday, lte: endOfToday } }
+        ],
+        status: { not: 'DIBATALKAN' }
+      },
+      _sum: { totalPackagedQty: true }
+    });
+
+    const todayProdPackaging = await prisma.milkProduction.aggregate({
+      where: {
+        OR: [
+          { date: { gte: startOfToday, lte: endOfToday } },
+          { createdAt: { gte: startOfToday, lte: endOfToday } }
+        ]
+      },
+      _sum: { packagedQty: true }
+    });
+
+    const todayOutflows = await prisma.milkOutflow.aggregate({
+      where: {
+        OR: [
+          { date: { gte: startOfToday, lte: endOfToday } },
+          { createdAt: { gte: startOfToday, lte: endOfToday } }
+        ]
+      },
+      _sum: { quantity: true }
+    });
+
+    const todaySales = await prisma.milkSale.aggregate({
+      where: {
+        OR: [
+          { date: { gte: startOfToday, lte: endOfToday } },
+          { createdAt: { gte: startOfToday, lte: endOfToday } }
+        ],
+        status: { not: 'Dibatalkan' }
+      },
+      _sum: { quantity: true }
+    });
+
+    const hasilPengemasanHariIni = (todayPackaging._sum.totalPackagedQty || 0) + (todayProdPackaging._sum.packagedQty || 0);
+    const outflowHariIni = (todayOutflows._sum.quantity || 0) + (todaySales._sum.quantity || 0);
+
+    // 4. Stok Akhir
+    const stokAkhirPcs = Math.max(0, stokAwalPcs + hasilPengemasanHariIni - outflowHariIni);
+
+    // 5. Jumlah Stok (Overall total ready stock currently in persediaan)
+    const totalPackagedAll = await prisma.milkPackaging.aggregate({
+      where: { status: { not: 'DIBATALKAN' } },
+      _sum: { totalPackagedQty: true }
+    });
+
+    const totalProdPackagedAll = await prisma.milkProduction.aggregate({
+      _sum: { packagedQty: true }
+    });
+
+    const totalOutflowsAll = await prisma.milkOutflow.aggregate({ _sum: { quantity: true } });
+    const totalSalesAll = await prisma.milkSale.aggregate({ where: { status: { not: 'Dibatalkan' } }, _sum: { quantity: true } });
+
+    const totalPackagedQtySum = (totalPackagedAll._sum.totalPackagedQty || 0) + (totalProdPackagedAll._sum.packagedQty || 0);
+    const totalOutflowQtySum = (totalOutflowsAll._sum.quantity || 0) + (totalSalesAll._sum.quantity || 0);
+
+    const jumlahStokPcs = Math.max(0, totalPackagedQtySum - totalOutflowQtySum);
+
+    // Packaging Daily Charts (7 Days & Month)
+    const getPackagingDailyChartData = async (daysCount) => {
+      const chartData = [];
+      const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+        const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+        const pkgAgg = await prisma.milkPackaging.aggregate({
+          where: {
+            OR: [
+              { date: { gte: dStart, lte: dEnd } },
+              { createdAt: { gte: dStart, lte: dEnd } }
+            ],
+            status: { not: 'DIBATALKAN' }
+          },
+          _sum: { totalPackagedQty: true, processedAmount: true }
+        });
+
+        const prodPkgAgg = await prisma.milkProduction.aggregate({
+          where: {
+            OR: [
+              { date: { gte: dStart, lte: dEnd } },
+              { createdAt: { gte: dStart, lte: dEnd } }
+            ]
+          },
+          _sum: { packagedQty: true, rawVolumeLiters: true }
+        });
+
+        const totalPcs = (pkgAgg._sum.totalPackagedQty || 0) + (prodPkgAgg._sum.packagedQty || 0);
+        const totalLiters = (pkgAgg._sum.processedAmount || 0) + (prodPkgAgg._sum.rawVolumeLiters || 0);
+
+        const dayLabel = `${daysName[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
+
+        chartData.push({
+          label: dayLabel,
+          dayName: daysName[d.getDay()],
+          dayNum: d.getDate(),
+          monthNum: d.getMonth() + 1,
+          dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
+          formattedDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+          fullDate: d.toISOString().split('T')[0],
+          totalPackagedPcs: totalPcs,
+          stokAdded: totalPcs,
+          litersProcessed: totalLiters,
+        });
+      }
+      return chartData;
+    };
+
+    const getPackagingMonthlyChartData = async () => {
+      const chartData = [];
+      const daysName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let day = 1; day <= totalDaysInMonth; day++) {
+        const d = new Date(year, month, day);
+        const dStart = new Date(year, month, day, 0, 0, 0, 0);
+        const dEnd = new Date(year, month, day, 23, 59, 59, 999);
+
+        const pkgAgg = await prisma.milkPackaging.aggregate({
+          where: {
+            OR: [
+              { date: { gte: dStart, lte: dEnd } },
+              { createdAt: { gte: dStart, lte: dEnd } }
+            ],
+            status: { not: 'DIBATALKAN' }
+          },
+          _sum: { totalPackagedQty: true, processedAmount: true }
+        });
+
+        const prodPkgAgg = await prisma.milkProduction.aggregate({
+          where: {
+            OR: [
+              { date: { gte: dStart, lte: dEnd } },
+              { createdAt: { gte: dStart, lte: dEnd } }
+            ]
+          },
+          _sum: { packagedQty: true, rawVolumeLiters: true }
+        });
+
+        const totalPcs = (pkgAgg._sum.totalPackagedQty || 0) + (prodPkgAgg._sum.packagedQty || 0);
+        const totalLiters = (pkgAgg._sum.processedAmount || 0) + (prodPkgAgg._sum.rawVolumeLiters || 0);
+
+        const monthName = d.toLocaleDateString('id-ID', { month: 'short' });
+
+        chartData.push({
+          label: `${daysName[d.getDay()]} ${day}/${month + 1}`,
+          dayName: daysName[d.getDay()],
+          dayNum: day,
+          monthNum: month + 1,
+          dateStr: `${day}/${month + 1}`,
+          formattedDate: `${day} ${monthName}`,
+          fullDate: d.toISOString().split('T')[0],
+          totalPackagedPcs: totalPcs,
+          stokAdded: totalPcs,
+          litersProcessed: totalLiters,
+        });
+      }
+      return chartData;
+    };
+
+    const packagingChart7Days = await getPackagingDailyChartData(7);
+    const packagingChart30Days = await getPackagingMonthlyChartData();
+
+    // Combined Recent Activity Feed (Packaging, Production, Sales, Outflow, Berita Acara)
+    let rawBaList = [];
+    try {
+      if (prisma.beritaAcara) {
+        rawBaList = await prisma.beritaAcara.findMany({ take: 5, orderBy: { createdAt: 'desc' }, include: { createdBy: { select: { name: true } } } });
+      }
+    } catch (e) {}
+
+    const [rawPkgList, rawProdList, rawSalesList, rawOutList] = await Promise.all([
+      prisma.milkPackaging.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
+      prisma.milkProduction.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
+      prisma.milkSale.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
+      prisma.milkOutflow.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
+    ]);
+
+    const activityList = [];
+
+    rawPkgList.forEach((p) => {
+      activityList.push({
+        id: `pkg-${p.id}`,
+        type: 'HASIL_PENGOLAHAN',
+        title: `Hasil pengolahan ${p.productSubtype || p.productCategory}`,
+        detail: `${p.totalPackagedQty || 0} pcs diproduksi`,
+        status: p.status || 'SELESAI',
+        timestamp: p.updatedAt || p.date,
+        icon: '📦',
+        user: p.createdBy?.name || 'Admin Pengemasan',
+        raw: p,
+      });
+    });
+
+    rawProdList.forEach((pr) => {
+      activityList.push({
+        id: `prod-${pr.id}`,
+        type: 'PENGAMBILAN_SUSU',
+        title: `Pengambilan susu segar`,
+        detail: `${pr.grossVolumeLiters || pr.rawVolumeLiters || 0} Liter diterima`,
+        status: 'SELESAI',
+        timestamp: pr.updatedAt || pr.date,
+        icon: '🥛',
+        user: pr.createdBy?.name || 'Admin Pengemasan',
+        raw: pr,
+      });
+    });
+
+    rawSalesList.forEach((s) => {
+      activityList.push({
+        id: `sale-${s.id}`,
+        type: 'DISTRIBUSI',
+        title: `Distribusi Penjualan (${s.productSubtype || s.productCategory})`,
+        detail: `${s.quantity || 0} botol dikirim ke ${s.buyerName || s.buyerType || 'Pembeli'}`,
+        status: s.status || 'Berhasil',
+        timestamp: s.updatedAt || s.date,
+        icon: '🚚',
+        user: s.createdBy?.name || 'Admin Pengemasan',
+        raw: s,
+      });
+    });
+
+    rawOutList.forEach((o) => {
+      const isAfkir = (o.notes || '').toLowerCase().includes('afkir') || (o.notes || '').toLowerCase().includes('rusak');
+      activityList.push({
+        id: `out-${o.id}`,
+        type: isAfkir ? 'AFKIR' : 'HIBAH',
+        title: isAfkir ? `Produk Rusak / Afkir` : `Distribusi Hibah`,
+        detail: `${o.notes || `${o.quantity} botol dikeluarkan`}`,
+        status: 'Berhasil',
+        timestamp: o.updatedAt || o.date,
+        icon: isAfkir ? '⚠️' : '🎁',
+        user: o.createdBy?.name || 'Admin Pengemasan',
+        raw: o,
+      });
+    });
+
+    rawBaList.forEach((ba) => {
+      activityList.push({
+        id: `ba-${ba.id}`,
+        type: 'BERITA_ACARA',
+        title: `Dokumen ${ba.nomorBA}`,
+        detail: `Berita Acara ${ba.type === 'HIBAH' ? 'Hibah' : 'Pembelian'} ke ${ba.receiverName}`,
+        status: 'SELESAI',
+        timestamp: ba.createdAt || ba.date,
+        icon: '📄',
+        user: ba.createdBy?.name || 'Admin Pengemasan',
+        raw: ba,
+      });
+    });
+
+    activityList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const recentActivities = activityList.slice(0, 8);
+
+    const [recentSegarProductions, recentSegarOutflows, recentOlahanProductions, recentOlahanOutflows] = await Promise.all([
+      prisma.milkProduction.findMany({ where: { productType: 'SEGAR' }, take: 5, orderBy: { date: 'desc' }, include: { category: true } }).catch(() => []),
+      prisma.milkOutflow.findMany({ where: { productType: 'SEGAR' }, take: 5, orderBy: { date: 'desc' }, include: { category: true } }).catch(() => []),
+      prisma.milkProduction.findMany({ where: { productType: 'OLAHAN' }, take: 5, orderBy: { date: 'desc' }, include: { category: true } }).catch(() => []),
+      prisma.milkOutflow.findMany({ where: { productType: 'OLAHAN' }, take: 5, orderBy: { date: 'desc' }, include: { category: true } }).catch(() => []),
+    ]);
+
     return NextResponse.json({
       success: true,
       data: {
+        packagingStats: {
+          stokAwalPcs,
+          stokAkhirPcs,
+          sisaBahanLiters,
+          jumlahStokPcs,
+          dikemasHariIniPcs: hasilPengemasanHariIni,
+          outflowHariIni,
+          chart7Days: packagingChart7Days,
+          chart30Days: packagingChart30Days,
+          recentPackagings: rawPkgList,
+          recentActivities,
+        },
         superadmin: {
           totalAdmins,
           totalLitersProduced: (totalLitersAgg._sum.raw_volume_liters || 0) + memRawTotal,
@@ -600,26 +924,23 @@ export async function GET(request) {
           farmOriginToday: farmOriginMap,
           todaySoldFreshItems,
 
-          // Overall Packaging (Kept for backwards compatibility)
-          todayPackagedQty: todayPackagingAgg._sum.total_packaged_qty || 0,
-          todayBotolQty: todayPackagingAgg._sum.botol_qty || 0,
-          todayCupQty: todayPackagingAgg._sum.cup_qty || 0,
-          todayPlastikBantalQty: todayPackagingAgg._sum.plastik_bantal_qty || 0,
-          todayProcessedLiters: todayPackagingAgg._sum.processed_liters || 0,
+          todayPackagedQty: todayPackagingAgg._sum.total_packaged_qty || todayPackagingAgg._sum.totalPackagedQty || 0,
+          todayBotolQty: todayPackagingAgg._sum.botol_qty || todayPackagingAgg._sum.botolQty || 0,
+          todayCupQty: todayPackagingAgg._sum.cup_qty || todayPackagingAgg._sum.cupQty || 0,
+          todayPlastikBantalQty: todayPackagingAgg._sum.plastik_bantal_qty || todayPackagingAgg._sum.plastikBantalQty || 0,
+          todayProcessedLiters: todayPackagingAgg._sum.processed_liters || todayPackagingAgg._sum.processedLiters || 0,
 
-          // Sapi Packaging
-          sapiPackagedQty: sapiPackagingAgg._sum.total_packaged_qty || 0,
-          sapiBotolQty: sapiPackagingAgg._sum.botol_qty || 0,
-          sapiCupQty: sapiPackagingAgg._sum.cup_qty || 0,
-          sapiPlastikBantalQty: sapiPackagingAgg._sum.plastik_bantal_qty || 0,
-          sapiProcessedLiters: sapiPackagingAgg._sum.processed_liters || 0,
+          sapiPackagedQty: sapiPackagingAgg._sum.total_packaged_qty || sapiPackagingAgg._sum.totalPackagedQty || 0,
+          sapiBotolQty: sapiPackagingAgg._sum.botol_qty || sapiPackagingAgg._sum.botolQty || 0,
+          sapiCupQty: sapiPackagingAgg._sum.cup_qty || sapiPackagingAgg._sum.cupQty || 0,
+          sapiPlastikBantalQty: sapiPackagingAgg._sum.plastik_bantal_qty || sapiPackagingAgg._sum.plastikBantalQty || 0,
+          sapiProcessedLiters: sapiPackagingAgg._sum.processed_liters || sapiPackagingAgg._sum.processedLiters || 0,
 
-          // Kambing Packaging
-          kambingPackagedQty: kambingPackagingAgg._sum.total_packaged_qty || 0,
-          kambingBotolQty: kambingPackagingAgg._sum.botol_qty || 0,
-          kambingCupQty: kambingPackagingAgg._sum.cup_qty || 0,
-          kambingPlastikBantalQty: kambingPackagingAgg._sum.plastik_bantal_qty || 0,
-          kambingProcessedLiters: kambingPackagingAgg._sum.processed_liters || 0,
+          kambingPackagedQty: kambingPackagingAgg._sum.total_packaged_qty || kambingPackagingAgg._sum.totalPackagedQty || 0,
+          kambingBotolQty: kambingPackagingAgg._sum.botol_qty || kambingPackagingAgg._sum.botolQty || 0,
+          kambingCupQty: kambingPackagingAgg._sum.cup_qty || kambingPackagingAgg._sum.cupQty || 0,
+          kambingPlastikBantalQty: kambingPackagingAgg._sum.plastik_bantal_qty || kambingPackagingAgg._sum.plastikBantalQty || 0,
+          kambingProcessedLiters: kambingPackagingAgg._sum.processed_liters || kambingPackagingAgg._sum.processedLiters || 0,
 
           totalAccumulatedLiters: totalLitersAgg._sum.raw_volume_liters || 0,
           totalPackagedQty: totalPackagingAgg._sum.total_packaged_qty || 0,

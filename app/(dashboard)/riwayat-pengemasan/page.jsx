@@ -81,7 +81,7 @@ export default function RiwayatPengemasanPage() {
     fetchData();
   }, [filterCategory, filterStatus, filterDate]);
 
-  const canManage = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
+  const canManage = user?.role === 'ADMIN_FARM' || user?.role === 'ADMIN_PENGEMASAN' || user?.role === 'SUPERADMIN';
 
   const computedTotalPcs = formPackagingItems.reduce((acc, item) => {
     const qty = parseInt(item.quantity, 10) || 0;
