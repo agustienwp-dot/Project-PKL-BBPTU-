@@ -53,6 +53,19 @@ export function AuthProvider({ children }) {
     throw new Error(res.data.message || 'Login gagal');
   };
 
+  const register = async ({ name, email, password, role }) => {
+    const res = await api.post('/auth/register', { name, email, password, role });
+    if (res.data.success) {
+      if (res.data.token && res.data.user) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        setUser(res.data.user);
+      }
+      return res.data;
+    }
+    throw new Error(res.data.message || 'Registrasi gagal');
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -69,6 +82,7 @@ export function AuthProvider({ children }) {
         user,
         loading,
         login,
+        register,
         logout,
         isSuperAdmin,
         isAdminFarm,

@@ -17,3 +17,5 @@ yarn-error.log*
 prisma/*.db-journal
 prisma/*.db
 
+.env.local
+.env
