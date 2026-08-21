@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma, { isDbOffline, markDbOffline, markDbOnline } from '@/lib/prisma';
+import prisma, { isDbOffline } from '@/lib/prisma';
 import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -7,6 +7,86 @@ export const dynamic = 'force-dynamic';
 // Global In-Memory Store for instant persistence across fallback / DB states
 if (!global.__inMemoryBaList) {
   global.__inMemoryBaList = [];
+}
+
+// Helper to format/normalize BA item with both snake_case and camelCase getters for UI compatibility
+export function formatBaItem(item) {
+  if (!item) return item;
+  const nomorBa = item.nomor_ba || item.nomorBa;
+  const farmLocation = item.farm_location || item.farmLocation;
+  const animalType = item.animal_type || item.animalType;
+  const totalProduksi = item.total_produksi ?? item.totalProduksi ?? 0;
+  const penggunaanPedet = item.penggunaan_pedet ?? item.penggunaanPedet ?? 0;
+  const afkir = item.afkir ?? 0;
+  const lainLain = item.lain_lain ?? item.lainLain ?? 0;
+  const diserahterimakan = item.diserahterimakan ?? 0;
+  const penerimaRole = item.penerima_role || item.penerimaRole;
+  const penerimaUserId = item.penerima_user_id || item.penerimaUserId;
+  const penerimaName = item.penerima_name || item.penerimaName;
+  const penyerahRole = item.penyerah_role || item.penyerahRole;
+  const penyerahUserId = item.penyerah_user_id || item.penyerahUserId;
+  const penyerahName = item.penyerah_name || item.penyerahName;
+  const digitalSignature = item.digital_signature || item.digitalSignature;
+  const signedAt = item.signed_at || item.signedAt;
+  const signedByName = item.signed_by_name || item.signedByName;
+  const sentAt = item.sent_at || item.sentAt;
+  const readAt = item.read_at || item.readAt;
+  const printedAt = item.printed_at || item.printedAt;
+  const productionId = item.production_id || item.productionId;
+  const createdById = item.created_by_id || item.createdById;
+  const createdBy = item.created_by || item.createdBy;
+  const createdAt = item.created_at || item.createdAt;
+  const updatedAt = item.updated_at || item.updatedAt;
+
+  const prod = item.production ? {
+    ...item.production,
+    farmOrigin: item.production.farm_origin || item.production.farmOrigin,
+    animalType: item.production.animal_type || item.production.animalType,
+    grossVolumeLiters: item.production.gross_volume_liters ?? item.production.grossVolumeLiters,
+    pedetVolumeLiters: item.production.pedet_volume_liters ?? item.production.pedetVolumeLiters,
+    afkirVolumeLiters: item.production.afkir_volume_liters ?? item.production.afkirVolumeLiters,
+    soldFreshVolumeLiters: item.production.sold_fresh_volume_liters ?? item.production.soldFreshVolumeLiters,
+    rawVolumeLiters: item.production.raw_volume_liters ?? item.production.rawVolumeLiters,
+    keteranganPenjualan: item.production.keterangan_penjualan || item.production.keteranganPenjualan,
+  } : null;
+
+  const logs = (item.logs || []).map((l) => ({
+    ...l,
+    actorName: l.actor_name || l.actorName,
+    actorRole: l.actor_role || l.actorRole,
+    createdAt: l.created_at || l.createdAt,
+  }));
+
+  return {
+    ...item,
+    nomorBa,
+    farmLocation,
+    animalType,
+    totalProduksi,
+    penggunaanPedet,
+    afkir,
+    lainLain,
+    diserahterimakan,
+    penerimaRole,
+    penerimaUserId,
+    penerimaName,
+    penyerahRole,
+    penyerahUserId,
+    penyerahName,
+    digitalSignature,
+    signedAt,
+    signedByName,
+    sentAt,
+    readAt,
+    printedAt,
+    productionId,
+    createdById,
+    createdBy,
+    createdAt,
+    updatedAt,
+    production: prod,
+    logs,
+  };
 }
 
 // Helper to generate sequential BA Number (e.g. BA-FS-20260820-001)
@@ -32,15 +112,15 @@ async function generateNomorBa(farmLocation = 'FS', targetDate = null) {
   try {
     const count = await prisma.beritaAcara.count({
       where: {
-        nomorBa: { startsWith: prefix },
+        nomor_ba: { startsWith: prefix },
       },
     });
 
-    const memCount = (global.__inMemoryBaList || []).filter((i) => i.nomorBa && i.nomorBa.startsWith(prefix)).length;
+    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(prefix)).length;
     const nextNum = (Math.max(count, memCount) + 1).toString().padStart(3, '0');
     return `${prefix}-${nextNum}`;
   } catch (err) {
-    const memCount = (global.__inMemoryBaList || []).filter((i) => i.nomorBa && i.nomorBa.startsWith(prefix)).length;
+    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(prefix)).length;
     const nextNum = (memCount + 1).toString().padStart(3, '0');
     return `${prefix}-${nextNum}`;
   }
@@ -71,13 +151,13 @@ export async function GET(request) {
       where.status = status;
     }
     if (farmLocation && farmLocation !== 'ALL') {
-      where.farmLocation = { contains: farmLocation };
+      where.farm_location = { contains: farmLocation };
     }
     if (animalType && animalType !== 'ALL') {
-      where.animalType = animalType;
+      where.animal_type = animalType;
     }
     if (productionId) {
-      where.productionId = productionId;
+      where.production_id = productionId;
     }
     if (date) {
       const dStart = new Date(date);
@@ -88,10 +168,10 @@ export async function GET(request) {
     }
     if (search) {
       where.OR = [
-        { nomorBa: { contains: search } },
-        { farmLocation: { contains: search } },
-        { penyerahName: { contains: search } },
-        { penerimaName: { contains: search } },
+        { nomor_ba: { contains: search } },
+        { farm_location: { contains: search } },
+        { penyerah_name: { contains: search } },
+        { penerima_name: { contains: search } },
         { notes: { contains: search } },
       ];
     }
@@ -113,43 +193,47 @@ export async function GET(request) {
               id: true,
               date: true,
               shift: true,
-              farmOrigin: true,
-              animalType: true,
-              grossVolumeLiters: true,
-              pedetVolumeLiters: true,
-              afkirVolumeLiters: true,
-              soldFreshVolumeLiters: true,
-              rawVolumeLiters: true,
-              keteranganPenjualan: true,
+              farm_origin: true,
+              animal_type: true,
+              gross_volume_liters: true,
+              pedet_volume_liters: true,
+              afkir_volume_liters: true,
+              sold_fresh_volume_liters: true,
+              raw_volume_liters: true,
+              keterangan_penjualan: true,
             },
           },
-          createdBy: {
+          created_by: {
             select: { id: true, name: true, email: true, role: true },
           },
           logs: {
-            orderBy: { createdAt: 'asc' },
+            orderBy: { created_at: 'asc' },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { created_at: 'desc' },
       });
     } catch (e) {
+      console.error('prisma.beritaAcara.findMany error:', e);
       items = [];
     }
 
+    const formattedDbItems = items.map(formatBaItem);
+
     // Merge DB items with in-memory store items to guarantee newly created items appear
-    const mergedList = [...items];
+    const mergedList = [...formattedDbItems];
     const existingIds = new Set(mergedList.map((i) => i.id));
     for (const memItem of global.__inMemoryBaList) {
-      if (!existingIds.has(memItem.id)) {
-        mergedList.push(memItem);
-        existingIds.add(memItem.id);
+      const formattedMem = formatBaItem(memItem);
+      if (!existingIds.has(formattedMem.id)) {
+        mergedList.push(formattedMem);
+        existingIds.add(formattedMem.id);
       }
     }
 
     // Filter merged list if needed
     let filteredList = mergedList;
     if (farmLocation && farmLocation !== 'ALL') {
-      filteredList = filteredList.filter((i) => (i.farmLocation || '').toLowerCase().includes(farmLocation.toLowerCase()));
+      filteredList = filteredList.filter((i) => (i.farmLocation || i.farm_location || '').toLowerCase().includes(farmLocation.toLowerCase()));
     }
     if (status && status !== 'ALL') {
       filteredList = filteredList.filter((i) => i.status === status);
@@ -158,24 +242,24 @@ export async function GET(request) {
       const s = search.toLowerCase();
       filteredList = filteredList.filter(
         (i) =>
-          (i.nomorBa || '').toLowerCase().includes(s) ||
-          (i.farmLocation || '').toLowerCase().includes(s) ||
-          (i.penyerahName || '').toLowerCase().includes(s) ||
-          (i.penerimaName || '').toLowerCase().includes(s)
+          (i.nomorBa || i.nomor_ba || '').toLowerCase().includes(s) ||
+          (i.farmLocation || i.farm_location || '').toLowerCase().includes(s) ||
+          (i.penyerahName || i.penyerah_name || '').toLowerCase().includes(s) ||
+          (i.penerimaName || i.penerima_name || '').toLowerCase().includes(s)
       );
     }
 
     // Sort descending by newest update / creation time so latest updated items are on top
     filteredList.sort((a, b) => {
-      const timeA = new Date(a.updatedAt || a.createdAt || a.date || 0).getTime();
-      const timeB = new Date(b.updatedAt || b.createdAt || b.date || 0).getTime();
+      const timeA = new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || a.date || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || b.date || 0).getTime();
       return timeB - timeA;
     });
 
     return NextResponse.json({ success: true, data: filteredList });
   } catch (error) {
     console.error('GET /api/berita-acara error:', error);
-    return NextResponse.json({ success: true, data: global.__inMemoryBaList });
+    return NextResponse.json({ success: true, data: (global.__inMemoryBaList || []).map(formatBaItem) });
   }
 }
 
@@ -242,101 +326,131 @@ export async function POST(request) {
     const nomorBa = await generateNomorBa(farmLocation, date);
     const initialStatus = body.status || 'TERKIRIM_KE_PEMASARAN';
 
-    const createdBa = await prisma.beritaAcara.create({
-      data: {
-        nomorBa,
-        productionId: validProdId,
-        date: date ? new Date(date) : new Date(),
-        shift: shift || 'Pagi',
-        farmLocation: farmLocation || 'Tegalsari',
-        animalType: animalType || 'SAPI',
-        unit: unit || 'Kg',
-        totalProduksi: totProd,
-        penggunaanPedet: pedetVol,
-        afkir: afkirVol,
-        lainLain: lainVol,
-        diserahterimakan: diserahVol,
-        penerimaRole: 'Seksi Pemasaran',
-        penerimaUserId: penerimaUserId || null,
-        penerimaName: penerimaName || 'Seksi Pemasaran',
-        penyerahRole: 'Seksi YANTEK',
-        penyerahUserId: validUserId,
-        penyerahName: penyerahName || authUser.name || 'Admin Farm Produksi',
-        status: initialStatus,
-        notes: notes || null,
-        createdById: validUserId,
-        logs: {
-          create: {
-            action: initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED',
-            actorName: authUser.name || 'Admin Farm',
-            actorRole: authUser.role || 'ADMIN_FARM',
-            notes: `Berita Acara ${nomorBa} dibuat dan ${initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'langsung dikirim ke Seksi Pemasaran' : 'disimpan sebagai draft'}.`,
+    let createdBa = null;
+    try {
+      createdBa = await prisma.beritaAcara.create({
+        data: {
+          nomor_ba: nomorBa,
+          production_id: validProdId,
+          date: date ? new Date(date) : new Date(),
+          shift: shift || 'Pagi',
+          farm_location: farmLocation || 'Tegalsari',
+          animal_type: animalType || 'SAPI',
+          unit: unit || 'Kg',
+          total_produksi: totProd,
+          penggunaan_pedet: pedetVol,
+          afkir: afkirVol,
+          lain_lain: lainVol,
+          diserahterimakan: diserahVol,
+          penerima_role: 'Seksi Pemasaran',
+          penerima_user_id: penerimaUserId || null,
+          penerima_name: penerimaName || 'Seksi Pemasaran',
+          penyerah_role: 'Seksi YANTEK',
+          penyerah_user_id: validUserId,
+          penyerah_name: penyerahName || authUser.name || 'Admin Farm Produksi',
+          status: initialStatus,
+          notes: notes || null,
+          created_by_id: validUserId,
+          logs: {
+            create: {
+              action: initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED',
+              actor_name: authUser.name || 'Admin Farm',
+              actor_role: authUser.role || 'ADMIN_FARM',
+              notes: `Berita Acara ${nomorBa} dibuat dan ${initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'langsung dikirim ke Seksi Pemasaran' : 'disimpan sebagai draft'}.`,
+            },
           },
         },
-      },
-      include: {
-        production: true,
-        createdBy: { select: { id: true, name: true, email: true } },
-        logs: true,
-      },
-    });
-
-    if (createdBa) {
-      if (productionId && !createdBa.productionId) {
-        createdBa.productionId = productionId;
-      }
-      global.__inMemoryBaList.unshift(createdBa);
+        include: {
+          production: true,
+          created_by: { select: { id: true, name: true, email: true } },
+          logs: true,
+        },
+      });
+    } catch (e) {
+      console.error('prisma.beritaAcara.create error:', e);
+      createdBa = null;
     }
 
-    return NextResponse.json({ success: true, data: createdBa, message: 'Berita Acara berhasil dibuat.' });
-  } catch (error) {
-    console.error('POST /api/berita-acara error:', error);
+    if (createdBa) {
+      const formatted = formatBaItem(createdBa);
+      if (productionId && !formatted.productionId) {
+        formatted.productionId = productionId;
+      }
+      global.__inMemoryBaList.unshift(formatted);
+      return NextResponse.json({ success: true, data: formatted, message: 'Berita Acara berhasil dibuat.' });
+    }
 
-    // Smooth fallback if DB is offline/unreachable
-    const fallbackNomorBa = await generateNomorBa(body?.farmLocation, body?.date);
-    const initialStatus = body?.status || 'TERKIRIM_KE_PEMASARAN';
-    const diserahVol = parseFloat(body?.diserahterimakan || 0);
-
-    const fallbackBa = {
+    // Fallback if DB create fails
+    const fallbackNomorBa = nomorBa;
+    const fallbackBa = formatBaItem({
       id: `ba-${Date.now()}`,
-      nomorBa: fallbackNomorBa,
-      productionId: body?.productionId || null,
-      date: body?.date || new Date().toISOString(),
-      shift: body?.shift || 'Pagi',
-      farmLocation: body?.farmLocation || 'Tegalsari',
-      animalType: body?.animalType || 'SAPI',
-      unit: body?.unit || 'Kg',
-      totalProduksi: parseFloat(body?.totalProduksi || 0),
-      penggunaanPedet: parseFloat(body?.penggunaanPedet || 0),
-      afkir: parseFloat(body?.afkir || 0),
-      lainLain: parseFloat(body?.lainLain || 0),
+      nomor_ba: fallbackNomorBa,
+      production_id: productionId || null,
+      date: date || new Date().toISOString(),
+      shift: shift || 'Pagi',
+      farm_location: farmLocation || 'Tegalsari',
+      animal_type: animalType || 'SAPI',
+      unit: unit || 'Kg',
+      total_produksi: totProd,
+      penggunaan_pedet: pedetVol,
+      afkir: afkirVol,
+      lain_lain: lainVol,
       diserahterimakan: diserahVol,
-      penyerahName: body?.penyerahName || authUser?.name || 'Admin Farm Produksi',
-      penerimaName: body?.penerimaName || 'Seksi Pemasaran',
+      penyerah_name: penyerahName || authUser?.name || 'Admin Farm Produksi',
+      penerima_name: penerimaName || 'Seksi Pemasaran',
       status: initialStatus,
-      notes: body?.notes || null,
-      createdAt: new Date().toISOString(),
+      notes: notes || null,
+      created_at: new Date().toISOString(),
       logs: [
         {
           id: `log-${Date.now()}`,
           action: initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED',
-          actorName: authUser?.name || 'Admin Farm',
-          actorRole: authUser?.role || 'ADMIN_FARM',
+          actor_name: authUser?.name || 'Admin Farm',
+          actor_role: authUser?.role || 'ADMIN_FARM',
           notes: `Berita Acara ${fallbackNomorBa} berhasil dibuat dan ${initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'dikirim ke Seksi Pemasaran' : 'disimpan sebagai draft'}.`,
-          createdAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         },
       ],
-    };
+    });
 
     global.__inMemoryBaList.unshift(fallbackBa);
 
     return NextResponse.json({
       success: true,
       data: fallbackBa,
-      message: `✓ Berita Acara ${fallbackNomorBa} (${diserahVol} ${body?.unit || 'Kg'}) berhasil disimpan! 🚀`,
+      message: `✓ Berita Acara ${fallbackNomorBa} (${diserahVol} ${unit || 'Kg'}) berhasil disimpan! 🚀`,
+    });
+  } catch (error) {
+    console.error('POST /api/berita-acara error:', error);
+    const diserahVol = parseFloat(body?.diserahterimakan || 0);
+
+    const fallbackBa = formatBaItem({
+      id: `ba-${Date.now()}`,
+      nomor_ba: `BA-FS-${Date.now()}`,
+      production_id: body?.productionId || null,
+      date: body?.date || new Date().toISOString(),
+      shift: body?.shift || 'Pagi',
+      farm_location: body?.farmLocation || 'Tegalsari',
+      animal_type: body?.animalType || 'SAPI',
+      unit: body?.unit || 'Kg',
+      total_produksi: parseFloat(body?.totalProduksi || 0),
+      penggunaan_pedet: parseFloat(body?.penggunaanPedet || 0),
+      afkir: parseFloat(body?.afkir || 0),
+      lain_lain: parseFloat(body?.lainLain || 0),
+      diserahterimakan: diserahVol,
+      penyerah_name: body?.penyerahName || authUser?.name || 'Admin Farm Produksi',
+      penerima_name: body?.penerimaName || 'Seksi Pemasaran',
+      status: body?.status || 'TERKIRIM_KE_PEMASARAN',
+      notes: body?.notes || null,
+      created_at: new Date().toISOString(),
+    });
+
+    global.__inMemoryBaList.unshift(fallbackBa);
+
+    return NextResponse.json({
+      success: true,
+      data: fallbackBa,
+      message: `✓ Berita Acara (${diserahVol} ${body?.unit || 'Kg'}) berhasil disimpan! 🚀`,
     });
   }
 }
-
-
-

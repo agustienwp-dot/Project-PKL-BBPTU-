@@ -11,26 +11,29 @@ export async function GET(request) {
     // Fetch latest Berita Acara items
     const baList = await prisma.beritaAcara.findMany({
       take: 5,
-      orderBy: { createdAt: 'desc' },
-    });
+      orderBy: { created_at: 'desc' },
+    }).catch(() => []);
 
     // Fetch latest Production items
     const prodList = await prisma.milkProduction.findMany({
       take: 5,
-      orderBy: { createdAt: 'desc' },
-    });
+      orderBy: { created_at: 'desc' },
+    }).catch(() => []);
 
     const notifications = [];
 
     // Map Berita Acara notifications
     baList.forEach((ba) => {
-      const dateStr = new Date(ba.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const createdAtDate = ba.created_at || ba.createdAt || new Date();
+      const dateStr = new Date(createdAtDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const nomorBa = ba.nomor_ba || ba.nomorBa || '';
+      const farmLoc = ba.farm_location || ba.farmLocation || 'Farm';
       
       if (ba.status === 'TERKIRIM_KE_PEMASARAN' || ba.status === 'TELAH_DITERIMA' || ba.status === 'DIBACA_PEMASARAN' || ba.status === 'SUDAH_DITANDATANGANI') {
         notifications.push({
           id: `ba-${ba.id}`,
           title: 'Konfirmasi Admin Pemasaran',
-          desc: `Berita Acara ${ba.nomorBa} disetujui & diterima oleh Seksi Pemasaran (${ba.diserahterimakan} ${ba.unit || 'Liter'}).`,
+          desc: `Berita Acara ${nomorBa} disetujui & diterima oleh Seksi Pemasaran (${ba.diserahterimakan} ${ba.unit || 'Liter'}).`,
           time: `${dateStr} WIB`,
           type: 'pemasaran',
           isUnread: true,
@@ -40,7 +43,7 @@ export async function GET(request) {
         notifications.push({
           id: `ba-${ba.id}`,
           title: 'Berita Acara Dibuat',
-          desc: `Dokumen BAST ${ba.nomorBa} dari Farm ${ba.farmLocation} telah berhasil diterbitkan.`,
+          desc: `Dokumen BAST ${nomorBa} dari Farm ${farmLoc} telah berhasil diterbitkan.`,
           time: `${dateStr} WIB`,
           type: 'ba',
           isUnread: false,
@@ -51,12 +54,15 @@ export async function GET(request) {
 
     // Map Production notifications
     prodList.forEach((prod) => {
-      const dateStr = new Date(prod.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const createdAtDate = prod.created_at || prod.createdAt || new Date();
+      const dateStr = new Date(createdAtDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const aType = prod.animal_type || prod.animalType || 'SAPI';
+      const rawVol = prod.raw_volume_liters ?? prod.rawVolumeLiters ?? 0;
       
       notifications.push({
         id: `prod-${prod.id}`,
         title: 'Konfirmasi Admin Pengemasan',
-        desc: `Produksi Susu ${prod.animalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${prod.rawVolumeLiters} Liter Siap Olah) diterima Seksi Pengemasan & Olahan.`,
+        desc: `Produksi Susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${rawVol} Liter Siap Olah) diterima Seksi Pengemasan & Olahan.`,
         time: `${dateStr} WIB`,
         type: 'pengemasan',
         isUnread: true,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma, { isDbOffline, markDbOffline, markDbOnline } from '@/lib/prisma';
+import prisma, { isDbOffline } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,13 +30,13 @@ export async function GET(request) {
     };
 
     if (productType && productType !== 'ALL') {
-      whereProd.productType = productType;
-      whereOut.productType = productType;
+      whereProd.product_type = productType;
+      whereOut.product_type = productType;
     }
 
     if (animalType && animalType !== 'ALL') {
-      whereProd.animalType = animalType;
-      whereOut.animalType = animalType;
+      whereProd.animal_type = animalType;
+      whereOut.animal_type = animalType;
     }
 
     let monthProductions = [];
@@ -47,6 +47,7 @@ export async function GET(request) {
         orderBy: { date: 'asc' },
       });
     } catch (e) {
+      console.error('monthProductions findMany error:', e);
       monthProductions = [];
     }
 
@@ -58,6 +59,7 @@ export async function GET(request) {
         orderBy: { date: 'asc' },
       });
     } catch (e) {
+      console.error('monthOutflows findMany error:', e);
       monthOutflows = [];
     }
 
@@ -86,7 +88,8 @@ export async function GET(request) {
       if (!existingIds.has(memProd.id)) {
         const pDate = parseDateObj(memProd.date);
         if (pDate.year === year && pDate.month === month) {
-          if (!animalType || animalType === 'ALL' || memProd.animalType === animalType) {
+          const memAnimal = memProd.animal_type || memProd.animalType;
+          if (!animalType || animalType === 'ALL' || memAnimal === animalType) {
             mergedProductions.push(memProd);
             existingIds.add(memProd.id);
           }
@@ -127,20 +130,22 @@ export async function GET(request) {
     };
 
     mergedProductions.forEach((p) => {
-      const gross = parseFloat(p.grossVolumeLiters || 0) || parseFloat(p.rawVolumeLiters || 0);
-      const raw = parseFloat(p.rawVolumeLiters || 0);
-      const pedet = parseFloat(p.pedetVolumeLiters || 0);
-      const afkir = parseFloat(p.afkirVolumeLiters || 0);
-      const soldFresh = parseFloat(p.soldFreshVolumeLiters || 0);
-      const processed = parseFloat(p.processedLiters || 0) || raw;
-      const pkgQty = parseInt(p.packagedQty, 10) || Math.round(raw);
+      const gross = parseFloat(p.gross_volume_liters ?? p.grossVolumeLiters ?? p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
+      const raw = parseFloat(p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
+      const pedet = parseFloat(p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0);
+      const afkir = parseFloat(p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0);
+      const soldFresh = parseFloat(p.sold_fresh_volume_liters ?? p.soldFreshVolumeLiters ?? 0);
+      const processed = parseFloat(p.processed_liters ?? p.processedLiters ?? 0) || raw;
+      const pkgQty = parseInt(p.packaged_qty ?? p.packagedQty ?? 0, 10) || Math.round(raw);
+      const aType = p.animal_type || p.animalType;
+      const fOrigin = p.farm_origin || p.farmOrigin;
 
       totalGrossLiters += gross;
       totalPedetLiters += pedet;
       totalAfkirLiters += afkir;
       totalSoldFreshLiters += soldFresh;
       totalRawLiters += raw;
-      if (p.animalType === 'KAMBING') {
+      if (aType === 'KAMBING') {
         totalKambingRawLiters += raw;
       } else {
         totalSapiRawLiters += raw;
@@ -148,7 +153,7 @@ export async function GET(request) {
       totalProcessedLiters += processed;
       totalPackaged += pkgQty;
 
-      const fKey = normalizeFarmKey(p.farmOrigin);
+      const fKey = normalizeFarmKey(fOrigin);
       const isSore = (p.shift || '').toLowerCase().includes('sore');
       if (isSore) {
         farmsMonthlyTotal[fKey].sore += gross;
@@ -158,7 +163,7 @@ export async function GET(request) {
       farmsMonthlyTotal[fKey].total += gross;
       farmsMonthlyTotal.grandTotal += gross;
 
-      const pkg = p.packagingType || 'botol';
+      const pkg = p.packaging_type || p.packagingType || 'botol';
       if (packagingProducedTotals[pkg] !== undefined) {
         packagingProducedTotals[pkg] += pkgQty;
       } else {
@@ -170,7 +175,7 @@ export async function GET(request) {
       const q = parseFloat(o.quantity || 0);
       totalOutflow += q;
 
-      const pkg = o.packagingType || 'botol';
+      const pkg = o.packaging_type || o.packagingType || 'botol';
       if (packagingOutflowTotals[pkg] !== undefined) {
         packagingOutflowTotals[pkg] += q;
       } else {
@@ -214,20 +219,22 @@ export async function GET(request) {
       const dayPkgOut = { botol: 0, cup: 0, pack: 0 };
 
       dayProds.forEach((p) => {
-        const gross = parseFloat(p.grossVolumeLiters || 0) || parseFloat(p.rawVolumeLiters || 0);
-        const raw = parseFloat(p.rawVolumeLiters || 0);
-        const pedet = parseFloat(p.pedetVolumeLiters || 0);
-        const afkir = parseFloat(p.afkirVolumeLiters || 0);
-        const soldFresh = parseFloat(p.soldFreshVolumeLiters || 0);
-        const processed = parseFloat(p.processedLiters || 0) || raw;
-        const pkgQty = parseInt(p.packagedQty, 10) || Math.round(raw);
+        const gross = parseFloat(p.gross_volume_liters ?? p.grossVolumeLiters ?? p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
+        const raw = parseFloat(p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
+        const pedet = parseFloat(p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0);
+        const afkir = parseFloat(p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0);
+        const soldFresh = parseFloat(p.sold_fresh_volume_liters ?? p.soldFreshVolumeLiters ?? 0);
+        const processed = parseFloat(p.processed_liters ?? p.processedLiters ?? 0) || raw;
+        const pkgQty = parseInt(p.packaged_qty ?? p.packagedQty ?? 0, 10) || Math.round(raw);
+        const aType = p.animal_type || p.animalType;
+        const fOrigin = p.farm_origin || p.farmOrigin;
 
         dayGrossLiters += gross;
         dayPedetLiters += pedet;
         dayAfkirLiters += afkir;
         daySoldFreshLiters += soldFresh;
         dayRawLiters += raw;
-        if (p.animalType === 'KAMBING') {
+        if (aType === 'KAMBING') {
           dayKambingRawLiters += raw;
         } else {
           daySapiRawLiters += raw;
@@ -235,7 +242,7 @@ export async function GET(request) {
         dayProcessedLiters += processed;
         dayPackaged += pkgQty;
 
-        const fKey = normalizeFarmKey(p.farmOrigin);
+        const fKey = normalizeFarmKey(fOrigin);
         const isSore = (p.shift || '').toLowerCase().includes('sore');
         if (isSore) {
           farmsBreakdown[fKey].sore += gross;
@@ -245,14 +252,14 @@ export async function GET(request) {
         farmsBreakdown[fKey].total += gross;
         farmsBreakdown.grandTotal += gross;
 
-        const pkg = p.packagingType || 'botol';
+        const pkg = p.packaging_type || p.packagingType || 'botol';
         dayPkgProd[pkg] = (dayPkgProd[pkg] || 0) + pkgQty;
       });
 
       dayOuts.forEach((o) => {
         const q = parseFloat(o.quantity || 0);
         dayOutflow += q;
-        const pkg = o.packagingType || 'botol';
+        const pkg = o.packaging_type || o.packagingType || 'botol';
         dayPkgOut[pkg] = (dayPkgOut[pkg] || 0) + q;
       });
 
@@ -265,6 +272,7 @@ export async function GET(request) {
         soldFreshVolumeLiters: daySoldFreshLiters,
         rawVolumeLiters: dayRawLiters,
         sapiRawLiters: daySapiRawLiters,
+        keteranganPenjualan: null,
         kambingRawLiters: dayKambingRawLiters,
         processedLiters: dayProcessedLiters,
         packagedQty: dayPackaged,
