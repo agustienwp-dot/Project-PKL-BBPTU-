@@ -182,6 +182,13 @@ export default function ProduksiPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (formDate > todayStr) {
+      setToast({ type: 'error', message: 'Tanggal produksi tidak boleh lebih dari tanggal sekarang' });
+      return;
+    }
+
     const grossVal = parseFloat(formGrossLiters);
 
     if (isNaN(grossVal) || grossVal < 0) {
@@ -570,6 +577,7 @@ export default function ProduksiPage() {
                   <input
                     type="date"
                     value={formDate}
+                    max={new Date().toLocaleDateString('en-CA')}
                     onChange={(e) => setFormDate(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
                     required

@@ -36,9 +36,9 @@ export async function GET(request) {
     const date = searchParams.get('date');
 
     const where = {};
-    if (categoryId) where.categoryId = categoryId;
-    if (productType) where.productType = productType;
-    if (animalType) where.animalType = animalType;
+    if (categoryId) where.category_id = categoryId;
+    if (productType) where.product_type = productType;
+    if (animalType) where.animal_type = animalType;
     if (date) {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -56,7 +56,7 @@ export async function GET(request) {
         where,
         include: {
           category: true,
-          createdBy: {
+          created_by: {
             select: { id: true, name: true, email: true },
           },
         },
@@ -97,6 +97,15 @@ export async function POST(request) {
 
     const { date, shift, farmOrigin, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes, fotoTimbangan, nomorSegel } = await request.json();
 
+    if (date) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const inputDateStr = typeof date === 'string' ? date.split('T')[0] : '';
+      if (inputDateStr && inputDateStr > todayStr) {
+        return NextResponse.json({ success: false, message: 'Tanggal produksi tidak boleh lebih dari tanggal sekarang' }, { status: 400 });
+      }
+    }
+
     let validCatId = categoryId;
     let category = null;
 
@@ -106,7 +115,7 @@ export async function POST(request) {
 
     if (!category) {
       category = await prisma.milkCategory.findFirst({
-        where: animalType ? { animalType } : {},
+        where: animalType ? { animal_type: animalType } : {},
       }).catch(() => null);
       if (category) {
         validCatId = category.id;
@@ -120,9 +129,9 @@ export async function POST(request) {
       }
     }
 
-    const pType = productType || category?.productType || 'SEGAR';
-    const aType = animalType || category?.animalType || 'SAPI';
-    const pkgType = packagingType || category?.defaultPackaging || 'botol';
+    const pType = productType || category?.product_type || 'SEGAR';
+    const aType = animalType || category?.animal_type || 'SAPI';
+    const pkgType = packagingType || category?.default_packaging || 'botol';
 
     const grossVal = grossVolumeLiters !== undefined ? parseFloat(grossVolumeLiters) || 0 : (parseFloat(rawVolumeLiters) || 0);
     const pedetVal = parseFloat(pedetVolumeLiters) || 0;
@@ -165,32 +174,32 @@ export async function POST(request) {
         data: {
           date: date ? new Date(date) : new Date(),
           shift: shift || 'Pagi',
-          farmOrigin: farmOrigin || 'Manggala',
-          categoryId: validCatId,
-          productType: pType,
-          animalType: aType,
-          packagingType: pkgType,
-          grossVolumeLiters: grossVal,
-          pedetVolumeLiters: pedetVal,
-          afkirVolumeLiters: afkirVal,
-          soldFreshVolumeLiters: soldFreshVal,
-          keteranganPenjualan: keteranganPenjualan || null,
-          usageType: summaryUsage || null,
-          usageVolumeLiters: totalUsage,
-          rawVolumeLiters: netVolume,
-          processedLiters: finalProcessed,
-          packagedQty: parseInt(packagedQty, 10) || Math.round(netVolume),
-          fotoTimbangan: fotoTimbangan || null,
-          nomorSegel: nomorSegel || null,
-          kodeTransfer: generatedKodeTransfer,
-          pinVerifikasi: generatedPin,
-          handoverStatus: netVolume > 0 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
+          farm_origin: farmOrigin || 'Manggala',
+          category_id: validCatId,
+          product_type: pType,
+          animal_type: aType,
+          packaging_type: pkgType,
+          gross_volume_liters: grossVal,
+          pedet_volume_liters: pedetVal,
+          afkir_volume_liters: afkirVal,
+          sold_fresh_volume_liters: soldFreshVal,
+          keterangan_penjualan: keteranganPenjualan || null,
+          usage_type: summaryUsage || null,
+          usage_volume_liters: totalUsage,
+          raw_volume_liters: netVolume,
+          processed_liters: finalProcessed,
+          packaged_qty: parseInt(packagedQty, 10) || Math.round(netVolume),
+          foto_timbangan: fotoTimbangan || null,
+          nomor_segel: nomorSegel || null,
+          kode_transfer: generatedKodeTransfer,
+          pin_verifikasi: generatedPin,
+          handover_status: netVolume > 0 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
           notes: notes || '',
-          createdById: validUserId,
+          created_by_id: validUserId,
         },
         include: {
           category: true,
-          createdBy: {
+          created_by: {
             select: { id: true, name: true, email: true },
           },
         },

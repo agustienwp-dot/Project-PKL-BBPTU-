@@ -288,7 +288,7 @@ export async function POST(request) {
     return NextResponse.json({ success: true, data: createdBa, message: 'Berita Acara berhasil dibuat.' });
   } catch (error) {
     console.error('POST /api/berita-acara error:', error);
-    
+
     // Smooth fallback if DB is offline/unreachable
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randNum = Math.floor(100 + Math.random() * 899);

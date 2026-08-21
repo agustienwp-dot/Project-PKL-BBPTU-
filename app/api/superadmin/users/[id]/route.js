@@ -23,7 +23,7 @@ export async function PUT(request, { params }) {
       name: name !== undefined ? name : existingUser.name,
       email: email !== undefined ? email : existingUser.email,
       role: role !== undefined ? role : existingUser.role,
-      isActive: isActive !== undefined ? isActive : existingUser.isActive,
+      is_active: isActive !== undefined ? isActive : existingUser.is_active,
     };
 
     if (password && password.trim() !== '') {
@@ -38,17 +38,17 @@ export async function PUT(request, { params }) {
         name: true,
         email: true,
         role: true,
-        isActive: true,
-        updatedAt: true,
+        is_active: true,
+        updated_at: true,
       },
     });
 
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
-        userEmail: authUser.email,
+        user_id: authUser.id,
+        user_email: authUser.email,
         action: 'UPDATE_USER',
-        details: `Mengubah data akun ${updatedUser.email} (Role: ${updatedUser.role}, Active: ${updatedUser.isActive})`,
+        details: `Mengubah data akun ${updatedUser.email} (Role: ${updatedUser.role}, Active: ${updatedUser.is_active})`,
       },
     });
 
@@ -86,8 +86,8 @@ export async function DELETE(request, { params }) {
 
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
-        userEmail: authUser.email,
+        user_id: authUser.id,
+        user_email: authUser.email,
         action: 'DELETE_USER',
         details: `Menghapus akun ${existingUser.email} (${existingUser.name})`,
       },

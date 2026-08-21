@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
       where: { id },
       include: {
         category: true,
-        createdBy: { select: { id: true, name: true, email: true } },
+        created_by: { select: { id: true, name: true, email: true } },
       },
     });
 
@@ -65,20 +65,29 @@ export async function PUT(request, { params }) {
     const { id } = params;
     const { date, shift, farmOrigin, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
 
+    if (date) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const inputDateStr = typeof date === 'string' ? date.split('T')[0] : '';
+      if (inputDateStr && inputDateStr > todayStr) {
+        return NextResponse.json({ success: false, message: 'Tanggal produksi tidak boleh lebih dari tanggal sekarang' }, { status: 400 });
+      }
+    }
+
     const existing = await prisma.milkProduction.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ success: false, message: 'Data produksi tidak ditemukan' }, { status: 404 });
     }
 
-    const grossVal = grossVolumeLiters !== undefined ? parseFloat(grossVolumeLiters) || 0 : (existing.grossVolumeLiters || existing.rawVolumeLiters || 0);
-    const pedetVal = pedetVolumeLiters !== undefined ? parseFloat(pedetVolumeLiters) || 0 : (existing.pedetVolumeLiters || 0);
-    const afkirVal = afkirVolumeLiters !== undefined ? parseFloat(afkirVolumeLiters) || 0 : (existing.afkirVolumeLiters || 0);
-    const soldFreshVal = soldFreshVolumeLiters !== undefined ? parseFloat(soldFreshVolumeLiters) || 0 : (existing.soldFreshVolumeLiters || 0);
+    const grossVal = grossVolumeLiters !== undefined ? parseFloat(grossVolumeLiters) || 0 : (existing.gross_volume_liters || existing.raw_volume_liters || 0);
+    const pedetVal = pedetVolumeLiters !== undefined ? parseFloat(pedetVolumeLiters) || 0 : (existing.pedet_volume_liters || 0);
+    const afkirVal = afkirVolumeLiters !== undefined ? parseFloat(afkirVolumeLiters) || 0 : (existing.afkir_volume_liters || 0);
+    const soldFreshVal = soldFreshVolumeLiters !== undefined ? parseFloat(soldFreshVolumeLiters) || 0 : (existing.sold_fresh_volume_liters || 0);
     const totalUsage = pedetVal + afkirVal + soldFreshVal;
 
-    const aType = animalType || existing.animalType || 'SAPI';
+    const aType = animalType || existing.animal_type || 'SAPI';
     const feedLabel = aType === 'KAMBING' ? 'Cempe' : 'Pedet';
-    let summaryUsage = usageType !== undefined ? usageType : existing.usageType;
+    let summaryUsage = usageType !== undefined ? usageType : existing.usage_type;
     if (!summaryUsage || usageType === undefined) {
       const parts = [];
       if (pedetVal > 0) parts.push(`${feedLabel}: ${pedetVal}L`);
@@ -95,26 +104,26 @@ export async function PUT(request, { params }) {
       data: {
         date: date ? new Date(date) : existing.date,
         shift: shift !== undefined ? shift : existing.shift,
-        farmOrigin: farmOrigin !== undefined ? farmOrigin : existing.farmOrigin,
-        categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
-        productType: productType !== undefined ? productType : existing.productType,
-        animalType: animalType !== undefined ? animalType : existing.animalType,
-        packagingType: packagingType !== undefined ? packagingType : existing.packagingType,
-        grossVolumeLiters: grossVal,
-        pedetVolumeLiters: pedetVal,
-        afkirVolumeLiters: afkirVal,
-        soldFreshVolumeLiters: soldFreshVal,
-        keteranganPenjualan: keteranganPenjualan !== undefined ? keteranganPenjualan : existing.keteranganPenjualan,
-        usageType: summaryUsage || null,
-        usageVolumeLiters: totalUsage,
-        rawVolumeLiters: netVolume,
-        processedLiters: finalProcessed,
-        packagedQty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
+        farm_origin: farmOrigin !== undefined ? farmOrigin : existing.farm_origin,
+        category_id: categoryId !== undefined ? categoryId : existing.category_id,
+        product_type: productType !== undefined ? productType : existing.product_type,
+        animal_type: animalType !== undefined ? animalType : existing.animal_type,
+        packaging_type: packagingType !== undefined ? packagingType : existing.packaging_type,
+        gross_volume_liters: grossVal,
+        pedet_volume_liters: pedetVal,
+        afkir_volume_liters: afkirVal,
+        sold_fresh_volume_liters: soldFreshVal,
+        keterangan_penjualan: keteranganPenjualan !== undefined ? keteranganPenjualan : existing.keterangan_penjualan,
+        usage_type: summaryUsage || null,
+        usage_volume_liters: totalUsage,
+        raw_volume_liters: netVolume,
+        processed_liters: finalProcessed,
+        packaged_qty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
         notes: notes !== undefined ? notes : existing.notes,
       },
       include: {
         category: true,
-        createdBy: {
+        created_by: {
           select: { id: true, name: true, email: true },
         },
       },
