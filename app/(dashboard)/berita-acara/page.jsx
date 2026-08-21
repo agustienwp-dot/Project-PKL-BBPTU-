@@ -37,6 +37,8 @@ function BeritaAcaraContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const createForId = searchParams.get('createForId');
+  const previewForProductionId = searchParams.get('previewForProductionId');
+  const previewBaId = searchParams.get('previewBaId');
 
   const [loading, setLoading] = useState(true);
   const [baList, setBaList] = useState([]);
@@ -104,6 +106,30 @@ function BeritaAcaraContent() {
     return () => clearInterval(interval);
   }, [filterFarm, filterStatus, filterDate, searchQuery]);
 
+  const hasOpenedPreviewRef = React.useRef(false);
+
+  const closePreviewModal = () => {
+    setPreviewBa(null);
+    if (previewForProductionId || previewBaId) {
+      router.replace('/berita-acara');
+    }
+  };
+
+  // Auto-open BAST Preview modal if redirected from Produksi page with preview query
+  useEffect(() => {
+    if ((previewForProductionId || previewBaId) && baList.length > 0 && !hasOpenedPreviewRef.current) {
+      const match = baList.find(
+        (b) =>
+          (previewForProductionId && b.productionId === previewForProductionId) ||
+          (previewBaId && b.id === previewBaId)
+      );
+      if (match) {
+        hasOpenedPreviewRef.current = true;
+        setPreviewBa(match);
+      }
+    }
+  }, [previewForProductionId, previewBaId, baList]);
+
   // Load production record prefill if redirected from Produksi page
   useEffect(() => {
     if (createForId) {
@@ -149,13 +175,13 @@ function BeritaAcaraContent() {
             setFormFarmLocation(rawFarm);
             setFormAnimalType(p.animalType || 'SAPI');
 
-            const gross = p.grossVolumeLiters > 0 ? p.grossVolumeLiters : (p.rawVolumeLiters > 0 ? p.rawVolumeLiters : 0);
+            const gross = p.grossVolumeLiters > 0 ? p.grossVolumeLiters : (p.rawVolumeLiters + (p.pedetVolumeLiters || 0) + (p.afkirVolumeLiters || 0));
             setFormTotalProduksi(gross > 0 ? gross.toString() : '');
             setFormPenggunaanPedet((p.pedetVolumeLiters || 0).toString());
             setFormAfkir((p.afkirVolumeLiters || 0).toString());
             setFormLainLain('0');
 
-            const diserah = p.soldFreshVolumeLiters > 0 ? p.soldFreshVolumeLiters : (p.rawVolumeLiters > 0 ? p.rawVolumeLiters : gross);
+            const diserah = p.rawVolumeLiters > 0 ? p.rawVolumeLiters : Math.max(0, gross - (p.pedetVolumeLiters || 0) - (p.afkirVolumeLiters || 0));
             setFormDiserahterimakan(diserah > 0 ? diserah.toString() : '');
             setShowFormModal(true);
           }
@@ -167,6 +193,22 @@ function BeritaAcaraContent() {
       loadProductionPrefill();
     }
   }, [createForId, searchParams]);
+
+  // Auto-calculate Jumlah Diserahterimakan (Total Produksi - Pedet - Afkir - Lain-lain)
+  useEffect(() => {
+    if (!showFormModal) return;
+    const tot = parseFloat(formTotalProduksi);
+    if (!isNaN(tot) && tot >= 0) {
+      const pedet = parseFloat(formPenggunaanPedet) || 0;
+      const afk = parseFloat(formAfkir) || 0;
+      const lain = parseFloat(formLainLain) || 0;
+      const net = Math.max(0, tot - pedet - afk - lain);
+      const cleanNet = Math.round(net * 100) / 100;
+      setFormDiserahterimakan(cleanNet.toString());
+    } else if (formTotalProduksi === '') {
+      setFormDiserahterimakan('');
+    }
+  }, [formTotalProduksi, formPenggunaanPedet, formAfkir, formLainLain, showFormModal]);
 
   const openCreateModal = () => {
     setEditingBa(null);
@@ -268,12 +310,15 @@ function BeritaAcaraContent() {
           const createdItem = res.data.data;
           setToast({
             type: 'success',
-            message: res.data.message || `✓ Berita Acara ${createdItem?.nomorBa || ''} (${diserah} ${formUnit}) berhasil disimpan! 🚀`,
+            message: res.data.message || `✓ Berita Acara ${createdItem?.nomorBa || ''} (${diserah} ${formUnit}) berhasil disimpan!`,
           });
+          if (createdItem) {
+            setPreviewBa(createdItem);
+          }
         }
       }
       setShowFormModal(false);
-      fetchBaList();
+      fetchBaList(true);
     } catch (err) {
       console.error('Error saving Berita Acara:', err);
       setToast({ type: 'error', message: err.response?.data?.message || 'Gagal menyimpan Berita Acara.' });
@@ -377,12 +422,19 @@ function BeritaAcaraContent() {
     }
   };
 
-  const getStatusBadge = (ba) => {
+  const getStatusBadge = (ba, isHeader = false) => {
     const status = typeof ba === 'string' ? ba : ba?.status;
+    const baseClass = isHeader
+      ? 'px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 shadow-sm'
+      : 'px-3 py-1 rounded-full font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1';
+
     if (status === 'DRAFT') {
-      return <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-extrabold text-xs border border-slate-300 whitespace-nowrap">📝 DRAFT</span>;
+      return <span className={`${baseClass} bg-slate-100 text-slate-700 border border-slate-300`}>📝 Draft</span>;
     }
-    return <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs border border-emerald-300 whitespace-nowrap">✅ Selesai</span>;
+    if (status === 'TERKIRIM_KE_PEMASARAN' || status === 'MENUNGGU_TANDA_TANGAN' || status === 'MENUNGGU_KONFIRMASI' || status === 'MENUNGGU') {
+      return <span className={`${baseClass} bg-slate-100 text-slate-700 border border-slate-300`}>⏳ Menunggu</span>;
+    }
+    return <span className={`${baseClass} bg-emerald-100 text-emerald-800 border border-emerald-300`}>✅ Selesai</span>;
   };
 
   // Remove blocking full-page loading spinner for instant render
@@ -402,20 +454,11 @@ function BeritaAcaraContent() {
               <span>Berita Acara Serah Terima</span>
             </h1>
             <p className="text-xs text-slate-500 font-semibold mt-0.5">
-              Dokumen Resmi Serah Terima Susu Layak Konsumsi dari Seksi Pemeliharaan ke Seksi Pemasaran
+              Dokumen Resmi Serah Terima Susu Layak Konsumsi dari Seksi Pelayanan Teknik ke Seksi Pemasaran
             </p>
           </div>
         </div>
 
-        {isFarmAdmin && (
-          <button
-            onClick={openCreateModal}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Buat Berita Acara Baru</span>
-          </button>
-        )}
       </div>
 
       {/* SEARCH & FILTERS (Hidden on Print) */}
@@ -453,10 +496,8 @@ function BeritaAcaraContent() {
           >
             <option value="ALL">Semua Status</option>
             <option value="DRAFT">DRAFT</option>
-            <option value="SUDAH_DITANDATANGANI">Sudah Ditandatangani</option>
-            <option value="TERKIRIM_KE_PEMASARAN">Terkirim ke Pemasaran</option>
-            <option value="DIBACA_PEMASARAN">Dibaca Pemasaran</option>
-            <option value="DICETAK">Dicetak</option>
+            <option value="TERKIRIM_KE_PEMASARAN">Menunggu Konfirmasi</option>
+            <option value="DIBACA_PEMASARAN">Selesai (Dikonfirmasi)</option>
           </select>
 
           {/* Date Filter */}
@@ -488,8 +529,22 @@ function BeritaAcaraContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-              {baList.length > 0 ? (
-                baList.map((ba, idx) => {
+              {(() => {
+                const sortedBaList = [...baList].sort((a, b) => {
+                  const timeA = new Date(a.updatedAt || a.createdAt || a.date || 0).getTime();
+                  const timeB = new Date(b.updatedAt || b.createdAt || b.date || 0).getTime();
+                  return timeB - timeA;
+                });
+                if (sortedBaList.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={9} className="p-12 text-center text-slate-400 font-semibold">
+                        Belum ada dokumen Berita Acara yang ditemukan.
+                      </td>
+                    </tr>
+                  );
+                }
+                return sortedBaList.map((ba, idx) => {
                   const dateStr = new Date(ba.date).toLocaleDateString('id-ID', {
                     day: 'numeric',
                     month: 'short',
@@ -527,10 +582,6 @@ function BeritaAcaraContent() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-
-
-
-
 
                           {/* SEND TO PEMASARAN BUTTON */}
                           {isFarmAdmin && ['DRAFT', 'SUDAH_DITANDATANGANI', 'MENUNGGU_TANDA_TANGAN'].includes(ba.status) && (
@@ -581,14 +632,8 @@ function BeritaAcaraContent() {
                       </td>
                     </tr>
                   );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={9} className="p-12 text-center text-slate-400 font-semibold">
-                    Belum ada dokumen Berita Acara yang ditemukan.
-                  </td>
-                </tr>
-              )}
+                });
+              })()}
             </tbody>
           </table>
         </div>
@@ -607,7 +652,7 @@ function BeritaAcaraContent() {
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="space-y-6">
+            <form onSubmit={(e) => handleFormSubmit(e, 'KIRIM')} className="space-y-6">
               {/* SECTION 1: INFORMASI DOKUMEN */}
               <div className="space-y-3">
                 <span className="font-extrabold text-xs text-emerald-800 uppercase tracking-wider block border-b border-slate-100 pb-1">
@@ -679,8 +724,9 @@ function BeritaAcaraContent() {
                       min="0"
                       value={formTotalProduksi}
                       onChange={(e) => setFormTotalProduksi(e.target.value)}
+                      onWheel={(e) => e.target.blur()}
                       placeholder="Contoh: 700"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       required
                     />
                   </div>
@@ -693,8 +739,9 @@ function BeritaAcaraContent() {
                       min="0"
                       value={formPenggunaanPedet}
                       onChange={(e) => setFormPenggunaanPedet(e.target.value)}
+                      onWheel={(e) => e.target.blur()}
                       placeholder="0"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
@@ -706,8 +753,9 @@ function BeritaAcaraContent() {
                       min="0"
                       value={formAfkir}
                       onChange={(e) => setFormAfkir(e.target.value)}
+                      onWheel={(e) => e.target.blur()}
                       placeholder="0"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
@@ -719,8 +767,9 @@ function BeritaAcaraContent() {
                       min="0"
                       value={formLainLain}
                       onChange={(e) => setFormLainLain(e.target.value)}
+                      onWheel={(e) => e.target.blur()}
                       placeholder="0"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
@@ -734,8 +783,9 @@ function BeritaAcaraContent() {
                       min="0"
                       value={formDiserahterimakan}
                       onChange={(e) => setFormDiserahterimakan(e.target.value)}
-                      placeholder="Contoh: 683.7"
-                      className="w-full px-3.5 py-2 rounded-xl border border-emerald-300 text-sm font-black text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      onWheel={(e) => e.target.blur()}
+                      placeholder="Otomatis terhitung"
+                      className="w-full px-3.5 py-2 rounded-xl border border-emerald-300 text-sm font-black text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       required
                     />
                   </div>
@@ -797,14 +847,14 @@ function BeritaAcaraContent() {
                   onClick={(e) => handleFormSubmit(e, 'DRAFT')}
                   className="px-4 py-2.5 bg-slate-200 text-slate-800 rounded-xl text-xs font-bold hover:bg-slate-300"
                 >
-                  Simpan Draft 💾
+                  Simpan Draft
                 </button>
                 <button
                   type="button"
                   onClick={(e) => handleFormSubmit(e, 'KIRIM')}
-                  className="px-6 py-2.5 bg-[#1E3F20] text-white rounded-xl text-xs font-black hover:bg-[#16331a] shadow-md flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-[#1E3F20] text-white rounded-xl text-xs font-black hover:bg-[#16331a] shadow-md cursor-pointer"
                 >
-                  <span>Simpan & Kirim ke Pemasaran 🚀</span>
+                  Simpan & Kirim ke Pemasaran
                 </button>
               </div>
             </form>
@@ -819,9 +869,10 @@ function BeritaAcaraContent() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 print:hidden">
               <div className="flex items-center gap-2">
                 <span className="font-black text-slate-900 text-base">📄 Preview Berita Acara Resmi</span>
-                {getStatusBadge(previewBa.status)}
               </div>
               <div className="flex items-center gap-2">
+                {getStatusBadge(previewBa.status, true)}
+
                 {isFarmAdmin && ['DRAFT', 'MENUNGGU_TANDA_TANGAN'].includes(previewBa.status) && (
                   <button
                     type="button"
@@ -842,18 +893,7 @@ function BeritaAcaraContent() {
                     className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-bold shadow transition-colors"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Kirim ke Pemasaran 🚀</span>
-                  </button>
-                )}
-
-                {previewBa.status === 'TERKIRIM_KE_PEMASARAN' && (
-                  <button
-                    type="button"
-                    onClick={() => handleConfirmPemasaran(previewBa)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl text-xs font-bold shadow transition-colors"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Konfirmasi Penerimaan Pemasaran 🤝</span>
+                    <span>Kirim ke Pemasaran</span>
                   </button>
                 )}
 
@@ -866,7 +906,7 @@ function BeritaAcaraContent() {
                   <span>Cetak / Download PDF</span>
                 </button>
 
-                <button onClick={() => setPreviewBa(null)} className="text-slate-400 hover:text-slate-600 font-bold text-xl ml-2">
+                <button onClick={closePreviewModal} className="text-slate-400 hover:text-slate-600 font-bold text-xl ml-2">
                   ✕
                 </button>
               </div>
@@ -879,7 +919,7 @@ function BeritaAcaraContent() {
 
             <div className="flex justify-between items-center text-xs text-slate-500 font-medium pt-2 border-t border-slate-100 print:hidden">
               <span>Nomor Dokumen: <strong className="font-mono text-slate-900">{previewBa.nomorBa}</strong></span>
-              <button onClick={() => setPreviewBa(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">
+              <button onClick={closePreviewModal} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">
                 Tutup Preview
               </button>
             </div>

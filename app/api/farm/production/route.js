@@ -5,22 +5,7 @@ import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 if (!global.__inMemoryProductionList) {
-  global.__inMemoryProductionList = [
-    {
-      id: 'prod-fallback-1',
-      date: new Date().toISOString(),
-      shift: 'Sore',
-      farmOrigin: 'Limpakuwus',
-      animalType: 'SAPI',
-      grossVolumeLiters: 8000,
-      pedetVolumeLiters: 120,
-      afkirVolumeLiters: 90,
-      soldFreshVolumeLiters: 20,
-      rawVolumeLiters: 7770,
-      notes: '',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  global.__inMemoryProductionList = [];
 }
 
 export async function GET(request) {
@@ -75,6 +60,8 @@ export async function GET(request) {
         existingIds.add(memProd.id);
       }
     }
+
+    mergedList.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
 
     let filtered = mergedList;
     if (animalType) {
@@ -136,8 +123,8 @@ export async function POST(request) {
     const grossVal = grossVolumeLiters !== undefined ? parseFloat(grossVolumeLiters) || 0 : (parseFloat(rawVolumeLiters) || 0);
     const pedetVal = parseFloat(pedetVolumeLiters) || 0;
     const afkirVal = parseFloat(afkirVolumeLiters) || 0;
-    const soldFreshVal = parseFloat(soldFreshVolumeLiters) || 0;
-    const totalUsage = pedetVal + afkirVal + soldFreshVal;
+    const soldFreshVal = 0;
+    const totalUsage = pedetVal + afkirVal;
 
     const feedLabel = aType === 'KAMBING' ? 'Cempe' : 'Pedet';
     let summaryUsage = usageType || '';
@@ -145,7 +132,6 @@ export async function POST(request) {
       const parts = [];
       if (pedetVal > 0) parts.push(`${feedLabel}: ${pedetVal}L`);
       if (afkirVal > 0) parts.push(`Afkir: ${afkirVal}L`);
-      if (soldFreshVal > 0) parts.push(`Dijual Langsung: ${soldFreshVal}L`);
       summaryUsage = parts.join(', ');
     }
 
@@ -232,48 +218,9 @@ export async function POST(request) {
     // Unshift to in-memory production store
     global.__inMemoryProductionList.unshift(production);
 
-    // Auto-create corresponding Berita Acara entry in global.__inMemoryBaList
-    if (global.__inMemoryBaList) {
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const randNum = Math.floor(100 + Math.random() * 899);
-      const nomorBa = `BA-${dateStr}-${randNum}`;
-      const diserah = soldFreshVal > 0 ? soldFreshVal : netVolume;
-      const autoBa = {
-        id: `ba-auto-${production.id}`,
-        nomorBa,
-        productionId: production.id,
-        date: production.date || new Date().toISOString(),
-        shift: production.shift || 'Pagi',
-        farmLocation: production.farmOrigin || 'Tegalsari',
-        animalType: production.animalType || 'SAPI',
-        unit: 'Kg',
-        totalProduksi: grossVal,
-        penggunaanPedet: pedetVal,
-        afkir: afkirVal,
-        lainLain: 0,
-        diserahterimakan: diserah,
-        penyerahName: authUser.name || 'Admin Farm Produksi',
-        penerimaName: 'Seksi Pemasaran',
-        status: 'TERKIRIM_KE_PEMASARAN',
-        notes: notes || 'Otomatis dibuat dari Laporan Produksi Susu Harian',
-        createdAt: new Date().toISOString(),
-        logs: [
-          {
-            id: `log-${Date.now()}`,
-            action: 'SENT',
-            actorName: authUser.name || 'Admin Farm',
-            actorRole: authUser.role || 'ADMIN_FARM',
-            notes: `Berita Acara ${nomorBa} otomatis dibuat dari hasil perah (${diserah} Kg) dan dikirim ke Pemasaran.`,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      };
-      global.__inMemoryBaList.unshift(autoBa);
-    }
-
     return NextResponse.json({
       success: true,
-      message: `Produksi susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} berhasil disimpan & Berita Acara dibuat!`,
+      message: `Produksi susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} berhasil disimpan!`,
       data: production,
     });
   } catch (error) {

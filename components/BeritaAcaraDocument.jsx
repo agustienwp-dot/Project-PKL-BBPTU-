@@ -39,7 +39,7 @@ export default function BeritaAcaraDocument({ ba }) {
           SUSU LAYAK KONSUMSI
         </h2>
         <p className="text-xs md:text-sm font-medium text-slate-800">
-          Dari Seksi Pemeliharaan ke Seksi Pemasaran
+          Dari Seksi Pelayanan Teknik ke Seksi Pemasaran
         </p>
       </div>
 

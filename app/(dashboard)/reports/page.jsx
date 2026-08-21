@@ -55,8 +55,8 @@ export default function ReportsPage() {
 
   const exportToExcelMatrix = () => {
     if (!reportData) return;
-    const animalLabel = animalType === 'KAMBING' ? 'SUSU KAMBING' : animalType === 'ALL' ? 'SUSU SAPI & KAMBING' : 'SUSU SAPI';
-    const titleText = `LAPORAN ${animalLabel} BBPTU HPT BATURRADEN`;
+    const animalLabel = animalType === 'KAMBING' ? 'KAMBING' : animalType === 'ALL' ? 'SAPI & KAMBING' : 'SAPI';
+    const titleText = `SERAH TERIMA SUSU MURNI ${animalLabel} BBPTU HPT BATURRADEN`;
     const periodText = `BULAN: ${monthNames[month - 1].toUpperCase()} ${year}`;
 
     let tableHTML = `
@@ -64,7 +64,7 @@ export default function ReportsPage() {
       <head><meta charset="UTF-8"></head>
       <body>
         <h2 style="text-align:center;">${titleText}</h2>
-        <h3 style="text-align:center;">DARI SEKSI PEMELIHARAAN TEKNIK - TAHUN ${year}</h3>
+        <h3 style="text-align:center;">DARI SEKSI PELAYANAN TEKNIK KE SEKSI PEMASARAN - TAHUN ${year}</h3>
         <h4 style="text-align:center;">${periodText}</h4>
         <table border="1" style="border-collapse:collapse; text-align:center;">
           <thead>
@@ -186,13 +186,11 @@ export default function ReportsPage() {
 
       {/* Filter Section (Hidden on print) */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 print:hidden">
-        {/* Animal Type Dropdown Filter */}
         <select
           value={animalType}
           onChange={(e) => setAnimalType(e.target.value)}
           className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
         >
-          <option value="ALL">Semua Ternak (Sapi & Kambing)</option>
           <option value="SAPI">Susu Sapi</option>
           <option value="KAMBING">Susu Kambing</option>
         </select>
@@ -225,10 +223,10 @@ export default function ReportsPage() {
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0">
         <div className="text-center space-y-1.5 border-b border-slate-200 pb-4 print:border-black">
           <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-wide print:text-black">
-            LAPORAN SUSU MURNI {animalType === 'KAMBING' ? 'KAMBING' : animalType === 'ALL' ? 'SAPI & KAMBING' : 'SAPI'} BBPTU HPT BATURRADEN
+            SERAH TERIMA SUSU MURNI {animalType === 'KAMBING' ? 'KAMBING' : animalType === 'ALL' ? 'SAPI & KAMBING' : 'SAPI'} BBPTU HPT BATURRADEN
           </h2>
           <h3 className="text-sm md:text-base font-bold text-slate-700 uppercase tracking-wide print:text-black">
-            DARI SEKSI PEMELIHARAAN TEKNIK
+            DARI SEKSI PELAYANAN TEKNIK KE SEKSI PEMASARAN
           </h3>
           <p className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-widest pt-1 print:text-black">
             TAHUN {year}
