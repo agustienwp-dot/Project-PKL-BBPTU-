@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: false, message: 'Data pengemasan tidak ditemukan' }, { status: 404 });
     }
 
+    const validUserId = await resolveValidUserId(authUser);
+
     // ACTION: SEND TO PEMASARAN
     if (action === 'SEND') {
       if (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN') {
@@ -34,23 +36,23 @@ export async function PUT(request, { params }) {
         where: { id },
         data: {
           status: 'MENUNGGU_PENERIMAAN',
-          sentAt: new Date(),
-          sentById: authUser.id,
-          sentByName: authUser.name || authUser.email,
-          quantitySent: existing.totalPackagedQty,
+          sent_at: new Date(),
+          sent_by_id: validUserId,
+          sent_by_name: authUser.name || authUser.email,
+          quantity_sent: existing.total_packaged_qty,
         },
         include: {
           category: true,
-          createdBy: { select: { id: true, name: true, email: true } },
+          created_by: { select: { id: true, name: true, email: true } },
         },
       });
 
       await prisma.systemLog.create({
         data: {
-          userId: authUser.id,
-          userEmail: authUser.email,
+          user_id: validUserId,
+          user_email: authUser.email,
           action: 'SEND_PACKAGING',
-          details: `Mengirim pengemasan ID ${id} (${existing.totalPackagedQty} pcs) ke Admin Pemasaran`,
+          details: `Mengirim pengemasan ID ${id} (${existing.total_packaged_qty} pcs) ke Admin Pemasaran`,
         },
       });
 
@@ -72,7 +74,7 @@ export async function PUT(request, { params }) {
       }
 
       const { quantityReceived, condition, receptionNotes } = body;
-      const qRec = quantityReceived !== undefined ? parseInt(quantityReceived, 10) || 0 : existing.totalPackagedQty;
+      const qRec = quantityReceived !== undefined ? parseInt(quantityReceived, 10) || 0 : existing.total_packaged_qty;
 
       if (qRec < 0) {
         return NextResponse.json({ success: false, message: 'Jumlah diterima tidak boleh bernilai negatif' }, { status: 400 });
@@ -82,22 +84,22 @@ export async function PUT(request, { params }) {
         where: { id },
         data: {
           status: 'DITERIMA',
-          receivedAt: new Date(),
-          receivedById: authUser.id,
-          receivedByName: authUser.name || authUser.email,
-          quantityReceived: qRec,
+          received_at: new Date(),
+          received_by_id: validUserId,
+          received_by_name: authUser.name || authUser.email,
+          quantity_received: qRec,
           condition: condition || 'Sesuai',
-          receptionNotes: receptionNotes || '',
+          reception_notes: receptionNotes || '',
         },
         include: {
           category: true,
-          createdBy: { select: { id: true, name: true, email: true } },
+          created_by: { select: { id: true, name: true, email: true } },
         },
       });
 
       await prisma.systemLog.create({
         data: {
-          userId: authUser.id,
+          userId: validUserId,
           userEmail: authUser.email,
           action: 'RECEIVE_PACKAGING',
           details: `Admin Pemasaran mengonfirmasi penerimaan ID ${id}: Diterima ${qRec} pcs (Kondisi: ${condition || 'Sesuai'})`,
@@ -123,18 +125,18 @@ export async function PUT(request, { params }) {
         where: { id },
         data: {
           status: 'PERLU_KOREKSI',
-          receptionNotes: receptionNotes || 'Permintaan koreksi data pengemasan dari Admin Pemasaran',
+          reception_notes: receptionNotes || 'Permintaan koreksi data pengemasan dari Admin Pemasaran',
         },
         include: {
           category: true,
-          createdBy: { select: { id: true, name: true, email: true } },
+          created_by: { select: { id: true, name: true, email: true } },
         },
       });
 
       await prisma.systemLog.create({
         data: {
-          userId: authUser.id,
-          userEmail: authUser.email,
+          user_id: validUserId,
+          user_email: authUser.email,
           action: 'REJECT_PACKAGING',
           details: `Admin Pemasaran meminta koreksi data pengemasan ID ${id}: ${receptionNotes || '-'}`,
         },
@@ -175,14 +177,14 @@ export async function PUT(request, { params }) {
       notes,
     } = body;
 
-    const pCategory = productCategory !== undefined ? productCategory : (existing.productCategory || 'Susu');
-    const pSubtype = productSubtype !== undefined ? productSubtype : existing.productSubtype;
-    const pOrigin = origin !== undefined ? origin : (existing.origin || (existing.animalType === 'KAMBING' ? 'Kambing' : 'Sapi'));
+    const pCategory = productCategory !== undefined ? productCategory : (existing.product_category || 'Susu');
+    const pSubtype = productSubtype !== undefined ? productSubtype : existing.product_subtype;
+    const pOrigin = origin !== undefined ? origin : (existing.origin || (existing.animal_type === 'KAMBING' ? 'Kambing' : 'Sapi'));
     const aType = pOrigin.toUpperCase() === 'KAMBING' ? 'KAMBING' : 'SAPI';
     const pVariant = variant !== undefined ? variant : (existing.variant || 'Original');
 
-    const pAmount = processedAmount !== undefined ? parseFloat(processedAmount) || 0 : (processedLiters !== undefined ? parseFloat(processedLiters) || 0 : existing.processedAmount || existing.processedLiters || 0);
-    const pUnit = processedUnit !== undefined ? processedUnit : (existing.processedUnit || (pCategory === 'Keju' ? 'Kg' : 'Liter'));
+    const pAmount = processedAmount !== undefined ? parseFloat(processedAmount) || 0 : (processedLiters !== undefined ? parseFloat(processedLiters) || 0 : existing.processed_amount || existing.processed_liters || 0);
+    const pUnit = processedUnit !== undefined ? processedUnit : (existing.processed_unit || (pCategory === 'Keju' ? 'Kg' : 'Liter'));
 
     if (pAmount < 0) {
       return NextResponse.json({ success: false, message: 'Jumlah bahan diproses tidak boleh bernilai negatif' }, { status: 400 });
@@ -190,11 +192,11 @@ export async function PUT(request, { params }) {
 
     let itemsList = Array.isArray(packagingItems) ? packagingItems : null;
     let totalPackagedQty = 0;
-    let bQty = botolQty !== undefined ? parseInt(botolQty, 10) || 0 : existing.botolQty;
-    let cQty = cupQty !== undefined ? parseInt(cupQty, 10) || 0 : existing.cupQty;
-    let pQty = plastikBantalQty !== undefined ? parseInt(plastikBantalQty, 10) || 0 : existing.plastikBantalQty;
-    let primaryPkgType = existing.packagingType;
-    let primaryPkgSize = existing.packageSize;
+    let bQty = botolQty !== undefined ? parseInt(botolQty, 10) || 0 : existing.botol_qty;
+    let cQty = cupQty !== undefined ? parseInt(cupQty, 10) || 0 : existing.cup_qty;
+    let pQty = plastikBantalQty !== undefined ? parseInt(plastikBantalQty, 10) || 0 : existing.plastik_bantal_qty;
+    let primaryPkgType = existing.packaging_type;
+    let primaryPkgSize = existing.package_size;
 
     if (itemsList) {
       totalPackagedQty = itemsList.reduce((sum, i) => sum + (parseInt(i.quantity, 10) || 0), 0);
@@ -206,36 +208,36 @@ export async function PUT(request, { params }) {
       pQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('bantal')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
     } else {
       totalPackagedQty = bQty + cQty + pQty;
-      itemsList = existing.packagingDetails ? JSON.parse(existing.packagingDetails) : [];
+      itemsList = existing.packaging_details ? JSON.parse(existing.packaging_details) : [];
     }
 
     const updated = await prisma.milkPackaging.update({
       where: { id },
       data: {
         date: date ? new Date(date) : existing.date,
-        productCategory: pCategory,
-        productSubtype: pSubtype,
+        product_category: pCategory,
+        product_subtype: pSubtype,
         origin: pOrigin,
         variant: pVariant,
-        animalType: aType,
-        categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
-        processedAmount: pAmount,
-        processedUnit: pUnit,
-        processedLiters: pUnit === 'Liter' ? pAmount : existing.processedLiters,
-        packagingDetails: JSON.stringify(itemsList),
-        packagingType: primaryPkgType,
-        packageSize: primaryPkgSize,
-        botolQty: bQty,
-        cupQty: cQty,
-        plastikBantalQty: pQty,
-        totalPackagedQty,
-        quantitySent: totalPackagedQty,
+        animal_type: aType,
+        category_id: categoryId !== undefined ? categoryId : existing.category_id,
+        processed_amount: pAmount,
+        processed_unit: pUnit,
+        processed_liters: pUnit === 'Liter' ? pAmount : existing.processed_liters,
+        packaging_details: JSON.stringify(itemsList),
+        packaging_type: primaryPkgType,
+        package_size: primaryPkgSize,
+        botol_qty: bQty,
+        cup_qty: cQty,
+        plastik_bantal_qty: pQty,
+        total_packaged_qty: totalPackagedQty,
+        quantity_sent: totalPackagedQty,
         status: existing.status === 'PERLU_KOREKSI' ? 'DRAFT' : existing.status,
         notes: notes !== undefined ? notes : existing.notes,
       },
       include: {
         category: true,
-        createdBy: {
+        created_by: {
           select: { id: true, name: true, email: true },
         },
       },
@@ -243,8 +245,8 @@ export async function PUT(request, { params }) {
 
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
-        userEmail: authUser.email,
+        user_id: validUserId,
+        user_email: authUser.email,
         action: 'UPDATE_PACKAGING',
         details: `Memperbarui data pengemasan ID ${id}: Total ${totalPackagedQty} pcs`,
       },
@@ -281,10 +283,11 @@ export async function DELETE(request, { params }) {
 
     await prisma.milkPackaging.delete({ where: { id } });
 
+    const validUserId = await resolveValidUserId(authUser);
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
-        userEmail: authUser.email,
+        user_id: validUserId,
+        user_email: authUser.email,
         action: 'DELETE_PACKAGING',
         details: `Menghapus data pengemasan ID ${id}`,
       },
@@ -299,3 +302,4 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
   }
 }
+

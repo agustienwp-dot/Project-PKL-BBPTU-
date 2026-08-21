@@ -39,19 +39,20 @@ function isRouteAllowed(role, pathname) {
   if (pathname === '/dashboard' || pathname === '/') return true;
   if (pathname.startsWith('/profil')) return true;
   if (pathname.startsWith('/reports')) return true;
+  if (pathname.startsWith('/berita-acara')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_FARM') {
-    const allowed = ['/dashboard', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/dashboard', '/produksi', '/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/dashboard', '/pemasaran', '/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -119,6 +120,7 @@ export default function DashboardLayout({ children }) {
       return [
         { label: 'Dashboard Main', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
+        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
         { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
         { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
         { label: 'Penjualan Produk', path: '/pemasaran/penjualan', icon: ShoppingCart },
@@ -131,10 +133,8 @@ export default function DashboardLayout({ children }) {
       return [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Produksi Susu', path: '/produksi', icon: Milk },
-        { label: 'Pengemasan', path: '/pengemasan', icon: Package },
-        { label: 'Riwayat Produksi', path: '/riwayat-produksi', icon: History },
-        { label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
-        { label: 'Laporan Produksi', path: '/reports', icon: FileText },
+        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
+        { label: 'Laporan', path: '/reports', icon: FileText },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -142,6 +142,7 @@ export default function DashboardLayout({ children }) {
     if (role === 'ADMIN_PEMASARAN') {
       return [
         { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: LayoutDashboard },
+        { label: 'Berita Acara Masuk', path: '/berita-acara', icon: ClipboardList },
         { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
         { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
         { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
@@ -153,6 +154,7 @@ export default function DashboardLayout({ children }) {
     // Default fallback navigation
     return [
       { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
       { label: 'Laporan', path: '/reports', icon: FileText },
       { label: 'Profil', path: '/profil', icon: User }
     ];
@@ -256,23 +258,6 @@ export default function DashboardLayout({ children }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#F5F5F0]">
-        {/* Desktop Header */}
-        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="h-3 w-3 rounded-full bg-[#1E3F20] animate-ping"></span>
-            <h1 className="text-sm font-black text-[#1E3F20] tracking-wide">
-              SISTEM MANAGEMENT STOK SUSU — Susu Segar & Susu Olahan
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#F5F5F0] px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-[#1E3F20]">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>{user?.email}</span>
-            </div>
-          </div>
-        </header>
-
         {/* Content Viewport / Protected Access View */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {isAllowed ? (

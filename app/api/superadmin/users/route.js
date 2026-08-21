@@ -17,11 +17,11 @@ export async function GET(request) {
         name: true,
         email: true,
         role: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+        is_active: true,
+        created_at: true,
+        updated_at: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
     });
 
     return NextResponse.json({ success: true, data: users });
@@ -57,23 +57,23 @@ export async function POST(request) {
         email,
         password: hashedPassword,
         role,
-        isActive: true,
+        is_active: true,
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        isActive: true,
-        createdAt: true,
+        is_active: true,
+        created_at: true,
       },
     });
 
     // Log action
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
-        userEmail: authUser.email,
+        user_id: authUser.id,
+        user_email: authUser.email,
         action: 'CREATE_USER',
         details: `Membuat akun baru ${email} dengan role ${role}`,
       },

@@ -18,47 +18,48 @@ model Admin {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("ADMIN_FARM") // SUPERADMIN, ADMIN_FARM, ADMIN_PEMASARAN
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       String   @default("ADMIN_FARM") // SUPERADMIN, ADMIN_FARM, ADMIN_PEMASARAN
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  logs        SystemLog[]
-  productions MilkProduction[]
-  packagings  MilkPackaging[]
-  outflows    MilkOutflow[]
-  sales       MilkSale[]
+  logs         SystemLog[]
+  productions  MilkProduction[]
+  packagings   MilkPackaging[]
+  outflows     MilkOutflow[]
+  sales        MilkSale[]
+  beritaAcaras BeritaAcara[]
 
   @@map("users")
 }
 
 model SystemLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userEmail String
-  action    String
-  level     String   @default("INFO") // INFO, WARN, ERROR
-  details   String?
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  user_id    String?
+  user       User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user_email String
+  action     String
+  level      String   @default("INFO") // INFO, WARN, ERROR
+  details    String?
+  created_at DateTime @default(now())
 
   @@map("system_logs")
 }
 
 model MilkCategory {
-  id               String   @id @default(uuid())
-  name             String   @unique // e.g. Susu Murni Segar, Susu Olahan Cokelat, Yogurt, Keju
-  code             String   @unique // e.g. SEGAR_MURNI, OLAHAN_COKELAT, YOGURT
-  productType      String   @default("SEGAR") // "SEGAR" or "OLAHAN"
-  animalType       String   @default("SAPI") // "SAPI" or "KAMBING"
-  defaultPackaging String   @default("botol") // "cup", "pack", "botol", "liter"
-  description      String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(uuid())
+  name              String   @unique // e.g. Susu Murni Segar, Susu Olahan Cokelat, Yogurt, Keju
+  code              String   @unique // e.g. SEGAR_MURNI, OLAHAN_COKELAT, YOGURT
+  product_type      String   @default("SEGAR") // "SEGAR" or "OLAHAN"
+  animal_type       String   @default("SAPI") // "SAPI" or "KAMBING"
+  default_packaging String   @default("botol") // "cup", "pack", "botol", "liter"
+  description       String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   productions MilkProduction[]
   packagings  MilkPackaging[]
@@ -68,106 +69,185 @@ model MilkCategory {
 }
 
 model MilkProduction {
-  id              String   @id @default(uuid())
-  date            DateTime @default(now())
-  categoryId      String
-  category        MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  productType     String   @default("SEGAR") // "SEGAR" or "OLAHAN"
-  animalType      String   @default("SAPI") // "SAPI" or "KAMBING"
-  packagingType   String   @default("botol") // "cup", "pack", "botol", "liter"
-  grossVolumeLiters Float    @default(0) // Produksi susu (Gross Liter)
-  pedetVolumeLiters Float    @default(0) // Susu untuk Pedet (Sapi) / Cempe (Kambing) (Liter)
-  afkirVolumeLiters Float    @default(0) // Susu Afkir / Rusak (Liter)
-  usageType       String?  // Ringkasan kegunaan / catatan alokasi
-  usageVolumeLiters Float  @default(0) // Total potongan volume (pedet + afkir)
-  rawVolumeLiters Float    @default(0) // Hasil akhir yang masuk ke KPI / Pemasaran (gross - pedet - afkir)
-  processedLiters Float    @default(0) // Input jumlah susu yang diproses/dikemas (liter)
-  packagedQty     Int      @default(0) // Input jumlah produk setelah dikemas (botol/cup/pack)
-  status          String   @default("SELESAI") // "SELESAI"
-  notes           String?
-  createdById     String?
-  createdBy       User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  date                    DateTime @default(now())
+  shift                   String   @default("Pagi") // "Pagi" or "Sore"
+  farm_origin             String   @default("Manggala") // "Manggala", "Limpakuwus", "Tegal Sari", "Eduwisata"
+  category_id             String
+  category                MilkCategory @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  product_type            String   @default("SEGAR") // "SEGAR" or "OLAHAN"
+  animal_type             String   @default("SAPI") // "SAPI" or "KAMBING"
+  packaging_type          String   @default("botol") // "cup", "pack", "botol", "liter"
+  gross_volume_liters     Float    @default(0) // Produksi susu (Gross Liter)
+  pedet_volume_liters     Float    @default(0) // Susu untuk Pedet (Sapi) / Cempe (Kambing) (Liter)
+  afkir_volume_liters     Float    @default(0) // Susu Afkir / Rusak (Liter)
+  sold_fresh_volume_liters Float   @default(0) // Susu Dijual Langsung Pasca Perah (Liter)
+  keterangan_penjualan   String?  // Catatan/Keterangan Pembeli
+  usage_type              String?  // Ringkasan kegunaan / catatan alokasi
+  usage_volume_liters     Float    @default(0) // Total potongan volume (pedet + afkir + dijual segar)
+  raw_volume_liters       Float    @default(0) // Susu siap olah (gross - pedet - afkir - dijual segar)
+  processed_liters        Float    @default(0) // Input jumlah susu yang diproses/dikemas (liter)
+  packaged_qty            Int      @default(0) // Input jumlah produk setelah dikemas (botol/cup/pack)
+  status                  String   @default("SELESAI") // "SELESAI"
+  notes                   String?
+
+  // Anti-Cheat & Verification Handshake fields
+  kode_transfer          String?  @unique
+  foto_timbangan         String?  @db.LongText
+  nomor_segel            String?
+  pin_verifikasi         String?
+  handover_status        String   @default("MENUNGGU_VERIFIKASI") // "MENUNGGU_VERIFIKASI", "DITERIMA", "ADA_SELISIH"
+  received_volume_liters Float?
+
+  created_by_id     String?
+  created_by        User?    @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  beritaAcaras    BeritaAcara[]
 
   @@map("milk_productions")
 }
 
 model MilkPackaging {
-  id               String   @id @default(uuid())
-  date             DateTime @default(now())
-  productCategory  String   @default("Susu") // "Susu", "Yogurt", "Keju"
-  productSubtype   String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa"
-  origin           String   @default("Sapi") // "Sapi", "Kambing"
-  variant          String?  // "Original", "Cokelat", "Stroberi", "Melon", "Vanilla", "Keju Fresh", "Keju Olahan", dll.
-  animalType       String   @default("SAPI") // "SAPI" or "KAMBING" (compat)
-  categoryId       String?
-  category         MilkCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  processedAmount  Float    @default(0) // Jumlah liter/kg yang diproses
-  processedUnit    String   @default("Liter") // "Liter" or "Kg"
-  processedLiters  Float    @default(0) // Quantified in liters for compat
-  packagingDetails String?  @db.Text // JSON string: [{ packagingType, size, quantity }]
-  packagingType    String?  // Main packaging type e.g. "Botol", "Cup"
-  packageSize      String?  // Main package size e.g. "250 ml", "100 gram"
-  botolQty         Int      @default(0) // Jumlah pcs botol (compat)
-  cupQty           Int      @default(0) // Jumlah pcs cup (compat)
-  plastikBantalQty Int      @default(0) // Jumlah pcs plastik bantal (compat)
-  totalPackagedQty Int      @default(0) // Total pcs produk jadi
-  status           String   @default("DRAFT") // "DRAFT", "MENUNGGU_PENERIMAAN", "DITERIMA", "PERLU_KOREKSI"
-  sentAt           DateTime?
-  sentById         String?
-  sentByName       String?
-  receivedAt       DateTime?
-  receivedById     String?
-  receivedByName   String?
-  quantitySent     Int      @default(0) // Total pcs dikirim Farm
-  quantityReceived Int      @default(0) // Total pcs dikonfirmasi Pemasaran
-  condition        String?  // "Sesuai", "Ada Selisih", "Ada Kerusakan"
-  receptionNotes   String?  @db.Text
-  notes            String?
-  createdById      String?
-  createdBy        User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  date               DateTime @default(now())
+  product_category   String   @default("Susu") // "Susu", "Yogurt", "Keju"
+  product_subtype    String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa"
+  origin             String   @default("Sapi") // "Sapi", "Kambing"
+  variant            String?  // "Original", "Cokelat", "Stroberi", "Melon", "Vanilla", "Keju Fresh", "Keju Olahan", dll.
+  animal_type        String   @default("SAPI") // "SAPI" or "KAMBING" (compat)
+  category_id        String?
+  category           MilkCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  processed_amount   Float    @default(0) // Jumlah liter/kg yang diproses
+  processed_unit     String   @default("Liter") // "Liter" or "Kg"
+  processed_liters   Float    @default(0) // Quantified in liters for compat
+  packaging_details  String?  @db.Text // JSON string: [{ packagingType, size, quantity }]
+  packaging_type     String?  // Main packaging type e.g. "Botol", "Cup"
+  package_size       String?  // Main package size e.g. "250 ml", "100 gram"
+  botol_qty          Int      @default(0) // Jumlah pcs botol (compat)
+  cup_qty            Int      @default(0) // Jumlah pcs cup (compat)
+  plastik_bantal_qty Int      @default(0) // Jumlah pcs plastik bantal (compat)
+  total_packaged_qty Int      @default(0) // Total pcs produk jadi
+  status             String   @default("DRAFT") // "DRAFT", "MENUNGGU_PENERIMAAN", "DITERIMA", "PERLU_KOREKSI"
+  sent_at            DateTime?
+  sent_by_id         String?
+  sent_by_name       String?
+  received_at        DateTime?
+  received_by_id     String?
+  received_by_name   String?
+  quantity_sent      Int      @default(0) // Total pcs dikirim Farm
+  quantity_received  Int      @default(0) // Total pcs dikonfirmasi Pemasaran
+  condition          String?  // "Sesuai", "Ada Selisih", "Ada Kerusakan"
+  reception_notes    String?  @db.Text
+  notes              String?
+  created_by_id      String?
+  created_by         User?    @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   @@map("milk_packagings")
 }
 
 model MilkOutflow {
-  id            String   @id @default(uuid())
-  date          DateTime @default(now())
-  categoryId    String
-  category      MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  productType   String   @default("SEGAR") // "SEGAR" or "OLAHAN"
-  animalType    String   @default("SAPI") // "SAPI" or "KAMBING"
-  packagingType String   @default("botol") // "cup", "pack", "botol", "liter"
-  quantity      Int      @default(0) // Jumlah produk yang keluar/terjual (botol/cup/pack)
-  notes         String?
-  createdById   String?
-  createdBy     User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  date           DateTime @default(now())
+  category_id    String
+  category       MilkCategory @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  product_type   String   @default("SEGAR") // "SEGAR" or "OLAHAN"
+  animal_type    String   @default("SAPI") // "SAPI" or "KAMBING"
+  packaging_type String   @default("botol") // "cup", "pack", "botol", "liter"
+  quantity       Int      @default(0) // Jumlah produk yang keluar/terjual (botol/cup/pack)
+  notes          String?
+  created_by_id  String?
+  created_by     User?    @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   @@map("milk_outflows")
 }
 
 model MilkSale {
-  id              String   @id @default(uuid())
-  transactionId   String   @unique // e.g. TRX-20260814-001
-  date            DateTime @default(now())
-  productCategory String   @default("Susu") // "Susu", "Yogurt", "Keju"
-  productSubtype  String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa", etc.
-  variant         String?  // "Original", "Cokelat", etc.
-  packagingType   String   @default("Botol") // "Botol", "Cup", "Plastik Bantal", etc.
-  quantity        Int      @default(0) // Jumlah pcs
-  unitPrice       Float    @default(0) // Harga per pcs
-  totalPrice      Float    @default(0) // Total Rp
-  status          String   @default("Berhasil") // "Berhasil", "Dibatalkan"
-  notes           String?
-  createdById     String?
-  createdBy       User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  transaction_id   String   @unique // e.g. TRX-20260814-001
+  date             DateTime @default(now())
+  product_category String   @default("Susu") // "Susu", "Yogurt", "Keju"
+  product_subtype  String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa", etc.
+  variant          String?  // "Original", "Cokelat", etc.
+  packaging_type   String   @default("Botol") // "Botol", "Cup", "Plastik Bantal", etc.
+  quantity         Int      @default(0) // Jumlah pcs
+  unit_price       Float    @default(0) // Harga per pcs
+  total_price      Float    @default(0) // Total Rp
+  status           String   @default("Berhasil") // "Berhasil", "Dibatalkan"
+  notes            String?
+  created_by_id    String?
+  created_by       User?    @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   @@map("milk_sales")
+}
+
+model BeritaAcara {
+  id                String      @id @default(uuid())
+  nomor_ba          String      @unique // e.g. BA-20260819-001
+  date              DateTime    @default(now())
+  shift             String      @default("Pagi") // "Pagi" or "Sore"
+  farm_location     String      @default("Tegalsari") // "Tegalsari", "Limpakuwus", "Manggala", "Eduwisata"
+  animal_type       String      @default("SAPI") // "SAPI" or "KAMBING"
+  unit              String      @default("Liter") // "Liter" or "Kg"
+
+  // Quantities
+  total_produksi    Float       @default(0) // Total gross production
+  penggunaan_pedet  Float       @default(0) // Pedet / Cempe
+  afkir             Float       @default(0) // Susu afkir
+  lain_lain         Float       @default(0) // Alokasi lain-lain
+  diserahterimakan  Float       @default(0) // Volume diserahterimakan ke Pemasaran
+
+  // Pihak Pemasaran (Recipient)
+  penerima_role     String      @default("Seksi Pemasaran")
+  penerima_user_id  String?
+  penerima_name     String      @default("Seksi Pemasaran")
+
+  // Pihak Pemeliharaan / Farm (Sender)
+  penyerah_role     String      @default("Seksi Pemeliharaan")
+  penyerah_user_id  String?
+  penyerah_name     String      @default("Seksi Pemeliharaan")
+
+  // Digital Signature & Workflow Status
+  status            String      @default("DRAFT")
+  digital_signature String?     @db.LongText
+  signed_at         DateTime?
+  signed_by_name    String?
+  sent_at           DateTime?
+  read_at           DateTime?
+  printed_at        DateTime?
+
+  notes             String?     @db.Text
+
+  // Relation to MilkProduction
+  production_id     String?
+  production        MilkProduction? @relation(fields: [production_id], references: [id], onDelete: SetNull)
+
+  created_by_id     String?
+  created_by        User?       @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+
+  logs              BeritaAcaraLog[]
+
+  @@map("berita_acara")
+}
+
+model BeritaAcaraLog {
+  id              String      @id @default(uuid())
+  berita_acara_id String
+  beritaAcara     BeritaAcara @relation(fields: [berita_acara_id], references: [id], onDelete: Cascade)
+  action          String      // "DRAFT_CREATED", "EDITED", "SIGNED", "SENT", "READ", "PRINTED"
+  actor_name      String
+  actor_role      String?
+  notes           String?
+  created_at      DateTime    @default(now())
+
+  @@map("berita_acara_logs")
 }

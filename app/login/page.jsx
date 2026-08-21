@@ -15,6 +15,7 @@ import {
   Loader2,
   Milk,
   ShoppingBag,
+  Package,
   UserPlus,
   LogIn,
   Eye,
@@ -141,7 +142,7 @@ export default function LoginPage() {
     setRegName('');
     setRegEmail('');
     setRegPassword('');
-    
+
     // Switch ke tab Login & isi email/username otomatis
     setMode('login');
     setEmail(createdEmail);
@@ -151,22 +152,21 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex items-center justify-center p-4 relative overflow-hidden">
-      
       {/* Background Decor */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#1E3F20]/5 via-transparent to-emerald-500/10 pointer-events-none" />
       <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-[#1E3F20]/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative z-10">
-        
         {/* Header Branding */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-[#1E3F20] text-white shadow-xl mb-1">
-            <Milk className="w-8 h-8 text-white" />
+        <div className="text-center space-y-1.5">
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-[#1E3F20] text-white shadow-xl mb-1">
+            <Milk className="w-7 h-7 text-white" />
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-[#1E3F20] tracking-tight">STOK SUSU</h1>
-            <p className="text-xs font-semibold text-emerald-800 uppercase tracking-widest mt-0.5">Sistem Manajemen Stok Susu BBPTU</p>
+            <p className="text-xs font-extrabold text-[#1E3F20] uppercase tracking-wider">SISTEM MANAGEMENT STOK SUSU</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">Masuk ke sistem sesuai dengan Role & Hak Akses akun Anda</p>
           </div>
         </div>
 
@@ -216,13 +216,9 @@ export default function LoginPage() {
         {/* FORM 1: LOGIN MANUAL */}
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <p className="text-xs text-slate-500 text-center font-medium">
-              Masukkan email/username dan password akun Anda untuk masuk.
-            </p>
-
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Email / Username
+                Email / Username Pengguna
               </label>
               <div className="relative">
                 <Mail className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
@@ -274,7 +270,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span>Masuk ke Sistem</span>
+                  <span>Masuk ke Dashboard Stok Susu</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -282,7 +278,7 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* FORM 2: REGISTRASI AKUN BARU MANUAL (DENGAN EMAIL) */}
+        {/* FORM 2: REGISTRASI AKUN BARU MANUAL */}
         {mode === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <p className="text-xs text-slate-500 text-center font-medium">
@@ -415,13 +411,71 @@ export default function LoginPage() {
           </form>
         )}
 
+        {/* Quick Role Selectors for 4 Roles (Selalu Tampil di Bawah) */}
+        <div className="pt-4 border-t border-slate-200 text-center space-y-3">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Pilih Role Pengujian (4 Role):
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            {/* 1. Superadmin */}
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('superadmin@susu.com');
+                setPassword('superadmin123');
+              }}
+              className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-200 transition-colors flex flex-col items-center gap-1"
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-700" />
+              <span className="text-[10px] uppercase tracking-wide">1. Superadmin</span>
+            </button>
+
+            {/* 2. Admin Farm */}
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('admin.farm@susu.com');
+                setPassword('admin123');
+              }}
+              className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-200 transition-colors flex flex-col items-center gap-1"
+            >
+              <Milk className="w-4 h-4 text-emerald-700" />
+              <span className="text-[10px] uppercase tracking-wide">2. Admin Farm</span>
+            </button>
+
+            {/* 3. Admin Pengemasan */}
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('pengemasan@susu.com');
+                setPassword('pengemasan123');
+              }}
+              className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-200 transition-colors flex flex-col items-center gap-1"
+            >
+              <Package className="w-4 h-4 text-amber-700" />
+              <span className="text-[10px] uppercase tracking-wide">3. Pengemasan</span>
+            </button>
+
+            {/* 4. Admin Pemasaran */}
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('pemasaran@susu.com');
+                setPassword('pemasaran123');
+              }}
+              className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-200 transition-colors flex flex-col items-center gap-1"
+            >
+              <ShoppingBag className="w-4 h-4 text-blue-700" />
+              <span className="text-[10px] uppercase tracking-wide">4. Pemasaran</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* MODAL KONFIRMASI PEMILIHAN AUTO-LOGIN / TIDAK */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-5 border border-slate-100 text-center animate-in zoom-in-95 duration-200">
-            
             <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto">
               <Sparkles className="w-7 h-7" />
             </div>
@@ -466,11 +520,9 @@ export default function LoginPage() {
                 Tidak, Nanti Saja (Kembali ke Login)
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

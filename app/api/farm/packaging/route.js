@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +16,10 @@ export async function GET(request) {
     const date = searchParams.get('date');
 
     const where = {};
-    if (categoryId) where.categoryId = categoryId;
-    if (animalType) where.animalType = animalType;
-    if (productCategory) where.productCategory = productCategory;
-    if (productSubtype) where.productSubtype = productSubtype;
+    if (categoryId) where.category_id = categoryId;
+    if (animalType) where.animal_type = animalType;
+    if (productCategory) where.product_category = productCategory;
+    if (productSubtype) where.product_subtype = productSubtype;
     if (origin) where.origin = origin;
     if (status) where.status = status;
     if (date) {
@@ -37,7 +37,7 @@ export async function GET(request) {
       where,
       include: {
         category: true,
-        createdBy: {
+        created_by: {
           select: { id: true, name: true, email: true },
         },
       },
@@ -76,6 +76,15 @@ export async function POST(request) {
       plastikBantalQty,
       notes,
     } = body;
+
+    if (date) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const inputDateStr = typeof date === 'string' ? date.split('T')[0] : '';
+      if (inputDateStr && inputDateStr > todayStr) {
+        return NextResponse.json({ success: false, message: 'Tanggal pengemasan tidak boleh lebih dari tanggal sekarang' }, { status: 400 });
+      }
+    }
 
     const pCategory = productCategory || 'Susu';
     const pSubtype = productSubtype || null;
@@ -118,33 +127,35 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Harap masukkan jumlah bahan diproses atau rincian kemasan yang valid' }, { status: 400 });
     }
 
+    const validUserId = await resolveValidUserId(authUser);
+
     const packaging = await prisma.milkPackaging.create({
       data: {
         date: date ? new Date(date) : new Date(),
-        productCategory: pCategory,
-        productSubtype: pSubtype,
+        product_category: pCategory,
+        product_subtype: pSubtype,
         origin: pOrigin,
         variant: pVariant,
-        animalType: aType,
-        categoryId: categoryId || null,
-        processedAmount: pAmount,
-        processedUnit: pUnit,
-        processedLiters: pUnit === 'Liter' ? pAmount : 0,
-        packagingDetails: JSON.stringify(itemsList),
-        packagingType: primaryPkgType,
-        packageSize: primaryPkgSize,
-        botolQty: bQty,
-        cupQty: cQty,
-        plastikBantalQty: pQty,
-        totalPackagedQty,
-        quantitySent: totalPackagedQty,
+        animal_type: aType,
+        category_id: categoryId || null,
+        processed_amount: pAmount,
+        processed_unit: pUnit,
+        processed_liters: pUnit === 'Liter' ? pAmount : 0,
+        packaging_details: JSON.stringify(itemsList),
+        packaging_type: primaryPkgType,
+        package_size: primaryPkgSize,
+        botol_qty: bQty,
+        cup_qty: cQty,
+        plastik_bantal_qty: pQty,
+        total_packaged_qty: totalPackagedQty,
+        quantity_sent: totalPackagedQty,
         notes: notes || '',
         status: 'DRAFT',
-        createdById: authUser.id,
+        created_by_id: validUserId,
       },
       include: {
         category: true,
-        createdBy: {
+        created_by: {
           select: { id: true, name: true, email: true },
         },
       },
@@ -152,8 +163,8 @@ export async function POST(request) {
 
     await prisma.systemLog.create({
       data: {
-        userId: authUser.id,
-        userEmail: authUser.email,
+        user_id: validUserId,
+        user_email: authUser.email,
         action: 'CREATE_PACKAGING',
         details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (DRAFT)`,
       },
