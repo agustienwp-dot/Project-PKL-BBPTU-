@@ -49,7 +49,10 @@ export default function BeritaAcaraDocument({ ba }) {
           <span className="w-28 uppercase">PAGI/SORE</span>
           <span>:</span>
           <span className="uppercase text-slate-900 font-extrabold">
-            {ba.shift ? `${ba.shift.toUpperCase()} / ` : ''}{ba.farmLocation || 'TEGALSARI / LIMPAKUWUS'}
+            {ba.shift ? `${ba.shift.toUpperCase()} / ` : ''}
+            {(ba.animal_type || ba.animalType) === 'KAMBING'
+              ? 'SUSU KAMBING'
+              : (ba.farm_location || ba.farmLocation || 'TEGALSARI').toUpperCase()}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -69,7 +72,7 @@ export default function BeritaAcaraDocument({ ba }) {
                 <span className="block text-[11px] font-medium">( {unitLabel} )</span>
               </th>
               <th className="border-r-2 border-black p-2.5 w-1/5">
-                Penggunaan Pedet
+                {(ba.animal_type || ba.animalType) === 'KAMBING' ? 'Penggunaan Cempe' : 'Penggunaan Pedet'}
                 <span className="block text-[11px] font-medium">( {unitLabel} )</span>
               </th>
               <th className="border-r-2 border-black p-2.5 w-1/5">
@@ -112,7 +115,7 @@ export default function BeritaAcaraDocument({ ba }) {
               <p className="font-bold text-slate-800">Yang menerima,</p>
               <p className="font-bold text-black uppercase">{ba.penerimaRole || 'Seksi Pemasaran'}</p>
             </div>
-            
+
             <div className="h-20 flex items-center justify-center relative">
               {ba.readAt ? (
                 <div className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded print:border-slate-300">

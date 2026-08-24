@@ -39,7 +39,7 @@ export async function PUT(request, { params }) {
     const updated = await prisma.milkProduction.update({
       where: { id },
       data: {
-        handoverStatus: updatedHandoverStatus,
+        handover_status: updatedHandoverStatus,
         receivedVolumeLiters: finalReceivedVolume,
         notes: notes ? `${production.notes ? production.notes + ' | ' : ''}Catatan Verifikasi: ${notes}` : production.notes,
       },

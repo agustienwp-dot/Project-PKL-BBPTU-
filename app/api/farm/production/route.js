@@ -45,7 +45,10 @@ export async function GET(request) {
             select: { id: true, name: true, email: true },
           },
         },
-        orderBy: { date: 'desc' },
+        orderBy: [
+          { date: 'desc' },
+          { created_at: 'desc' },
+        ],
       });
     } catch (e) {
       productions = [];
@@ -61,14 +64,28 @@ export async function GET(request) {
       }
     }
 
-    mergedList.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+    mergedList.sort((a, b) => {
+      const dateA = new Date(a.date || 0).getTime();
+      const dateB = new Date(b.date || 0).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.id || '').localeCompare(a.id || '');
+    });
 
     let filtered = mergedList;
     if (animalType) {
       filtered = filtered.filter((p) => p.animalType === animalType);
     }
 
-    return NextResponse.json({ success: true, data: filtered });
+    const formatted = filtered.map((p) => ({
+      ...p,
+      fotoTimbangan: p.fotoTimbangan || p.foto_timbangan || null,
+      foto_timbangan: p.foto_timbangan || p.fotoTimbangan || null,
+    }));
+
+    return NextResponse.json({ success: true, data: formatted });
   } catch (error) {
     console.error('GET /api/farm/production error:', error);
     return NextResponse.json({ success: true, data: global.__inMemoryProductionList });
@@ -98,6 +115,16 @@ export async function POST(request) {
 
     if (validCatId) {
       category = await prisma.milkCategory.findUnique({ where: { id: validCatId } }).catch(() => null);
+    }
+
+    if (category && animalType && (category.animal_type || category.animalType) !== animalType) {
+      const matchCat = await prisma.milkCategory.findFirst({
+        where: { animal_type: animalType },
+      }).catch(() => null);
+      if (matchCat) {
+        category = matchCat;
+        validCatId = matchCat.id;
+      }
     }
 
     if (!category) {
@@ -211,17 +238,25 @@ export async function POST(request) {
         rawVolumeLiters: netVolume,
         processedLiters: finalProcessed,
         notes: notes || '',
+        fotoTimbangan: fotoTimbangan || null,
+        foto_timbangan: fotoTimbangan || null,
         createdAt: new Date().toISOString(),
       };
     }
 
+    const normalizedProduction = {
+      ...production,
+      fotoTimbangan: production.fotoTimbangan || production.foto_timbangan || fotoTimbangan || null,
+      foto_timbangan: production.foto_timbangan || production.fotoTimbangan || fotoTimbangan || null,
+    };
+
     // Unshift to in-memory production store
-    global.__inMemoryProductionList.unshift(production);
+    global.__inMemoryProductionList.unshift(normalizedProduction);
 
     return NextResponse.json({
       success: true,
       message: `Produksi susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} berhasil disimpan!`,
-      data: production,
+      data: normalizedProduction,
     });
   } catch (error) {
     console.error('POST /api/farm/production error:', error);
@@ -236,6 +271,8 @@ export async function POST(request) {
       afkirVolumeLiters: 12,
       soldFreshVolumeLiters: 0,
       rawVolumeLiters: 388,
+      fotoTimbangan: null,
+      foto_timbangan: null,
       createdAt: new Date().toISOString(),
     };
     global.__inMemoryProductionList.unshift(mockSuccessProd);
