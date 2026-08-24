@@ -21,7 +21,7 @@ function calculateItemNet(item) {
   };
 }
 
-// Generate 31 full days of morning and afternoon perah sessions for August 2026
+// Generate 31 full days of morning and afternoon perah sessions for August 2026 (Sapi & Kambing)
 function generateMonthlyFarmSessions() {
   const sessions = [];
   const baseYear = 2026;
@@ -32,6 +32,7 @@ function generateMonthlyFarmSessions() {
 
     const factor = 1 + ((day % 5) - 2) * 0.05;
 
+    // --- 1. SAPI SESSIONS ---
     const tgs = Math.round(120 * factor);
     const lpk = Math.round(150 * factor);
     const mgl = Math.round(110 * factor);
@@ -50,9 +51,9 @@ function generateMonthlyFarmSessions() {
     const distSore = Math.round(14 * factor);
     const grossSore = soreSiapOlah + pedetSore + afkirSore + distSore;
 
-    // Sesi Pagi (Net: pagiSiapOlah)
+    // SAPI Sesi Pagi
     sessions.push({
-      id: `frm-${dayStr}-pagi`,
+      id: `frm-sapi-${dayStr}-pagi`,
       tanggal: dateStr,
       jenisTernak: 'SAPI',
       kegiatanPerah: 'Pagi',
@@ -65,13 +66,13 @@ function generateMonthlyFarmSessions() {
       status: day >= 20 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
       receivedAt: day < 20 ? new Date(`${dateStr}T10:00:00Z`).toISOString() : null,
       receivedByName: day < 20 ? 'Admin Pemasaran' : null,
-      notes: `Perah pagi tanggal ${day} Agustus 2026 diserahkan ke pengolahan.`,
+      notes: `Perah pagi Susu Sapi tgl ${day} Agustus 2026 diserahkan ke pengolahan.`,
       createdAt: new Date(`${dateStr}T07:30:00Z`).toISOString(),
     });
 
-    // Sesi Sore (Net: soreSiapOlah) -> Total Harian = totalPengambilan (0 Selisih)
+    // SAPI Sesi Sore
     sessions.push({
-      id: `frm-${dayStr}-sore`,
+      id: `frm-sapi-${dayStr}-sore`,
       tanggal: dateStr,
       jenisTernak: 'SAPI',
       kegiatanPerah: 'Sore',
@@ -84,8 +85,59 @@ function generateMonthlyFarmSessions() {
       status: day >= 20 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
       receivedAt: day < 20 ? new Date(`${dateStr}T17:30:00Z`).toISOString() : null,
       receivedByName: day < 20 ? 'Admin Pemasaran' : null,
-      notes: `Perah sore tanggal ${day} Agustus 2026.`,
+      notes: `Perah sore Susu Sapi tgl ${day} Agustus 2026.`,
       createdAt: new Date(`${dateStr}T16:00:00Z`).toISOString(),
+    });
+
+    // --- 2. KAMBING SESSIONS ---
+    const kambingGrossPagi = Math.round(16 * factor);
+    const cempePagi = Math.round(3 * factor);
+    const afkirKambingPagi = day % 7 === 0 ? 1 : 0;
+    const distKambingPagi = Math.round(2 * factor);
+    const kambingSiapOlahPagi = Math.max(0, kambingGrossPagi - cempePagi - afkirKambingPagi - distKambingPagi);
+
+    const kambingGrossSore = Math.round(14 * factor);
+    const cempeSore = Math.round(3 * factor);
+    const afkirKambingSore = 0;
+    const distKambingSore = Math.round(1 * factor);
+    const kambingSiapOlahSore = Math.max(0, kambingGrossSore - cempeSore - afkirKambingSore - distKambingSore);
+
+    // KAMBING Sesi Pagi
+    sessions.push({
+      id: `frm-kambing-${dayStr}-pagi`,
+      tanggal: dateStr,
+      jenisTernak: 'KAMBING',
+      kegiatanPerah: 'Pagi',
+      produksiSusu: kambingGrossPagi,
+      susuPedet: cempePagi, // Pakan Cempe
+      susuAfkir: afkirKambingPagi,
+      distribusiSegar: distKambingPagi,
+      rincianPembeli: 'Pelanggan Susu Kambing Segar',
+      susuSiapOlah: kambingSiapOlahPagi,
+      status: day >= 20 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
+      receivedAt: day < 20 ? new Date(`${dateStr}T10:00:00Z`).toISOString() : null,
+      receivedByName: day < 20 ? 'Admin Pemasaran' : null,
+      notes: `Perah pagi Susu Kambing tgl ${day} Agustus 2026.`,
+      createdAt: new Date(`${dateStr}T07:45:00Z`).toISOString(),
+    });
+
+    // KAMBING Sesi Sore
+    sessions.push({
+      id: `frm-kambing-${dayStr}-sore`,
+      tanggal: dateStr,
+      jenisTernak: 'KAMBING',
+      kegiatanPerah: 'Sore',
+      produksiSusu: kambingGrossSore,
+      susuPedet: cempeSore, // Pakan Cempe
+      susuAfkir: afkirKambingSore,
+      distribusiSegar: distKambingSore,
+      rincianPembeli: 'Peminat Terapi Susu Kambing',
+      susuSiapOlah: kambingSiapOlahSore,
+      status: day >= 20 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
+      receivedAt: day < 20 ? new Date(`${dateStr}T17:45:00Z`).toISOString() : null,
+      receivedByName: day < 20 ? 'Admin Pemasaran' : null,
+      notes: `Perah sore Susu Kambing tgl ${day} Agustus 2026.`,
+      createdAt: new Date(`${dateStr}T16:30:00Z`).toISOString(),
     });
   }
 
@@ -186,17 +238,21 @@ export async function GET(request) {
     const totalAfkir = filtered.reduce((sum, r) => sum + (r.susuAfkir || 0), 0);
     const totalSusuSiapOlah = filtered.reduce((sum, r) => sum + (r.susuSiapOlah || 0), 0);
 
-    // Grouping by Date (Daily Unified Aggregation with BAST Automatic Deductions)
+    // Grouping by Date & Animal Type (Daily Unified Aggregation with BAST Automatic Deductions)
     const dailyMap = {};
     filtered.forEach((r) => {
-      if (!dailyMap[r.tanggal]) {
-        const dayBasts = bastByDateMap[r.tanggal] || [];
-        const totalBastDeduction = dayBasts.reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
-        const bastUsageDescriptions = dayBasts.map((b) => b.keteranganPemakaian);
+      const animalType = r.jenisTernak || 'SAPI';
+      const mapKey = `${r.tanggal}_${animalType}`;
 
-        dailyMap[r.tanggal] = {
+      if (!dailyMap[mapKey]) {
+        const dayBasts = bastByDateMap[r.tanggal] || [];
+        // BAST deduction applies primarily to fresh cow milk unless specified
+        const totalBastDeduction = animalType === 'SAPI' ? dayBasts.reduce((acc, b) => acc + (b.volumeLiters || 0), 0) : 0;
+        const bastUsageDescriptions = animalType === 'SAPI' ? dayBasts.map((b) => b.keteranganPemakaian) : [];
+
+        dailyMap[mapKey] = {
           tanggal: r.tanggal,
-          jenisTernak: r.jenisTernak,
+          jenisTernak: animalType,
           totalGross: 0,
           pagiGross: 0,
           pagiPedet: 0,
@@ -223,7 +279,7 @@ export async function GET(request) {
         };
       }
 
-      const day = dailyMap[r.tanggal];
+      const day = dailyMap[mapKey];
       day.totalGross += r.produksiSusu || 0;
       day.totalPedet += r.susuPedet || 0;
       day.totalAfkir += r.susuAfkir || 0;

@@ -600,36 +600,23 @@ export default function PengemasanPage() {
                 {/* CONDITIONAL FIELDS */}
                 {formProductCategory === 'Susu' && (
                   <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/70 space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-emerald-900 mb-1">Jenis Produk Susu</label>
-                      <select
-                        value={formProductSubtype}
-                        onChange={(e) => {
-                          const sub = e.target.value;
-                          setFormProductSubtype(sub);
-                          if (sub === 'Susu Rasa') setFormVariant('Cokelat');
-                          else setFormVariant('Original');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-                        required
-                      >
-                        <option value="Susu UHT">Susu UHT</option>
-                        <option value="Susu Pasteurisasi">Susu Pasteurisasi</option>
-                        <option value="Susu Rasa">Susu Rasa</option>
-                      </select>
-                    </div>
-
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-emerald-900 mb-1">Asal Susu</label>
+                        <label className="block text-xs font-bold text-emerald-900 mb-1">Jenis Produk Susu</label>
                         <select
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
+                          value={formProductSubtype}
+                          onChange={(e) => {
+                            const sub = e.target.value;
+                            setFormProductSubtype(sub);
+                            if (sub === 'Susu Rasa') setFormVariant('Cokelat');
+                            else setFormVariant('Original');
+                          }}
                           className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
                           required
                         >
-                          <option value="Sapi">🐄 Sapi</option>
-                          <option value="Kambing">🐐 Kambing</option>
+                          <option value="Susu UHT">Susu UHT</option>
+                          <option value="Susu Pasteurisasi">Susu Pasteurisasi</option>
+                          <option value="Susu Rasa">Susu Rasa</option>
                         </select>
                       </div>
 
@@ -665,66 +652,36 @@ export default function PengemasanPage() {
 
                 {formProductCategory === 'Yogurt' && (
                   <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200/70 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-purple-900 mb-1">Asal Susu</label>
-                        <select
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                          required
-                        >
-                          <option value="Sapi">🐄 Sapi</option>
-                          <option value="Kambing">🐐 Kambing</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-purple-900 mb-1">Varian / Rasa Yogurt</label>
-                        <select
-                          value={formVariant}
-                          onChange={(e) => setFormVariant(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                          required
-                        >
-                          <option value="Original">Original</option>
-                          <option value="Strawberry">Strawberry</option>
-                          <option value="Mangga">Mangga</option>
-                          <option value="Cokelat">Cokelat</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-bold text-purple-900 mb-1">Varian / Rasa Yogurt</label>
+                      <select
+                        value={formVariant}
+                        onChange={(e) => setFormVariant(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                        required
+                      >
+                        <option value="Original">Original</option>
+                        <option value="Strawberry">Strawberry</option>
+                        <option value="Mangga">Mangga</option>
+                        <option value="Cokelat">Cokelat</option>
+                      </select>
                     </div>
                   </div>
                 )}
 
                 {formProductCategory === 'Keju' && (
                   <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/70 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-amber-900 mb-1">Asal Bahan Keju</label>
-                        <select
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                          required
-                        >
-                          <option value="Sapi">🐄 Sapi</option>
-                          <option value="Kambing">🐐 Kambing</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-amber-900 mb-1">Jenis / Varian Keju</label>
-                        <select
-                          value={formVariant}
-                          onChange={(e) => setFormVariant(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                          required
-                        >
-                          <option value="Keju Fresh">Keju Fresh</option>
-                          <option value="Keju Olahan">Keju Olahan</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-bold text-amber-900 mb-1">Jenis / Varian Keju</label>
+                      <select
+                        value={formVariant}
+                        onChange={(e) => setFormVariant(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                        required
+                      >
+                        <option value="Keju Fresh">Keju Fresh</option>
+                        <option value="Keju Olahan">Keju Olahan</option>
+                      </select>
                     </div>
                   </div>
                 )}

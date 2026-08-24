@@ -22,6 +22,7 @@ import {
   Sparkles,
   ArrowDownRight,
   TrendingDown,
+  TrendingUp,
   RefreshCw,
   Info,
   Check,
@@ -43,9 +44,7 @@ export default function DashboardPemasaranPage() {
   const [basts, setBasts] = useState([]);
   const [packagings, setPackagings] = useState([]);
 
-  // Stream Tab Filter: 'ALL' | 'FARM' | 'BAST' | 'PENGEMASAN'
-  const [streamTab, setStreamTab] = useState('ALL');
-  const [streamStatus, setStreamStatus] = useState('ALL');
+  const [chartFilter, setChartFilter] = useState('7'); // '7' or '30'
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -78,90 +77,6 @@ export default function DashboardPemasaranPage() {
   useEffect(() => {
     loadDashboardData();
   }, []);
-
-  // Compute Unified Realtime Live Stream Feed
-  const liveStreams = useMemo(() => {
-    const stream = [];
-
-    // 1. Inflow from Unit Farm (Perah Pagi & Sore)
-    farmSessions.forEach((f) => {
-      stream.push({
-        id: `stream-farm-${f.id}`,
-        rawId: f.id,
-        category: 'FARM',
-        sourceName: 'Unit Farm Produksi',
-        sourceType: '🥛 Susu Fresh (Farm)',
-        sourceColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        date: f.tanggal,
-        title: `Penyerahan Sesi ${f.kegiatanPerah} (${f.jenisTernak === 'KAMBING' ? 'Kambing' : 'Sapi'})`,
-        subtitle: `Gross: ${f.produksiSusu} L • Pedet/Afkir: ${f.susuPedet + f.susuAfkir} L • Dist: ${f.distribusiSegar} L`,
-        volumeText: `${f.susuSiapOlah} Liter`,
-        volumeSubtext: 'Susu Siap Olah',
-        status: f.status,
-        notes: f.notes || 'Penyerahan hasil perah kandang.',
-        actionLink: '/pemasaran/terima-susu-segar',
-        actionLabel: 'Buka Terima Susu Segar',
-      });
-    });
-
-    // 2. Inflow from Surat Fisik BAST
-    basts.forEach((b) => {
-      stream.push({
-        id: `stream-bast-${b.id}`,
-        rawId: b.id,
-        category: 'BAST',
-        sourceName: 'Surat Fisik BAST',
-        sourceType: '📄 BAST Penyerahan',
-        sourceColor: 'bg-amber-100 text-amber-900 border-amber-200',
-        date: new Date(b.tanggal).toISOString().slice(0, 10),
-        title: `BAST No. ${b.nomorBast} (${b.jenisPermintaan === 'HIBAH' ? 'Hibah' : 'Penjualan Langsung'})`,
-        subtitle: `Penerima: ${b.instansiPenerima || 'Umum'} • Tanda Tangan Basah`,
-        volumeText: `-${b.volumeLiters} Liter`,
-        volumeSubtext: 'Memotong Susu Fresh',
-        status: b.status,
-        notes: b.catatan || 'Surat fisik penyerahan susu segar.',
-        actionLink: '/pemasaran/bast',
-        actionLabel: 'Konfirmasi Surat Fisik',
-      });
-    });
-
-    // 3. Inflow from Unit Pengolahan & Pengemasan (UHT)
-    packagings.forEach((p) => {
-      stream.push({
-        id: `stream-pkg-${p.id}`,
-        rawId: p.id,
-        category: 'PENGEMASAN',
-        sourceName: 'Unit Pengolahan & UHT',
-        sourceType: '📦 UHT',
-        sourceColor: 'bg-purple-100 text-purple-900 border-purple-200',
-        date: new Date(p.tanggal || p.date).toISOString().slice(0, 10),
-        title: `Hasil Olahan UHT: ${p.jenisProduk} (${p.kemasan || 'Kemasan'})`,
-        subtitle: `Batch Produksi UHT Siap Jual`,
-        volumeText: `${(p.jumlah || p.totalPackagedQty || 0).toLocaleString('id-ID')} Botol/Cup`,
-        volumeSubtext: 'Produk Jadi',
-        status: p.status,
-        notes: p.notes || 'Batch UHT masuk ke persediaan pemasaran.',
-        actionLink: '/pemasaran/terima-data',
-        actionLabel: 'Terima UHT',
-      });
-    });
-
-    // Sort Chronologically: Descending (Terbaru di atas)
-    return stream.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [farmSessions, basts, packagings]);
-
-  // Filtered Streams
-  const filteredStreams = useMemo(() => {
-    return liveStreams.filter((item) => {
-      const matchCat = streamTab === 'ALL' || item.category === streamTab;
-      const matchStatus =
-        streamStatus === 'ALL' ||
-        (streamStatus === 'PENDING' && (item.status === 'MENUNGGU_VERIFIKASI' || item.status === 'MENUNGGU_KONFIRMASI' || item.status === 'MENUNGGU_PENERIMAAN')) ||
-        (streamStatus === 'DITERIMA' && item.status === 'DITERIMA');
-
-      return matchCat && matchStatus;
-    });
-  }, [liveStreams, streamTab, streamStatus]);
 
   // Calculations for KPI Cards
   const totalSusuFreshMasuk = farmSummary.totalSusuSiapOlah || 0;
@@ -359,179 +274,235 @@ export default function DashboardPemasaranPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* REALTIME INFLOW FEED: ALIRAN DATA MASUK DARI FARM & PENGOLAHAN            */}
+      {/* 5. GRAFIK TREN ALIRAN SUSU & DISTRIBUSI PRODUK (CHART SECTION)            */}
       {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-              <h2 className="font-extrabold text-slate-800 text-lg">Aliran Data Masuk Realtime (Inflow Stream)</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* GRAFIK 1: TREN ARUS MASUK SUSU FRESH & POTONGAN BAST */}
+        <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
+                  <TrendingUp className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">
+                    Grafik Tren Aliran Susu Fresh & Distribusi
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Volume susu siap olah masuk vs potongan BAST harian
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pantauan pergerakan data fisik dan produk dari unit Farm Produksi & unit Pengolahan ke Pemasaran
-            </p>
-          </div>
 
-          {/* Stream Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
-            {[
-              { id: 'ALL', label: 'Semua Aliran', count: liveStreams.length },
-              { id: 'FARM', label: '🥛 Dari Farm', count: farmSessions.length },
-              { id: 'BAST', label: '📄 Surat BAST', count: basts.length },
-              { id: 'PENGEMASAN', label: '📦 Dari UHT', count: packagings.length },
-            ].map((t) => (
+            {/* Filter 7 Hari / Bulan Ini */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
               <button
-                key={t.id}
-                onClick={() => setStreamTab(t.id)}
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                  streamTab === t.id
-                    ? 'bg-white text-slate-900 shadow-sm'
+                onClick={() => setChartFilter('7')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  chartFilter === '7'
+                    ? 'bg-[#1E3F20] text-white shadow'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {t.label} ({t.count})
+                7 Hari Terakhir
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Status Filter */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-500">Status:</span>
-            <button
-              onClick={() => setStreamStatus('ALL')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
-                streamStatus === 'ALL' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Semua Status
-            </button>
-            <button
-              onClick={() => setStreamStatus('PENDING')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
-                streamStatus === 'PENDING' ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Menunggu Konfirmasi ({totalPendingAll})
-            </button>
-            <button
-              onClick={() => setStreamStatus('DITERIMA')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
-                streamStatus === 'DITERIMA' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Sudah Diterima (Disahkan)
-            </button>
+              <button
+                onClick={() => setChartFilter('30')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  chartFilter === '30'
+                    ? 'bg-[#1E3F20] text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Bulan Ini (31 Hari)
+              </button>
+            </div>
           </div>
 
-          <span className="text-[11px] text-slate-400 font-semibold">
-            Menampilkan {filteredStreams.length} Aliran Data
-          </span>
-        </div>
+          {/* SVG Multi-Bar Trend Chart */}
+          {(() => {
+            const sortedDaily = [...farmDailyList].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+            const displayDaily = chartFilter === '7' ? sortedDaily.slice(-7) : sortedDaily;
+            const maxVal = Math.max(...displayDaily.map(d => d.totalSusuSiapOlah || d.totalGross || 0), 10);
 
-        {/* Stream Items Table / Feed */}
-        {filteredStreams.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-xs">
-            Tidak ada aliran data masuk untuk filter yang dipilih.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 text-slate-600 uppercase font-bold border-y border-slate-200 text-[11px]">
-                <tr>
-                  <th className="px-4 py-3">Waktu / Tanggal</th>
-                  <th className="px-4 py-3">Sumber Asal</th>
-                  <th className="px-4 py-3">Rincian Data / Produk Masuk</th>
-                  <th className="px-4 py-3 text-right">Volume / Qty</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-center">Aksi Lanjutan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                {filteredStreams.map((item) => {
-                  const isPending =
-                    item.status === 'MENUNGGU_VERIFIKASI' ||
-                    item.status === 'MENUNGGU_KONFIRMASI' ||
-                    item.status === 'MENUNGGU_PENERIMAAN';
+            return (
+              <div className="space-y-5">
+                <div className="h-60 flex items-end justify-between px-1 w-full gap-1 sm:gap-2">
+                  {displayDaily.length === 0 ? (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">
+                      Belum ada data rekapan harian untuk grafik.
+                    </div>
+                  ) : (
+                    displayDaily.map((d, idx) => {
+                      const siapOlahVal = d.totalSusuSiapOlah || 0;
+                      const bastVal = d.totalBastDeduction || 0;
+                      const sisaBersih = d.sisaBersihSiapOlah !== undefined ? d.sisaBersihSiapOlah : (siapOlahVal - bastVal);
 
-                  return (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">
-                        <div className="font-bold text-slate-900">
-                          {new Date(item.date).toLocaleDateString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </div>
-                        <span className="text-[10px] text-slate-400">Tercatat di sistem</span>
-                      </td>
+                      const siapOlahHeight = maxVal > 0 ? Math.round((siapOlahVal / maxVal) * 100) : 0;
+                      const bastHeight = maxVal > 0 ? Math.round((bastVal / maxVal) * 100) : 0;
+                      const sisaHeight = maxVal > 0 ? Math.round((Math.max(0, sisaBersih) / maxVal) * 100) : 0;
 
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold border ${item.sourceColor}`}>
-                          {item.sourceType}
-                        </span>
-                      </td>
+                      const dateObj = new Date(d.tanggal);
+                      const dayLabel = chartFilter === '7' 
+                        ? dateObj.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' })
+                        : String(dateObj.getDate());
 
-                      <td className="px-4 py-3.5">
-                        <div className="font-bold text-slate-900 text-xs">{item.title}</div>
-                        <div className="text-[11px] text-slate-500">{item.subtitle}</div>
-                        {item.notes && (
-                          <div className="text-[10px] text-slate-400 italic mt-0.5 max-w-md truncate">
-                            {item.notes}
+                      return (
+                        <div key={d.tanggal || idx} className="flex-1 min-w-0 flex flex-col items-center gap-1.5 h-full justify-end group relative">
+                          {/* Hover Tooltip */}
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] p-2 rounded-xl shadow-xl pointer-events-none whitespace-nowrap z-30 absolute -top-16 left-1/2 transform -translate-x-1/2 space-y-0.5 border border-slate-700">
+                            <div className="font-bold text-slate-300 border-b border-slate-700 pb-0.5">
+                              {dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </div>
+                            <div className="text-emerald-400 font-extrabold">Siap Olah: {siapOlahVal} L</div>
+                            {bastVal > 0 && <div className="text-amber-400">Potongan BAST: -{bastVal} L</div>}
+                            <div className="text-blue-300 font-bold">Sisa Bersih: {sisaBersih} L</div>
                           </div>
-                        )}
-                      </td>
 
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                        <span className={`text-sm font-black ${
-                          item.category === 'BAST'
-                            ? 'text-amber-800'
-                            : item.category === 'PENGEMASAN'
-                            ? 'text-purple-900'
-                            : 'text-emerald-950'
-                        }`}>
-                          {item.volumeText}
-                        </span>
-                        <span className="block text-[10px] text-slate-400">{item.volumeSubtext}</span>
-                      </td>
+                          {/* Bars Cluster */}
+                          <div className="w-full flex items-end justify-center gap-0.5 h-full">
+                            {/* Siap Olah Bar */}
+                            <div
+                              className="w-1/2 bg-gradient-to-t from-[#1E3F20] to-emerald-500 rounded-t-sm group-hover:brightness-110 transition-all min-h-[4px]"
+                              style={{ height: `${Math.max(siapOlahHeight, 4)}%` }}
+                              title={`Siap Olah: ${siapOlahVal} L`}
+                            />
+                            {/* BAST Bar */}
+                            {bastVal > 0 ? (
+                              <div
+                                className="w-1/2 bg-gradient-to-t from-amber-600 to-amber-400 rounded-t-sm group-hover:brightness-110 transition-all min-h-[4px]"
+                                style={{ height: `${Math.max(bastHeight, 4)}%` }}
+                                title={`BAST: ${bastVal} L`}
+                              />
+                            ) : (
+                              <div
+                                className="w-1/2 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-sm group-hover:brightness-110 transition-all min-h-[4px]"
+                                style={{ height: `${Math.max(sisaHeight, 4)}%` }}
+                                title={`Sisa Bersih: ${sisaBersih} L`}
+                              />
+                            )}
+                          </div>
 
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        {isPending ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">
-                            <AlertCircle className="w-3 h-3 text-amber-600" />
-                            <span>Menunggu Konfirmasi</span>
+                          <span className="font-bold text-slate-500 text-[9px] truncate w-full text-center leading-none">
+                            {dayLabel}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Sudah Diterima</span>
-                          </span>
-                        )}
-                      </td>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
 
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <Link
-                          href={item.actionLink}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-sm transition-transform active:scale-95 ${
-                            isPending
-                              ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                          }`}
-                        >
-                          <span>{item.actionLabel}</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                {/* Chart Legend */}
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-600 pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded bg-emerald-600" />
+                      <span>Susu Siap Olah (Masuk)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded bg-amber-500" />
+                      <span>Potongan BAST (Fisik)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded bg-blue-500" />
+                      <span>Sisa Bersih Siap Olah</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Tinggi bar proporsional volume liter</span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* GRAFIK 2: KOMPOSISI PRODUK JADI UHT & KEMASAN */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-100 text-purple-800">
+                  <Package className="w-5 h-5 text-purple-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">Komposisi Produk UHT</h3>
+                  <p className="text-xs text-slate-500">Hasil kemasan siap jual & distribusi</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Packaging Breakdown List */}
+            {(() => {
+              const botolCount = packagings.filter(p => (p.kemasan || '').toLowerCase().includes('botol')).reduce((acc, p) => acc + (p.jumlah || 0), 0);
+              const cupCount = packagings.filter(p => (p.kemasan || '').toLowerCase().includes('cup')).reduce((acc, p) => acc + (p.jumlah || 0), 0);
+              const plastikCount = packagings.filter(p => (p.kemasan || '').toLowerCase().includes('plastik') || (p.kemasan || '').toLowerCase().includes('pouch')).reduce((acc, p) => acc + (p.jumlah || 0), 0);
+              const totalItems = totalOlahanUnits > 0 ? totalOlahanUnits : 1;
+
+              const botolPct = Math.round((botolCount / totalItems) * 100);
+              const cupPct = Math.round((cupCount / totalItems) * 100);
+              const plastikPct = Math.round((plastikCount / totalItems) * 100);
+
+              return (
+                <div className="space-y-4 pt-4">
+                  {/* Botol */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-amber-900">Kemasan Botol (130ml, 200ml, 250ml)</span>
+                      <span className="text-slate-800 font-mono font-black">{botolCount.toLocaleString('id-ID')} pcs ({botolPct}%)</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${botolPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Cup */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-blue-900">Kemasan Cup (100ml, 115ml)</span>
+                      <span className="text-slate-800 font-mono font-black">{cupCount.toLocaleString('id-ID')} pcs ({cupPct}%)</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${cupPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Plastik Bantal */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-emerald-900">Plastik Bantal / Pouch (200ml, 500ml)</span>
+                      <span className="text-slate-800 font-mono font-black">{plastikCount.toLocaleString('id-ID')} pcs ({plastikPct}%)</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="bg-emerald-600 h-full rounded-full transition-all duration-500" style={{ width: `${plastikPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Total Summary Box */}
+                  <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-1 mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-300">Total Unit Produk Jadi</span>
+                      <span className="text-xl font-black text-amber-400">{totalOlahanUnits.toLocaleString('id-ID')} pcs</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-300 font-semibold">Tersinkronisasi dengan unit pengolahan</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-        )}
+
+          <div className="pt-3 border-t border-slate-100">
+            <Link
+              href="/pemasaran/terima-data"
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>Lihat Detail UHT</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   );

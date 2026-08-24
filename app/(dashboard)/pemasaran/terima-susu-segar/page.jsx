@@ -38,6 +38,9 @@ export default function TerimaSusuSegarPage() {
   const [farmDailyList, setFarmDailyList] = useState([]);
   const [summary, setSummary] = useState({});
 
+  // Commodity Tab: 'SAPI' | 'KAMBING'
+  const [commodityTab, setCommodityTab] = useState('SAPI');
+
   // View Sub-Tab: 'daily' (1 Hari Jadi Satu) | 'sessions' (Rincian Sesi Pagi & Sore)
   const [viewTab, setViewTab] = useState('daily');
 
@@ -46,7 +49,6 @@ export default function TerimaSusuSegarPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sessionFilter, setSessionFilter] = useState('ALL');
-  const [animalFilter, setAnimalFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('asc'); // Default ascending 1-31
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,7 +81,17 @@ export default function TerimaSusuSegarPage() {
     fetchData();
   }, []);
 
-  // Filtered Daily Records (1 Hari Jadi Satu dengan Potongan BAST Otomatis)
+  // Commodity Counts & Quick Aggregates for Tabs
+  const sapiDailyList = useMemo(() => farmDailyList.filter(d => (d.jenisTernak || 'SAPI').toUpperCase() === 'SAPI'), [farmDailyList]);
+  const kambingDailyList = useMemo(() => farmDailyList.filter(d => (d.jenisTernak || '').toUpperCase() === 'KAMBING'), [farmDailyList]);
+  
+  const totalSapiVolume = useMemo(() => sapiDailyList.reduce((acc, d) => acc + (d.sisaBersihSiapOlah || d.totalSusuSiapOlah || 0), 0), [sapiDailyList]);
+  const totalKambingVolume = useMemo(() => kambingDailyList.reduce((acc, d) => acc + (d.sisaBersihSiapOlah || d.totalSusuSiapOlah || 0), 0), [kambingDailyList]);
+
+  const pendingSapiCount = useMemo(() => farmRecaps.filter(r => (r.jenisTernak || 'SAPI').toUpperCase() === 'SAPI' && r.status === 'MENUNGGU_VERIFIKASI').length, [farmRecaps]);
+  const pendingKambingCount = useMemo(() => farmRecaps.filter(r => (r.jenisTernak || '').toUpperCase() === 'KAMBING' && r.status === 'MENUNGGU_VERIFIKASI').length, [farmRecaps]);
+
+  // Filtered Daily Records (1 Hari Jadi Satu dengan Potongan BAST Otomatis & Pemisahan Komoditas)
   const filteredDailyList = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const d7 = new Date();
@@ -92,6 +104,10 @@ export default function TerimaSusuSegarPage() {
 
     return farmDailyList
       .filter((day) => {
+        // Filter strictly by active commodity tab
+        const dayAnimal = (day.jenisTernak || 'SAPI').toUpperCase();
+        if (dayAnimal !== commodityTab) return false;
+
         const dStr = day.tanggal;
         let matchTime = true;
         if (timeFilter === 'TODAY') matchTime = dStr === today;
@@ -114,9 +130,9 @@ export default function TerimaSusuSegarPage() {
         const cmp = new Date(a.tanggal) - new Date(b.tanggal);
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [farmDailyList, timeFilter, startDate, endDate, statusFilter, sortOrder, searchTerm]);
+  }, [farmDailyList, commodityTab, timeFilter, startDate, endDate, statusFilter, sortOrder, searchTerm]);
 
-  // Filtered Sesi Records
+  // Filtered Sesi Records (Pemisahan Komoditas)
   const filteredSessions = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const d7 = new Date();
@@ -129,6 +145,10 @@ export default function TerimaSusuSegarPage() {
 
     return farmRecaps
       .filter((r) => {
+        // Filter strictly by active commodity tab
+        const rAnimal = (r.jenisTernak || 'SAPI').toUpperCase();
+        if (rAnimal !== commodityTab) return false;
+
         const dStr = r.tanggal;
         let matchTime = true;
         if (timeFilter === 'TODAY') matchTime = dStr === today;
@@ -140,7 +160,6 @@ export default function TerimaSusuSegarPage() {
         }
 
         const matchSession = sessionFilter === 'ALL' || r.kegiatanPerah?.toLowerCase() === sessionFilter.toLowerCase();
-        const matchAnimal = animalFilter === 'ALL' || r.jenisTernak?.toUpperCase() === animalFilter.toUpperCase();
         const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
         const matchSearch =
           !searchTerm ||
@@ -148,16 +167,16 @@ export default function TerimaSusuSegarPage() {
           r.rincianPembeli?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           r.notes?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        return matchTime && matchSession && matchAnimal && matchStatus && matchSearch;
+        return matchTime && matchSession && matchStatus && matchSearch;
       })
       .sort((a, b) => {
         const cmp = new Date(a.tanggal) - new Date(b.tanggal);
         if (cmp !== 0) return sortOrder === 'desc' ? -cmp : cmp;
         return a.kegiatanPerah === 'Pagi' ? -1 : 1;
       });
-  }, [farmRecaps, timeFilter, startDate, endDate, sessionFilter, animalFilter, statusFilter, sortOrder, searchTerm]);
+  }, [farmRecaps, commodityTab, timeFilter, startDate, endDate, sessionFilter, statusFilter, sortOrder, searchTerm]);
 
-  // Aggregated Totals
+  // Aggregated Totals strictly for the active commodity
   const totalDailyGross = useMemo(() => filteredDailyList.reduce((acc, d) => acc + d.totalGross, 0), [filteredDailyList]);
   const totalDailySiapOlahAwal = useMemo(() => filteredDailyList.reduce((acc, d) => acc + d.totalSusuSiapOlah, 0), [filteredDailyList]);
   const totalDailyBastPotongan = useMemo(() => filteredDailyList.reduce((acc, d) => acc + (d.totalBastDeduction || 0), 0), [filteredDailyList]);
@@ -223,11 +242,11 @@ export default function TerimaSusuSegarPage() {
               <h1 className="text-xl font-extrabold text-slate-800">Terima Susu Segar (Farm)</h1>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-black rounded-full border border-emerald-300">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Terintegrasi Potongan BAST Otomatis</span>
+                <span>Pemisahan Susu Sapi & Susu Kambing</span>
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Penerimaan & verifikasi penyerahan susu segar dari unit Farm dengan rincian pemakaian dan potongan BAST terpadu
+              Penerimaan & verifikasi penyerahan susu segar per komoditas ternak dengan rincian alokasi dan potongan BAST terpadu
             </p>
           </div>
         </div>
@@ -241,22 +260,93 @@ export default function TerimaSusuSegarPage() {
         </button>
       </div>
 
-      {/* 4 Summary KPI Cards */}
+      {/* ========================================================================= */}
+      {/* KOMODITAS TERNAK SWITCHER (PEMISAHAN SUSU SAPI VS SUSU KAMBING)           */}
+      {/* ========================================================================= */}
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap sm:flex-nowrap gap-2 print:hidden">
+        <button
+          onClick={() => setCommodityTab('SAPI')}
+          className={`flex-1 flex items-center justify-between p-3.5 rounded-xl font-extrabold text-xs transition-all ${
+            commodityTab === 'SAPI'
+              ? 'bg-[#1E3F20] text-white shadow-md'
+              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">🐄</span>
+            <div className="text-left">
+              <span className="block text-sm font-black">Susu Sapi Segar</span>
+              <span className={`text-[11px] font-semibold ${commodityTab === 'SAPI' ? 'text-emerald-200' : 'text-slate-500'}`}>
+                Bovine Fresh Milk
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className={`text-base font-black ${commodityTab === 'SAPI' ? 'text-amber-300' : 'text-emerald-800'}`}>
+              {totalSapiVolume.toLocaleString('id-ID')} Liter
+            </span>
+            {pendingSapiCount > 0 && (
+              <span className="block text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white mt-0.5">
+                {pendingSapiCount} Perlu Verifikasi
+              </span>
+            )}
+          </div>
+        </button>
+
+        <button
+          onClick={() => setCommodityTab('KAMBING')}
+          className={`flex-1 flex items-center justify-between p-3.5 rounded-xl font-extrabold text-xs transition-all ${
+            commodityTab === 'KAMBING'
+              ? 'bg-amber-900 text-white shadow-md'
+              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">🐐</span>
+            <div className="text-left">
+              <span className="block text-sm font-black">Susu Kambing Segar</span>
+              <span className={`text-[11px] font-semibold ${commodityTab === 'KAMBING' ? 'text-amber-200' : 'text-slate-500'}`}>
+                Caprine Fresh Milk
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className={`text-base font-black ${commodityTab === 'KAMBING' ? 'text-amber-300' : 'text-amber-800'}`}>
+              {totalKambingVolume.toLocaleString('id-ID')} Liter
+            </span>
+            {pendingKambingCount > 0 && (
+              <span className="block text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white mt-0.5">
+                {pendingKambingCount} Perlu Verifikasi
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* 4 Summary KPI Cards strictly for the active commodity */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Produksi Gross Farm</span>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Gross Susu {commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'}
+          </span>
           <h3 className="text-2xl font-black text-slate-800 mt-1">
             {totalDailyGross.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-400">Liter</span>
           </h3>
-          <p className="text-[11px] text-slate-500 font-semibold mt-1">Perolehan susu dari kandang</p>
+          <p className="text-[11px] text-slate-500 font-semibold mt-1">
+            Total perah {commodityTab === 'KAMBING' ? 'kambing' : 'sapi'} dari kandang
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm">
-          <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">Susu Siap Olah Farm Awal</span>
+          <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">
+            Siap Olah {commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'} Awal
+          </span>
           <h3 className="text-2xl font-black text-blue-950 mt-1">
             {totalDailySiapOlahAwal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-blue-700">Liter</span>
           </h3>
-          <p className="text-[11px] text-blue-600 font-semibold mt-1">Gross - Pedet - Afkir - Dist Langsung</p>
+          <p className="text-[11px] text-blue-600 font-semibold mt-1">
+            Gross - {commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'} - Afkir - Dist
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm">
@@ -264,11 +354,13 @@ export default function TerimaSusuSegarPage() {
           <h3 className="text-2xl font-black text-amber-900 mt-1">
             {totalDailyBastPotongan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-amber-700">Liter</span>
           </h3>
-          <p className="text-[11px] text-amber-600 font-semibold mt-1">Dipakai untuk BAST Penjualan/Hibah/Riset</p>
+          <p className="text-[11px] text-amber-600 font-semibold mt-1">
+            {commodityTab === 'KAMBING' ? 'Pemakaian BAST khusus kambing' : 'Dipakai BAST Penjualan/Hibah/Riset'}
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm">
-          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Sisa Bersih Masuk Pengolahan</span>
+          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Sisa Bersih Siap Olah</span>
           <h3 className="text-2xl font-black text-emerald-950 mt-1">
             {totalDailyBersihSiapOlah.toLocaleString('id-ID')} <span className="text-xs font-semibold text-emerald-700">Liter</span>
           </h3>
@@ -329,8 +421,11 @@ export default function TerimaSusuSegarPage() {
             ))}
           </div>
 
-          <div className="text-xs text-slate-500 font-bold">
-            Ditampilkan: {viewTab === 'daily' ? `${filteredDailyList.length} Hari` : `${filteredSessions.length} Sesi`}
+          <div className="text-xs text-slate-500 font-bold flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+              {commodityTab === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
+            </span>
+            <span>Ditampilkan: {viewTab === 'daily' ? `${filteredDailyList.length} Hari` : `${filteredSessions.length} Sesi`}</span>
           </div>
         </div>
 
@@ -357,15 +452,6 @@ export default function TerimaSusuSegarPage() {
               <option value="ALL">Semua Status</option>
               <option value="MENUNGGU_VERIFIKASI">Menunggu Verifikasi</option>
               <option value="DITERIMA">Diterima (Disetujui)</option>
-            </select>
-
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900"
-            >
-              <option value="asc">📅 Tanggal 1 s/d 31 (Urut Naik)</option>
-              <option value="desc">📅 Tanggal 31 s/d 1 (Urut Turun)</option>
             </select>
 
             <div className="relative">
@@ -417,7 +503,12 @@ export default function TerimaSusuSegarPage() {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-extrabold text-slate-800 text-base">Rekapitulasi Harian Penyerahan Susu Fresh Farm</h2>
+              <h2 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                <span>{commodityTab === 'KAMBING' ? '🐐 Rekapitulasi Harian Susu Kambing' : '🐄 Rekapitulasi Harian Susu Sapi'}</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  {filteredDailyList.length} Hari
+                </span>
+              </h2>
               <p className="text-xs text-slate-500">
                 Pagi & Sore digabung menjadi 1 hari, otomatis dipotong alokasi BAST dengan keterangan pemakaian
               </p>
@@ -426,7 +517,7 @@ export default function TerimaSusuSegarPage() {
 
           {filteredDailyList.length === 0 ? (
             <EmptyState
-              title="Tidak Ada Data Harian"
+              title={`Tidak Ada Data Susu ${commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'}`}
               description="Tidak ditemukan data rekapan harian susu segar untuk filter ini."
             />
           ) : (
@@ -437,7 +528,9 @@ export default function TerimaSusuSegarPage() {
                     <th className="px-3 py-3 text-center w-10">No</th>
                     <th className="px-3 py-3">Tanggal</th>
                     <th className="px-3 py-3 text-right">Gross Total (L)</th>
-                    <th className="px-3 py-3 text-right text-slate-500">Potongan Kandang (Pedet/Afkir)</th>
+                    <th className="px-3 py-3 text-right text-slate-500">
+                      Potongan Kandang ({commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'}/Afkir)
+                    </th>
                     <th className="px-3 py-3 text-right font-black text-blue-900 bg-blue-50/50">Siap Olah Awal</th>
                     <th className="px-3 py-3 text-right font-bold text-amber-700 bg-amber-50/50">Potongan BAST (L)</th>
                     <th className="px-3 py-3">Keterangan Pemakaian BAST</th>
@@ -507,7 +600,7 @@ export default function TerimaSusuSegarPage() {
                 <tfoot className="bg-amber-100/80 font-black text-slate-900 border-t-2 border-slate-300">
                   <tr>
                     <td colSpan={2} className="px-3 py-2.5 text-center bg-amber-200">
-                      TOTAL AKUMULASI ({filteredDailyList.length} Hari)
+                      TOTAL AKUMULASI SUSU {commodityTab === 'KAMBING' ? 'KAMBING' : 'SAPI'} ({filteredDailyList.length} Hari)
                     </td>
                     <td className="px-3 py-2 text-right">{totalDailyGross.toLocaleString('id-ID')} L</td>
                     <td className="px-3 py-2 text-right text-slate-600">
@@ -538,7 +631,9 @@ export default function TerimaSusuSegarPage() {
         /* ========================================================================= */
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-slate-800 text-base">Daftar Sesi Perah Pagi & Sore</h2>
+            <h2 className="font-extrabold text-slate-800 text-base">
+              Daftar Sesi Perah Susu {commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'} (Pagi & Sore)
+            </h2>
             <span className="text-xs font-bold bg-slate-100 text-slate-800 px-3 py-1 rounded-full">
               {filteredSessions.length} Sesi
             </span>
@@ -553,7 +648,7 @@ export default function TerimaSusuSegarPage() {
                   <th className="px-4 py-3 text-center">Sesi</th>
                   <th className="px-4 py-3 text-center">Ternak</th>
                   <th className="px-4 py-3 text-right">Gross (L)</th>
-                  <th className="px-4 py-3 text-right text-slate-500">Pedet (L)</th>
+                  <th className="px-4 py-3 text-right text-slate-500">{commodityTab === 'KAMBING' ? 'Cempe (L)' : 'Pedet (L)'}</th>
                   <th className="px-4 py-3 text-right text-rose-600">Afkir (L)</th>
                   <th className="px-4 py-3 text-right text-amber-700">Distribusi (L)</th>
                   <th className="px-4 py-3 text-right font-black text-emerald-950 bg-emerald-50">Susu Siap Olah</th>
@@ -580,8 +675,10 @@ export default function TerimaSusuSegarPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        {r.jenisTernak === 'KAMBING' ? '🐐 Kambing' : '🐄 Sapi'}
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        r.jenisTernak === 'KAMBING' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      }`}>
+                        {r.jenisTernak === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-bold">{r.produksiSusu} L</td>
@@ -630,11 +727,13 @@ export default function TerimaSusuSegarPage() {
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center gap-3 text-emerald-700">
               <CheckCircle2 className="w-6 h-6" />
-              <h3 className="text-base font-black text-slate-800">Verifikasi Penerimaan Susu Mentah</h3>
+              <h3 className="text-base font-black text-slate-800">
+                Verifikasi Susu {selectedFresh.jenisTernak === 'KAMBING' ? 'Kambing' : 'Sapi'} Segar
+              </h3>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Konfirmasi data perah <strong>{selectedFresh.kegiatanPerah}</strong> tanggal{' '}
+              Konfirmasi data perah <strong>{selectedFresh.kegiatanPerah} ({selectedFresh.jenisTernak === 'KAMBING' ? '🐐 Kambing' : '🐄 Sapi'})</strong> tanggal{' '}
               <strong>{new Date(selectedFresh.tanggal).toLocaleDateString('id-ID')}</strong> sejumlah{' '}
               <strong>{selectedFresh.susuSiapOlah} Liter</strong> susu siap olah.
             </p>

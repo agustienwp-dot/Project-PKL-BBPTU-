@@ -385,7 +385,6 @@ export default function LaporanPemasaranPage() {
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                     <span>Satu Kesatuan Susu Fresh Farm</span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium">Urutan Tanggal 1 s/d 31</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -411,13 +410,13 @@ export default function LaporanPemasaranPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-[#1E3F20] text-white p-5 rounded-3xl shadow-sm flex flex-col justify-between">
                   <div>
-                    <span className="text-[11px] font-bold tracking-wider text-emerald-200 uppercase">PRODUKSI SUSU (GROSS)</span>
+                    <span className="text-[11px] font-bold tracking-wider text-emerald-200 uppercase">PRODUKSI SUSU</span>
                     <h3 className="text-2xl font-black mt-1">
                       {(freshSummary.totalProduksiGross || 0).toLocaleString('id-ID')}{' '}
                       <span className="text-xs font-semibold text-emerald-200">Liter</span>
                     </h3>
                   </div>
-                  <p className="text-[11px] text-emerald-200/90 font-medium mt-3">Total perah bruto seluruh kandang</p>
+                  <p className="text-[11px] text-emerald-200/90 font-medium mt-3">Hasil perah keseluruhan</p>
                 </div>
 
                 <div className="bg-white p-5 rounded-3xl border border-amber-200 shadow-sm flex flex-col justify-between">
@@ -476,7 +475,7 @@ export default function LaporanPemasaranPage() {
                       <span className="text-xs font-semibold text-emerald-200">Liter</span>
                     </h3>
                   </div>
-                  <p className="text-[11px] text-emerald-200 font-bold mt-3">Siap kirim ke Pengolahan / Kemas</p>
+                  <p className="text-[11px] text-emerald-200 font-bold mt-3">Siap Olah</p>
                 </div>
               </div>
 
@@ -535,25 +534,6 @@ export default function LaporanPemasaranPage() {
                       ))}
                     </div>
 
-                    <select
-                      value={freshAnimalFilter}
-                      onChange={(e) => setFreshAnimalFilter(e.target.value)}
-                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
-                    >
-                      <option value="ALL">Semua Ternak (Sapi & Kambing)</option>
-                      <option value="SAPI">Sapi</option>
-                      <option value="KAMBING">Kambing</option>
-                    </select>
-
-                    <select
-                      value={freshSortOrder}
-                      onChange={(e) => setFreshSortOrder(e.target.value)}
-                      className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900"
-                    >
-                      <option value="asc">📅 Tanggal 1 s/d 31 (Urut Naik)</option>
-                      <option value="desc">📅 Tanggal 31 s/d 1 (Urut Turun)</option>
-                    </select>
-
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                       <input
@@ -585,7 +565,7 @@ export default function LaporanPemasaranPage() {
                         Tabel Rekapitulasi Harian Susu Siap Olah (Dikirim ke Pengolahan)
                       </h2>
                       <p className="text-xs text-slate-500">
-                        Akumulasi perah pagi & sore per tanggal menjadi 1 kesatuan stok susu siap olah
+                        Akumulasi perah pagi & sore per tanggal menjadi 1 kesatuan stok susu sapi siap olah
                       </p>
                     </div>
                     <span className="text-xs font-bold bg-emerald-100 text-emerald-900 px-3 py-1 rounded-full">
@@ -605,7 +585,7 @@ export default function LaporanPemasaranPage() {
                           <tr>
                             <th className="px-3 py-3 text-center w-10">No</th>
                             <th className="px-3 py-3">Tanggal Produksi</th>
-                            <th className="px-3 py-3 text-center">Ternak</th>
+                            <th className="px-3 py-3 text-center">Produk</th>
                             <th className="px-3 py-3 text-right">Gross Harian</th>
                             <th className="px-3 py-3 text-right text-rose-700">Potongan Kandang</th>
                             <th className="px-3 py-3 text-right font-bold text-blue-900 bg-blue-50/50">Siap Olah Awal</th>
@@ -630,10 +610,8 @@ export default function LaporanPemasaranPage() {
                                 })}
                               </td>
                               <td className="px-3 py-3 text-center">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                  d.jenisTernak === 'KAMBING' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
-                                }`}>
-                                  {d.jenisTernak === 'KAMBING' ? '🐐 Kambing' : '🐄 Sapi'}
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  🐄 Sapi
                                 </span>
                               </td>
                               <td className="px-3 py-3 text-right font-bold text-slate-800">{d.totalGross || 0} L</td>
@@ -732,7 +710,7 @@ export default function LaporanPemasaranPage() {
                             <th className="px-3 py-3 text-center w-12">No</th>
                             <th className="px-3 py-3">Tanggal</th>
                             <th className="px-3 py-3 text-center">Sesi Perah</th>
-                            <th className="px-3 py-3 text-center">Ternak</th>
+                            <th className="px-3 py-3 text-center">Produk</th>
                             <th className="px-3 py-3 text-right">Produksi Gross</th>
                             <th className="px-3 py-3 text-right">Susu Pedet</th>
                             <th className="px-3 py-3 text-right">Afkir/Rusak</th>
@@ -760,10 +738,8 @@ export default function LaporanPemasaranPage() {
                                 </span>
                               </td>
                               <td className="px-3 py-3 text-center">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                  r.jenisTernak === 'KAMBING' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
-                                }`}>
-                                  {r.jenisTernak === 'KAMBING' ? '🐐 Kambing' : '🐄 Sapi'}
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  🐄 Sapi
                                 </span>
                               </td>
                               <td className="px-3 py-3 text-right font-bold">{r.produksiSusu || 0} L</td>
@@ -914,9 +890,9 @@ export default function LaporanPemasaranPage() {
                 </span>
               </div>
               <div className="flex justify-between py-1.5">
-                <span className="text-slate-500">Sesi & Ternak:</span>
+                <span className="text-slate-500">Sesi & Produk:</span>
                 <span className="font-bold text-slate-800">
-                  Perah {selectedFreshRecord.kegiatanPerah} • {selectedFreshRecord.jenisTernak === 'KAMBING' ? 'Kambing' : 'Sapi'}
+                  Perah {selectedFreshRecord.kegiatanPerah} • 🐄 Susu Sapi
                 </span>
               </div>
               <div className="flex justify-between py-1.5">

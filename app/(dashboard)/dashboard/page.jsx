@@ -26,7 +26,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState(null);
   const [chartFilter, setChartFilter] = useState('7'); // '7' or '30'
-  const [packagingTab, setPackagingTab] = useState('ALL'); // 'ALL' | 'SAPI' | 'KAMBING'
   const [toast, setToast] = useState(null);
 
   const fetchDashboardData = async () => {
@@ -53,15 +52,15 @@ export default function DashboardPage() {
   }
 
   const farmStats = statsData?.farm || {};
-  const todaySapi = farmStats.todaySapiLiters || 0;
-  const todayKambing = farmStats.todayKambingLiters || 0;
-  const todayTotalLiters = farmStats.todayTotalLiters || (todaySapi + todayKambing);
+  const todayGross = farmStats.todayGrossLiters || farmStats.todayTotalLiters || 0;
+  const todayPedet = farmStats.todayPedetLiters || 0;
+  const todayAfkir = farmStats.todayAfkirLiters || 0;
+  const todayPotongan = todayPedet + todayAfkir;
+  const todayNet = farmStats.todayTotalLiters || Math.max(0, todayGross - todayPotongan);
   const todayPackagedQty = farmStats.todayPackagedQty || 0;
-  const sapiPackagedQty = farmStats.sapiPackagedQty || 0;
-  const kambingPackagedQty = farmStats.kambingPackagedQty || 0;
 
-  const sapiPercentage = todayTotalLiters > 0 ? Math.round((todaySapi / todayTotalLiters) * 100) : 0;
-  const kambingPercentage = todayTotalLiters > 0 ? Math.round((todayKambing / todayTotalLiters) * 100) : 0;
+  const netPercentage = todayGross > 0 ? Math.round((todayNet / todayGross) * 100) : (todayNet > 0 ? 100 : 0);
+  const potongPercentage = todayGross > 0 ? Math.round((todayPotongan / todayGross) * 100) : 0;
 
   const chartData = chartFilter === '30' ? (farmStats.chart30Days || []) : (farmStats.chart7Days || []);
   const maxChartVal = Math.max(...chartData.map(d => d.totalLiters || 0), 10);
@@ -83,70 +82,72 @@ export default function DashboardPage() {
           Hallo, {user?.name || 'Admin'}!
         </h1>
         <p className="text-xs text-slate-500 font-semibold mt-1">
-          Ringkasan statistik perah & pengemasan susu • {todayFormatted}
+          Ringkasan statistik perah & pengemasan Susu Sapi • {todayFormatted}
         </p>
       </div>
 
       {/* 1. BAGIAN PALING ATAS - 4 STATISTIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Card 1: Produksi Hari Ini */}
+        {/* Card 1: Produksi Hari Ini (Gross) */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Produksi Hari Ini</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Produksi Hari Ini (Gross)</span>
             <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
               <Milk className="w-5 h-5 text-emerald-700" />
             </div>
           </div>
           <div>
             <p className="text-3xl font-black text-slate-900">
-              {todayTotalLiters.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
+              {todayGross.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
             </p>
-            <p className="text-[11px] text-slate-400 font-semibold mt-1">Total hasil perah hari ini</p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-1">Total hasil perah sapi dari kandang</p>
           </div>
         </div>
 
-        {/* Card 2: Susu Sapi */}
+        {/* Card 2: Susu Siap Olah (Net) */}
         <div className="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Susu Sapi</span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">🐄 SAPI</span>
+            <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Susu Siap Olah</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">🐄 SUSU SAPI</span>
           </div>
           <div>
             <p className="text-3xl font-black text-emerald-700">
-              {todaySapi.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
+              {todayNet.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
             </p>
-            <p className="text-[11px] text-slate-500 font-semibold mt-1">{sapiPercentage}% dari produksi hari ini</p>
+            <p className="text-[11px] text-emerald-600 font-semibold mt-1">{netPercentage}% siap diproses/dikemas</p>
           </div>
         </div>
 
-        {/* Card 3: Susu Kambing */}
-        <div className="bg-white p-6 rounded-3xl border border-purple-200 bg-purple-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+        {/* Card 3: Potongan (Pedet & Afkir) */}
+        <div className="bg-white p-6 rounded-3xl border border-amber-200 bg-amber-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-900 uppercase tracking-wider">Susu Kambing</span>
-            <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black">🐐 KAMBING</span>
+            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Potongan Susu</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">PEDET & AFKIR</span>
           </div>
           <div>
-            <p className="text-3xl font-black text-purple-700">
-              {todayKambing.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
+            <p className="text-3xl font-black text-amber-700">
+              {todayPotongan.toLocaleString()} <span className="text-sm font-bold text-slate-500">Liter</span>
             </p>
-            <p className="text-[11px] text-slate-500 font-semibold mt-1">{kambingPercentage}% dari produksi hari ini</p>
+            <p className="text-[11px] text-slate-600 font-bold mt-1">
+              Pedet: {todayPedet} L | Afkir: {todayAfkir} L
+            </p>
           </div>
         </div>
 
         {/* Card 4: TOTAL PRODUK DIKEMAS */}
-        <div className="bg-white p-6 rounded-3xl border border-amber-200 bg-amber-50/20 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 bg-slate-50/50 shadow-sm space-y-3 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">TOTAL PRODUK DIKEMAS</span>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">TOTAL PRODUK DIKEMAS</span>
             <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
               <Package className="w-5 h-5 text-amber-700" />
             </div>
           </div>
           <div>
-            <p className="text-3xl font-black text-amber-600">
+            <p className="text-3xl font-black text-slate-900">
               {todayPackagedQty.toLocaleString()} <span className="text-sm font-bold text-slate-500">pcs</span>
             </p>
-            <p className="text-[11px] text-slate-600 font-bold mt-1">
-              Sapi: {sapiPackagedQty} pcs | Kambing: {kambingPackagedQty} pcs
+            <p className="text-[11px] text-slate-500 font-bold mt-1">
+              Botol: {farmStats.todayBotolQty || 0} | Cup: {farmStats.todayCupQty || 0} | Pack: {farmStats.todayPlastikBantalQty || 0}
             </p>
           </div>
         </div>
@@ -155,236 +156,142 @@ export default function DashboardPage() {
       {/* 2. RINGKASAN PRODUKSI HARI INI & 3. HASIL PENGEMASAN HARI INI (SIDE BY SIDE) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
-        {/* 2. SECTION: PRODUKSI HARI INI */}
+        {/* 2. SECTION: PRODUKSI SUSU SAPI HARI INI */}
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Milk className="w-5 h-5 text-emerald-600" />
-                <span>Produksi Hari Ini</span>
+                <span>Rincian Produksi Susu Sapi</span>
               </h2>
               <p className="text-xs text-slate-400 font-semibold mt-0.5">{todayFormatted}</p>
             </div>
             <Link href="/produksi" className="text-xs font-bold text-[#1E3F20] hover:underline flex items-center gap-1">
-              <span>Lihat Detail</span>
+              <span>Input / Kelola</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="flex items-center gap-3">
                 <span className="text-xl">🐄</span>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm">Susu Sapi</h4>
-                  <p className="text-[11px] text-slate-500">Hasil perah sapi segar</p>
+                  <h4 className="font-bold text-slate-900 text-xs uppercase">Produksi Gross Perah</h4>
+                  <p className="text-[11px] text-slate-500">Total volume susu sapi diperah hari ini</p>
                 </div>
               </div>
-              <span className="text-xl font-black text-emerald-700">{todaySapi} Liter</span>
+              <span className="text-lg font-black text-slate-800">{todayGross} Liter</span>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-purple-50/60 border border-purple-100">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100">
               <div className="flex items-center gap-3">
-                <span className="text-xl">🐐</span>
+                <span className="text-xl">🍼</span>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm">Susu Kambing</h4>
-                  <p className="text-[11px] text-slate-500">Hasil perah kambing segar</p>
+                  <h4 className="font-bold text-amber-950 text-xs uppercase">Susu Pakan Pedet</h4>
+                  <p className="text-[11px] text-amber-800">Alokasi pakan untuk anak sapi</p>
                 </div>
               </div>
-              <span className="text-xl font-black text-purple-700">{todayKambing} Liter</span>
+              <span className="text-lg font-black text-amber-800">-{todayPedet} Liter</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-rose-50/60 border border-rose-100">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">⚠️</span>
+                <div>
+                  <h4 className="font-bold text-rose-950 text-xs uppercase">Susu Afkir / Rusak</h4>
+                  <p className="text-[11px] text-rose-800">Susu rusak/tidak layak olah</p>
+                </div>
+              </div>
+              <span className="text-lg font-black text-rose-700">-{todayAfkir} Liter</span>
             </div>
 
             <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900 text-white shadow-sm">
-              <span className="font-extrabold text-sm">Total Produksi Hari Ini</span>
-              <span className="text-2xl font-black text-emerald-400">{todayTotalLiters} Liter</span>
+              <div>
+                <span className="font-extrabold text-sm block">Susu Sapi Siap Olah (Net)</span>
+                <span className="text-[10px] text-emerald-300 font-semibold">Siap dikirim ke Pemasaran & Pengolahan</span>
+              </div>
+              <span className="text-2xl font-black text-emerald-400">{todayNet} Liter</span>
             </div>
           </div>
 
           {/* VISUAL RATIO PROGRESS BAR */}
           <div className="space-y-1.5 pt-2">
             <div className="flex justify-between text-xs font-bold text-slate-600">
-              <span>Rasio Sapi vs Kambing</span>
-              <span>{sapiPercentage}% Sapi / {kambingPercentage}% Kambing</span>
+              <span>Efisiensi Susu Siap Olah</span>
+              <span>{netPercentage}% Siap Olah • {potongPercentage}% Potongan</span>
             </div>
             <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
-              <div className="bg-emerald-600 h-full transition-all duration-500" style={{ width: `${sapiPercentage}%` }}></div>
-              <div className="bg-purple-600 h-full transition-all duration-500" style={{ width: `${kambingPercentage}%` }}></div>
+              <div className="bg-emerald-600 h-full transition-all duration-500" style={{ width: `${netPercentage}%` }}></div>
+              <div className="bg-amber-500 h-full transition-all duration-500" style={{ width: `${potongPercentage}%` }}></div>
             </div>
           </div>
         </div>
 
-        {/* 3. SECTION: HASIL PENGEMASAN HARI INI WITH TAB [ SEMUA ] [ 🐄 SAPI ] [ 🐐 KAMBING ] */}
+        {/* 3. SECTION: HASIL PENGEMASAN HARI INI */}
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Package className="w-5 h-5 text-amber-600" />
-                <span>Hasil Pengemasan Hari Ini</span>
+                <span>Hasil Pengemasan Susu Hari Ini</span>
               </h2>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5">Produk siap didistribusikan ke pemasaran</p>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Produk jadi siap didistribusikan ke pemasaran</p>
             </div>
 
-            {/* TAB SELECTOR: [ Semua ] [ 🐄 Sapi ] [ 🐐 Kambing ] */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl self-start sm:self-auto">
-              <button
-                onClick={() => setPackagingTab('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  packagingTab === 'ALL'
-                    ? 'bg-[#1E3F20] text-white shadow'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                onClick={() => setPackagingTab('SAPI')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  packagingTab === 'SAPI'
-                    ? 'bg-emerald-600 text-white shadow'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                🐄 Sapi
-              </button>
-              <button
-                onClick={() => setPackagingTab('KAMBING')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  packagingTab === 'KAMBING'
-                    ? 'bg-purple-600 text-white shadow'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                🐐 Kambing
-              </button>
-            </div>
-          </div>
-
-          {/* TAB CONTENT: SEMUA MODE */}
-          {packagingTab === 'ALL' && (
-            <div className="space-y-4">
-              <div className="space-y-2.5">
-                {/* Botol */}
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-xs uppercase">Botol</h4>
-                    <p className="text-[11px] text-slate-500 font-semibold">
-                      Sapi: <span className="font-bold text-emerald-700">{farmStats.sapiBotolQty || 0} pcs</span> | Kambing: <span className="font-bold text-purple-700">{farmStats.kambingBotolQty || 0} pcs</span>
-                    </p>
-                  </div>
-                  <span className="text-xl font-black text-amber-700">{farmStats.todayBotolQty || 0} pcs</span>
-                </div>
-
-                {/* Cup */}
-                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-xs uppercase">Cup</h4>
-                    <p className="text-[11px] text-slate-500 font-semibold">
-                      Sapi: <span className="font-bold text-emerald-700">{farmStats.sapiCupQty || 0} pcs</span> | Kambing: <span className="font-bold text-purple-700">{farmStats.kambingCupQty || 0} pcs</span>
-                    </p>
-                  </div>
-                  <span className="text-xl font-black text-blue-700">{farmStats.todayCupQty || 0} pcs</span>
-                </div>
-
-                {/* Plastik Bantal */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-xs uppercase">Plastik Bantal</h4>
-                    <p className="text-[11px] text-slate-500 font-semibold">
-                      Sapi: <span className="font-bold text-emerald-700">{farmStats.sapiPlastikBantalQty || 0} pcs</span> | Kambing: <span className="font-bold text-purple-700">{farmStats.kambingPlastikBantalQty || 0} pcs</span>
-                    </p>
-                  </div>
-                  <span className="text-xl font-black text-emerald-700">{farmStats.todayPlastikBantalQty || 0} pcs</span>
-                </div>
-              </div>
-
-              {/* TOTAL KEMASAN CARD */}
-              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs">Total Produk Dikemas Hari Ini</span>
-                  <span className="text-2xl font-black text-amber-400">{todayPackagedQty} pcs</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-slate-300 border-t border-slate-800 pt-1.5 font-semibold">
-                  <span>Sapi: {sapiPackagedQty} pcs</span>
-                  <span>Kambing: {kambingPackagedQty} pcs</span>
-                  <span>Total: {todayPackagedQty} pcs</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB CONTENT: SAPI MODE */}
-          {packagingTab === 'SAPI' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 text-emerald-900 font-extrabold text-xs">
-                <span>🐄 Pengemasan Susu Sapi</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 text-center space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Botol</span>
-                  <p className="text-2xl font-black text-amber-700">{farmStats.sapiBotolQty || 0}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Cup</span>
-                  <p className="text-2xl font-black text-blue-700">{farmStats.sapiCupQty || 0}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 text-center space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Plastik Bantal</span>
-                  <p className="text-2xl font-black text-emerald-700">{farmStats.sapiPlastikBantalQty || 0}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-emerald-900 text-white flex items-center justify-between">
-                <span className="font-extrabold text-xs">Total Pengemasan Sapi</span>
-                <span className="text-2xl font-black text-emerald-300">{sapiPackagedQty} pcs</span>
-              </div>
-            </div>
-          )}
-
-          {/* TAB CONTENT: KAMBING MODE */}
-          {packagingTab === 'KAMBING' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-purple-50 text-purple-900 font-extrabold text-xs">
-                <span>🐐 Pengemasan Susu Kambing</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 text-center space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Botol</span>
-                  <p className="text-2xl font-black text-amber-700">{farmStats.kambingBotolQty || 0}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Cup</span>
-                  <p className="text-2xl font-black text-blue-700">{farmStats.kambingCupQty || 0}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 text-center space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block uppercase">Plastik Bantal</span>
-                  <p className="text-2xl font-black text-emerald-700">{farmStats.kambingPlastikBantalQty || 0}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold block">pcs</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-purple-900 text-white flex items-center justify-between">
-                <span className="font-extrabold text-xs">Total Pengemasan Kambing</span>
-                <span className="text-2xl font-black text-purple-300">{kambingPackagedQty} pcs</span>
-              </div>
-            </div>
-          )}
-
-          <div className="pt-2">
-            <Link href="/pengemasan" className="text-xs font-bold text-amber-600 hover:underline flex items-center justify-center gap-1">
-              <span>Kelola Seluruh Pengemasan</span>
+            <Link href="/pengemasan" className="text-xs font-bold text-amber-700 hover:underline flex items-center gap-1">
+              <span>Kelola Pengemasan</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2.5">
+              {/* Botol */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-xs uppercase">Kemasan Botol</h4>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Ukuran 130 ml, 200 ml, 250 ml
+                  </p>
+                </div>
+                <span className="text-xl font-black text-amber-700">{farmStats.todayBotolQty || 0} pcs</span>
+              </div>
+
+              {/* Cup */}
+              <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-xs uppercase">Kemasan Cup</h4>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Ukuran 100 ml, 115 ml
+                  </p>
+                </div>
+                <span className="text-xl font-black text-blue-700">{farmStats.todayCupQty || 0} pcs</span>
+              </div>
+
+              {/* Plastik Bantal */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-xs uppercase">Plastik Bantal / Pouch</h4>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Ukuran 200 ml, 250 ml, 500 ml
+                  </p>
+                </div>
+                <span className="text-xl font-black text-emerald-700">{farmStats.todayPlastikBantalQty || 0} pcs</span>
+              </div>
+            </div>
+
+            {/* TOTAL KEMASAN CARD */}
+            <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs">Total Produk Dikemas Hari Ini</span>
+                <span className="text-2xl font-black text-amber-400">{todayPackagedQty} pcs</span>
+              </div>
+              <div className="flex justify-between text-[11px] text-slate-300 border-t border-slate-800 pt-1.5 font-semibold">
+                <span>Bahan Diproses: {farmStats.todayProcessedLiters || 0} Liter</span>
+                <span>Total Siap Jual: {todayPackagedQty} pcs</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

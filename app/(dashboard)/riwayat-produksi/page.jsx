@@ -189,8 +189,8 @@ export default function RiwayatProduksiPage() {
           <History className="w-4 h-4" />
           <span>POV Admin Farm Produksi</span>
         </div>
-        <h1 className="text-2xl font-black text-slate-900">Riwayat Produksi Susu</h1>
-        <p className="text-xs text-slate-500 font-medium">Tabel riwayat pencatatan hasil perah harian lengkap dengan status dan filter.</p>
+        <h1 className="text-2xl font-black text-slate-900">Riwayat Produksi Susu Sapi</h1>
+        <p className="text-xs text-slate-500 font-medium">Tabel riwayat pencatatan hasil perah susu sapi harian lengkap dengan status dan filter.</p>
       </div>
 
       {/* Filter & Search Bar */}
@@ -200,7 +200,7 @@ export default function RiwayatProduksiPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Cari varian, catatan, atau petugas..."
+              placeholder="Cari catatan atau petugas..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -209,19 +209,6 @@ export default function RiwayatProduksiPage() {
               className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
             />
           </div>
-
-          <select
-            value={filterAnimalType}
-            onChange={(e) => {
-              setFilterAnimalType(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
-          >
-            <option value="">Semua Jenis Susu (Sapi & Kambing)</option>
-            <option value="SAPI">🐄 Susu Sapi</option>
-            <option value="KAMBING">🐐 Susu Kambing</option>
-          </select>
 
           <input
             type="date"
@@ -233,10 +220,9 @@ export default function RiwayatProduksiPage() {
             className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
           />
 
-          {(filterAnimalType || filterDate || searchQuery) && (
+          {(filterDate || searchQuery) && (
             <button
               onClick={() => {
-                setFilterAnimalType('');
                 setFilterDate('');
                 setSearchQuery('');
                 setCurrentPage(1);
@@ -254,7 +240,7 @@ export default function RiwayatProduksiPage() {
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-            <span>Riwayat Laporan Perah ({filteredProductions.length} Entry)</span>
+            <span>Riwayat Laporan Perah Susu Sapi ({filteredProductions.length} Entry)</span>
           </h2>
         </div>
 
@@ -266,7 +252,7 @@ export default function RiwayatProduksiPage() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Tanggal Produksi</th>
-                  <th className="py-3.5 px-4">Jenis Ternak</th>
+                  <th className="py-3.5 px-4">Produk</th>
                   <th className="py-3.5 px-4">Produksi susu (Gross)</th>
                   <th className="py-3.5 px-4">Potongan (Pedet & Afkir)</th>
                   <th className="py-3.5 px-4">Susu siap olah</th>
@@ -281,7 +267,6 @@ export default function RiwayatProduksiPage() {
                     const pedetL = p.pedetVolumeLiters || 0;
                     const afkirL = p.afkirVolumeLiters || 0;
                     const totalPotong = pedetL + afkirL;
-                    const feedLabel = p.animalType === 'KAMBING' ? 'Cempe' : 'Pedet';
 
                     return (
                       <tr key={p.id} className="hover:bg-slate-50">
@@ -289,15 +274,9 @@ export default function RiwayatProduksiPage() {
                           {new Date(p.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </td>
                         <td className="py-3.5 px-4 font-extrabold text-slate-900">
-                          {p.animalType === 'KAMBING' ? (
-                            <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                              🐐 Kambing
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                              🐄 Sapi
-                            </span>
-                          )}
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] inline-flex items-center gap-1">
+                            🐄 Susu Sapi
+                          </span>
                         </td>
                         <td className="py-3.5 px-4 font-bold text-slate-700">{grossL} Liter</td>
                         <td className="py-3.5 px-4">
@@ -305,7 +284,7 @@ export default function RiwayatProduksiPage() {
                             <div className="flex flex-col gap-1 text-[11px] font-mono font-bold">
                               {pedetL > 0 && (
                                 <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-max">
-                                  {feedLabel}: -{pedetL} L
+                                  Pedet: -{pedetL} L
                                 </span>
                               )}
                               {afkirL > 0 && (
@@ -406,9 +385,9 @@ export default function RiwayatProduksiPage() {
                 </span>
               </div>
               <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-500">Jenis Susu:</span>
+                <span className="font-semibold text-slate-500">Jenis Produk:</span>
                 <span className="font-extrabold text-slate-900">
-                  {selectedProd.animalType === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
+                  🐄 Susu Sapi
                 </span>
               </div>
               <div className="flex justify-between border-b border-slate-50 pb-2">
@@ -416,7 +395,7 @@ export default function RiwayatProduksiPage() {
                 <span className="font-bold text-slate-800">{selectedProd.grossVolumeLiters > 0 ? selectedProd.grossVolumeLiters : selectedProd.rawVolumeLiters} Liter</span>
               </div>
               <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-amber-800">Susu {selectedProd.animalType === 'KAMBING' ? 'Cempe' : 'Pedet'}:</span>
+                <span className="font-semibold text-amber-800">Susu Pedet:</span>
                 <span className="font-bold text-amber-900">-{selectedProd.pedetVolumeLiters || 0} Liter</span>
               </div>
               <div className="flex justify-between border-b border-slate-50 pb-2">
@@ -460,7 +439,6 @@ export default function RiwayatProduksiPage() {
         const calculatedAfkir = parseFloat(formAfkirLiters) || 0;
         const calculatedTotalUsage = calculatedPedet + calculatedAfkir;
         const calculatedNet = Math.max(0, calculatedGross - calculatedTotalUsage);
-        const feedLabel = formAnimalType === 'KAMBING' ? 'Cempe' : 'Pedet';
 
         return (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -468,7 +446,7 @@ export default function RiwayatProduksiPage() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
                   <Edit2 className="w-5 h-5 text-blue-600" />
-                  <span>Edit Riwayat Produksi</span>
+                  <span>Edit Riwayat Produksi Susu Sapi</span>
                 </h3>
                 <button onClick={() => setEditingProd(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
               </div>
@@ -486,19 +464,6 @@ export default function RiwayatProduksiPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Susu</label>
-                  <select
-                    value={formAnimalType}
-                    onChange={(e) => setFormAnimalType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-                    required
-                  >
-                    <option value="SAPI">🐄 Susu Sapi</option>
-                    <option value="KAMBING">🐐 Susu Kambing</option>
-                  </select>
-                </div>
-
-                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Produksi susu (Liter)</label>
                   <input
                     type="number"
@@ -513,7 +478,7 @@ export default function RiwayatProduksiPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu {feedLabel} (Liter)</label>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu Pedet (Liter)</label>
                     <input
                       type="number"
                       step="0.1"
@@ -547,7 +512,7 @@ export default function RiwayatProduksiPage() {
                   </div>
                   {calculatedPedet > 0 && (
                     <div className="flex justify-between text-amber-800">
-                      <span>Susu Pakan ({feedLabel}):</span>
+                      <span>Susu Pakan (Pedet):</span>
                       <span className="font-bold">-{calculatedPedet} Liter</span>
                     </div>
                   )}

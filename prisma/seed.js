@@ -70,11 +70,10 @@ async function main() {
 
   console.log('✅ Akun User Siap');
 
-  // 2. Kategori Susu
+  // 2. Kategori Susu (Fokus Susu Sapi)
   const segarCategoriesData = [
     { name: 'Susu Murni Sapi (MYPI)', code: 'MYPI', animalType: 'SAPI', productType: 'SEGAR', defaultPackaging: 'botol', description: 'Susu Murni Segar Hasil Perah Sapi' },
     { name: 'Susu Sapi Segar (HS)', code: 'HS', animalType: 'SAPI', productType: 'SEGAR', defaultPackaging: 'liter', description: 'Hasil Perah Susu Sapi Segar Kategori HS' },
-    { name: 'Susu Kambing Segar (KMPI)', code: 'KMPI', animalType: 'KAMBING', productType: 'SEGAR', defaultPackaging: 'liter', description: 'Susu Murni Segar Hasil Perah Kambing' },
   ];
 
   for (const cat of segarCategoriesData) {

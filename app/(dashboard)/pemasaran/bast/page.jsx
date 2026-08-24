@@ -336,15 +336,6 @@ export default function SuratBastPermintaanPage() {
               <option value="DITERIMA">✓ Surat Fisik Diterima</option>
             </select>
 
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900"
-            >
-              <option value="asc">📅 Tanggal 1 s/d 31 (Urut Naik)</option>
-              <option value="desc">📅 Tanggal 31 s/d 1 (Urut Turun)</option>
-            </select>
-
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2" />
               <input

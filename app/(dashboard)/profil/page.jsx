@@ -69,7 +69,7 @@ export default function ProfilPage() {
 
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
             <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Sistem Hak Akses</span>
-            <p className="font-black text-slate-800 text-sm">POV Farm Produksi (Sapi & Kambing)</p>
+            <p className="font-black text-slate-800 text-sm">POV Farm Produksi (Susu Sapi)</p>
             <p className="text-[11px] text-slate-500">Akses penuh ke modul perah & kemasan</p>
           </div>
         </div>
