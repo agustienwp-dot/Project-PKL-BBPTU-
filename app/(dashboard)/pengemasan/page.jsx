@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   Layers,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Truck
 } from 'lucide-react';
 
 export default function PengemasanPage() {
@@ -51,13 +52,8 @@ export default function PengemasanPage() {
   ]);
   const [formNotes, setFormNotes] = useState('');
 
-  // Excel Structure Category Selection ("PENGAMBILAN_SUSU", "HASIL_PENGOLAHAN", "DISTRIBUSI", "SISA_STOK")
+  // Excel Structure Category Selection ("HASIL_PENGOLAHAN", "DISTRIBUSI")
   const [selectedMainCategory, setSelectedMainCategory] = useState('HASIL_PENGOLAHAN');
-
-  // Form 1: Pengambilan Susu Segar
-  const [farmTegalsari, setFarmTegalsari] = useState('');
-  const [farmLimpakuwus, setFarmLimpakuwus] = useState('');
-  const [farmManggala, setFarmManggala] = useState('');
 
   // Form 2: Hasil Pengolahan
   const [susuPasteurisasiPackaging, setSusuPasteurisasiPackaging] = useState('Botol');
@@ -67,21 +63,73 @@ export default function PengemasanPage() {
   const [susu250, setSusu250] = useState('');
   const [yogurt200, setYogurt200] = useState('');
 
-  // Form 3: Distribusi
-  const [distTujuan, setDistTujuan] = useState('SPPG');
-  const [distProduk, setDistProduk] = useState('Susu');
-  const [distUkuran, setDistUkuran] = useState('250 ml');
-  const [distKemasan, setDistKemasan] = useState('Botol');
-  const [distJumlah, setDistJumlah] = useState('');
+  // Distribusi Sub-Category State ('MENU', 'PENJUALAN', 'HIBAH', 'AFKIR')
+  const [distribusiSubCategory, setDistribusiSubCategory] = useState('MENU');
 
-  const [hibahInternalSusu, setHibahInternalSusu] = useState('');
-  const [hibahInternalYogurt, setHibahInternalYogurt] = useState('');
-  const [hibahEksternalSusu, setHibahEksternalSusu] = useState('');
+  // Multi-item lists for each Distribusi component
+  const [distSalesItems, setDistSalesItems] = useState([
+    { id: 1, target: 'SPPG', product: 'Susu', size: '250 ml', packagingType: 'Botol', quantity: '' }
+  ]);
+  const [distHibahItems, setDistHibahItems] = useState([
+    { id: 1, type: 'Internal - Susu', size: '250 ml', quantity: '' }
+  ]);
+  const [distAfkirItems, setDistAfkirItems] = useState([
+    { id: 1, product: 'Susu', size: '250 ml', quantity: '', reason: 'Produk rusak' }
+  ]);
 
-  const [afkirProduk, setAfkirProduk] = useState('Susu');
-  const [afkirUkuran, setAfkirUkuran] = useState('250 ml');
-  const [afkirJumlah, setAfkirJumlah] = useState('');
-  const [afkirAlasan, setAfkirAlasan] = useState('Produk rusak');
+  // Sales item handlers
+  const handleAddSalesItem = () => {
+    setDistSalesItems(prev => [
+      ...prev,
+      { id: Date.now(), target: 'SPPG', product: 'Susu', size: '250 ml', packagingType: 'Botol', quantity: '' }
+    ]);
+  };
+  const handleRemoveSalesItem = (id) => {
+    if (distSalesItems.length <= 1) return;
+    setDistSalesItems(prev => prev.filter(item => item.id !== id));
+  };
+  const handleUpdateSalesItem = (id, field, value) => {
+    setDistSalesItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [field]: value };
+        if (field === 'product' && value === 'Yogurt') {
+          updated.size = '200 ml';
+        }
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  // Hibah item handlers
+  const handleAddHibahItem = () => {
+    setDistHibahItems(prev => [
+      ...prev,
+      { id: Date.now(), type: 'Internal - Susu', size: '250 ml', quantity: '' }
+    ]);
+  };
+  const handleRemoveHibahItem = (id) => {
+    if (distHibahItems.length <= 1) return;
+    setDistHibahItems(prev => prev.filter(item => item.id !== id));
+  };
+  const handleUpdateHibahItem = (id, field, value) => {
+    setDistHibahItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  // Afkir item handlers
+  const handleAddAfkirItem = () => {
+    setDistAfkirItems(prev => [
+      ...prev,
+      { id: Date.now(), product: 'Susu', size: '250 ml', quantity: '', reason: 'Produk rusak' }
+    ]);
+  };
+  const handleRemoveAfkirItem = (id) => {
+    if (distAfkirItems.length <= 1) return;
+    setDistAfkirItems(prev => prev.filter(item => item.id !== id));
+  };
+  const handleUpdateAfkirItem = (id, field, value) => {
+    setDistAfkirItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
 
   // Detail Modal & Send Confirmation Modal
   const [selectedPkg, setSelectedPkg] = useState(null);
@@ -184,7 +232,7 @@ export default function PengemasanPage() {
     return acc + Math.max(0, qty);
   }, 0);
 
-  const openAddModal = () => {
+  const openAddModal = (initialCategory = null) => {
     setEditingPkg(null);
     setFormDate(new Date().toISOString().split('T')[0]);
     setSelectedProductionId('SUSU_OLAHAN');
@@ -199,30 +247,30 @@ export default function PengemasanPage() {
     setFormNotes('');
 
     // Reset Excel Structure fields
-    setSelectedMainCategory('HASIL_PENGOLAHAN');
-    setFarmTegalsari('');
-    setFarmLimpakuwus('');
-    setFarmManggala('');
+    setSelectedMainCategory(initialCategory || 'HASIL_PENGOLAHAN');
     setSusuPasteurisasiPackaging('Botol');
     setSusu115('');
     setSusu130('');
     setSusu200('');
     setSusu250('');
     setYogurt200('');
-    setDistTujuan('SPPG');
-    setDistProduk('Susu');
-    setDistUkuran('250 ml');
-    setDistKemasan('Botol');
-    setDistJumlah('');
-    setHibahInternalSusu('');
-    setHibahInternalYogurt('');
-    setHibahEksternalSusu('');
-    setAfkirProduk('Susu');
-    setAfkirUkuran('250 ml');
-    setAfkirJumlah('');
-    setAfkirAlasan('Produk rusak');
+    // Reset Distribusi fields & item lists
+    setDistribusiSubCategory('MENU');
+    setDistSalesItems([
+      { id: Date.now(), target: 'SPPG', product: 'Susu', size: '250 ml', packagingType: 'Botol', quantity: '' }
+    ]);
+    setDistHibahItems([
+      { id: Date.now() + 1, type: 'Internal - Susu', size: '250 ml', quantity: '' }
+    ]);
+    setDistAfkirItems([
+      { id: Date.now() + 2, product: 'Susu', size: '250 ml', quantity: '', reason: 'Produk rusak' }
+    ]);
 
-    setModalStep(1); // Step 1: Category Selection
+    if (initialCategory) {
+      setModalStep(2);
+    } else {
+      setModalStep(1); // Step 1: Category Selection
+    }
     setShowModal(true);
   };
 
@@ -487,13 +535,22 @@ export default function PengemasanPage() {
         </div>
 
         {canManage && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Input Hasil Pengemasan</span>
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => openAddModal('HASIL_PENGOLAHAN')}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Input Hasil Pengolahan</span>
+            </button>
+            <button
+              onClick={() => openAddModal('DISTRIBUSI')}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
+            >
+              <Truck className="w-4 h-4" />
+              <span>+ Input Distribusi</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -874,36 +931,8 @@ export default function PengemasanPage() {
                   <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg">✕</button>
                 </div>
 
-                {/* 4 Main Category Cards */}
+                {/* Category Card: HASIL PENGOLAHAN */}
                 <div className="space-y-3 py-2">
-                  {/* Option 1: PENGAMBILAN SUSU SEGAR (Ltr) */}
-                  <div
-                    onClick={() => {
-                      setSelectedMainCategory('PENGAMBILAN_SUSU');
-                      setModalStep(2);
-                    }}
-                    className="group p-4 bg-blue-50/60 hover:bg-blue-100/70 border-2 border-blue-200 hover:border-blue-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
-                        🥛
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-blue-900 flex items-center gap-2">
-                          <span>1. PENGAMBILAN SUSU SEGAR (Ltr)</span>
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Input jumlah susu segar dari farm Tegalsari, Limpakuwus, & Manggala.
-                        </p>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-md">
-                          Satuan: Liter (Ltr)
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform shrink-0" />
-                  </div>
-
-                  {/* Option 2: HASIL PENGOLAHAN */}
                   <div
                     onClick={() => {
                       setSelectedMainCategory('HASIL_PENGOLAHAN');
@@ -917,7 +946,7 @@ export default function PengemasanPage() {
                       </div>
                       <div>
                         <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-emerald-900 flex items-center gap-2">
-                          <span>2. HASIL PENGOLAHAN</span>
+                          <span>HASIL PENGOLAHAN</span>
                         </h4>
                         <p className="text-xs text-slate-500 font-medium mt-0.5">
                           Input hasil produk susu pasteurisasi & yogurt yang dikemas.
@@ -928,60 +957,6 @@ export default function PengemasanPage() {
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform shrink-0" />
-                  </div>
-
-                  {/* Option 3: DISTRIBUSI */}
-                  <div
-                    onClick={() => {
-                      setSelectedMainCategory('DISTRIBUSI');
-                      setModalStep(2);
-                    }}
-                    className="group p-4 bg-amber-50/60 hover:bg-amber-100/70 border-2 border-amber-200 hover:border-amber-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
-                        🚚
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-amber-900">
-                          3. DISTRIBUSI
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Penjualan (Eduwisata, SPPG, Lain-lain), hibah, dan produk rusak/afkir.
-                        </p>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-md">
-                          Satuan: Botol
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform shrink-0" />
-                  </div>
-
-                  {/* Option 4: SISA STOK */}
-                  <div
-                    onClick={() => {
-                      setSelectedMainCategory('SISA_STOK');
-                      setModalStep(2);
-                    }}
-                    className="group p-4 bg-purple-50/60 hover:bg-purple-100/70 border-2 border-purple-200 hover:border-purple-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
-                        📊
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-purple-900">
-                          4. SISA STOK
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Rekap dan perhitungan sisa stok produk secara otomatis.
-                        </p>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold rounded-md">
-                          Satuan: Botol
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform shrink-0" />
                   </div>
                 </div>
 
@@ -1002,175 +977,7 @@ export default function PengemasanPage() {
 
         // STEP 2: Sub-forms based on selected category
 
-        // --- SUB-FORM 1: PENGAMBILAN SUSU SEGAR (Ltr) ---
-        if (selectedMainCategory === 'PENGAMBILAN_SUSU' && !editingPkg) {
-          const totalFarmLiters = (parseFloat(farmTegalsari) || 0) + (parseFloat(farmLimpakuwus) || 0) + (parseFloat(farmManggala) || 0);
-
-          const handleSaveFarmMilk = async (e) => {
-            if (e && e.preventDefault) e.preventDefault();
-            if (totalFarmLiters <= 0) {
-              setToast({ type: 'error', message: 'Harap masukkan jumlah pengambilan susu murni (> 0 Ltr).' });
-              return;
-            }
-
-            setSubmitting(true);
-            try {
-              const res = await api.post('/farm/production', {
-                date: formDate,
-                grossVolumeLiters: totalFarmLiters,
-                rawVolumeLiters: totalFarmLiters,
-                notes: `Pengambilan Susu Segar: Tegalsari=${farmTegalsari || 0}L, Limpakuwus=${farmLimpakuwus || 0}L, Manggala=${farmManggala || 0}L. ${formNotes}`,
-              });
-
-              if (res.data.success) {
-                setToast({ type: 'success', message: `Pengambilan Susu Segar (${totalFarmLiters} Ltr) berhasil disimpan!` });
-                setShowModal(false);
-                fetchData();
-              }
-            } catch (err) {
-              const msg = err.response?.data?.message || 'Gagal menyimpan data pengambilan susu segar.';
-              setToast({ type: 'error', message: msg });
-            } finally {
-              setSubmitting(false);
-            }
-          };
-
-          return (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setModalStep(1)}
-                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Kembali</span>
-                    </button>
-                    <div>
-                      <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                        <span>🥛 INPUT PENGAMBILAN SUSU SEGAR</span>
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium">Input jumlah susu segar dari masing-masing farm</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
-                </div>
-
-                <form onSubmit={handleSaveFarmMilk} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
-                    <input
-                      type="date"
-                      value={formDate}
-                      onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
-                    <label className="block text-xs font-black text-blue-900 uppercase tracking-wider">FARM:</label>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">1. Farm Tegalsari</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          placeholder="0"
-                          value={farmTegalsari}
-                          onChange={(e) => setFarmTegalsari(e.target.value)}
-                          className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                        <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">Ltr</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">2. Farm Limpakuwus</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          placeholder="0"
-                          value={farmLimpakuwus}
-                          onChange={(e) => setFarmLimpakuwus(e.target.value)}
-                          className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                        <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">Ltr</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">3. Farm Manggala</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          placeholder="0"
-                          value={farmManggala}
-                          onChange={(e) => setFarmManggala(e.target.value)}
-                          className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                        <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">Ltr</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 bg-blue-900 text-white rounded-2xl flex items-center justify-between shadow-md">
-                    <span className="text-xs font-bold uppercase tracking-wider">TOTAL PENGAMBILAN SUSU SEGAR:</span>
-                    <span className="text-base font-black text-amber-400 font-mono">
-                      {totalFarmLiters} Ltr
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
-                    <textarea
-                      rows="2"
-                      placeholder="Catatan..."
-                      value={formNotes}
-                      onChange={(e) => setFormNotes(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                    ></textarea>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setShowModal(false)}
-                      className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveFarmMilk}
-                      disabled={submitting}
-                      className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      {submitting ? (
-                        <>
-                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                          <span>Menyimpan...</span>
-                        </>
-                      ) : (
-                        <span>Simpan Data Pengambilan</span>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          );
-        }
-
-        // --- SUB-FORM 2: HASIL PENGOLAHAN ---
+        // --- SUB-FORM 1: HASIL PENGOLAHAN ---
         if (selectedMainCategory === 'HASIL_PENGOLAHAN' && !editingPkg) {
           const totalHasilPengolahan = (parseInt(susu115) || 0) + (parseInt(susu130) || 0) + (parseInt(susu200) || 0) + (parseInt(susu250) || 0) + (parseInt(yogurt200) || 0);
 
@@ -1410,445 +1217,767 @@ export default function PengemasanPage() {
           );
         }
 
+
+
         // --- SUB-FORM 3: DISTRIBUSI ---
         if (selectedMainCategory === 'DISTRIBUSI' && !editingPkg) {
-          const totalHibah = (parseInt(hibahInternalSusu) || 0) + (parseInt(hibahInternalYogurt) || 0) + (parseInt(hibahEksternalSusu) || 0);
-
-          const handleSaveDistribusiExcel = async (e) => {
+          const handleSaveSalesSubmit = async (e) => {
             if (e && e.preventDefault) e.preventDefault();
             if (submitting) return;
 
-            const saleQty = parseInt(distJumlah, 10) || 0;
-            const hIntSusu = parseInt(hibahInternalSusu, 10) || 0;
-            const hIntYogurt = parseInt(hibahInternalYogurt, 10) || 0;
-            const hEksSusu = parseInt(hibahEksternalSusu, 10) || 0;
-            const afkQty = parseInt(afkirJumlah, 10) || 0;
+            const validItems = distSalesItems.map(i => ({
+              ...i,
+              quantity: parseInt(i.quantity, 10) || 0
+            })).filter(i => i.quantity > 0);
 
-            const totalDist = saleQty + hIntSusu + hIntYogurt + hEksSusu + afkQty;
-
-            if (totalDist <= 0) {
-              setToast({ type: 'error', message: 'Harap isi minimal 1 transaksi distribusi (Penjualan, Hibah, atau Rusak/Afkir) > 0.' });
+            if (validItems.length === 0) {
+              setToast({ type: 'error', message: 'Harap isi minimal 1 produk penjualan dengan jumlah valid (> 0).' });
               return;
             }
 
+            const totalQty = validItems.reduce((acc, i) => acc + i.quantity, 0);
             setSubmitting(true);
 
             try {
-              const payload = {
+              const res = await api.post('/pemasaran/distribusi', {
                 date: formDate,
-                target: distTujuan,
-                product: distProduk,
-                size: distUkuran,
-                packagingType: distKemasan,
-                quantity: saleQty,
-                internalMilk: hIntSusu,
-                internalYogurt: hIntYogurt,
-                externalMilk: hEksSusu,
-                damagedProduct: afkirProduk,
-                damagedSize: afkirUkuran,
-                damagedQuantity: afkQty,
-                damagedReason: afkirAlasan,
+                salesItems: validItems,
                 notes: formNotes,
-              };
-
-              console.log("SENDING BATCH DISTRIBUSI PAYLOAD:", payload);
-
-              // 1x single batch API request for maximum responsiveness (< 100ms)
-              const res = await api.post('/pemasaran/distribusi', payload);
+              });
 
               if (res.data?.success) {
-                // Immediate UI feedback and modal close
                 setToast({
                   type: 'success',
-                  message: res.data.message || `Data Distribusi (${totalDist} botol) berhasil disimpan & stok diperbarui!`,
+                  message: res.data.message || `Data Penjualan (${totalQty} pcs) berhasil disimpan!`,
                 });
                 setShowModal(false);
-                setSubmitting(false);
-
-                // Asynchronous background refresh without blocking user UI
-                fetchData().catch((err) => console.error("Background refresh error:", err));
-              } else {
-                throw new Error(res.data?.message || 'Gagal mencatat distribusi.');
+                fetchData();
               }
             } catch (err) {
-              console.error("SUBMIT DISTRIBUSI ERROR:", err);
-              const msg = err.response?.data?.message || err?.message || 'Gagal mencatat distribusi.';
+              const msg = err.response?.data?.message || 'Gagal menyimpan data penjualan.';
               setToast({ type: 'error', message: msg });
+            } finally {
               setSubmitting(false);
             }
           };
 
-          return (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setModalStep(1)}
-                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+          const handleSaveHibahSubmit = async (e) => {
+            if (e && e.preventDefault) e.preventDefault();
+            if (submitting) return;
+
+            const validItems = distHibahItems.map(i => ({
+              ...i,
+              quantity: parseInt(i.quantity, 10) || 0
+            })).filter(i => i.quantity > 0);
+
+            if (validItems.length === 0) {
+              setToast({ type: 'error', message: 'Harap isi minimal 1 produk hibah dengan jumlah valid (> 0).' });
+              return;
+            }
+
+            const totalQty = validItems.reduce((acc, i) => acc + i.quantity, 0);
+            setSubmitting(true);
+
+            try {
+              const res = await api.post('/pemasaran/distribusi', {
+                date: formDate,
+                hibahItems: validItems,
+                notes: formNotes,
+              });
+
+              if (res.data?.success) {
+                setToast({
+                  type: 'success',
+                  message: res.data.message || `Data Hibah (${totalQty} botol) berhasil disimpan!`,
+                });
+                setShowModal(false);
+                fetchData();
+              }
+            } catch (err) {
+              const msg = err.response?.data?.message || 'Gagal menyimpan data hibah.';
+              setToast({ type: 'error', message: msg });
+            } finally {
+              setSubmitting(false);
+            }
+          };
+
+          const handleSaveAfkirSubmit = async (e) => {
+            if (e && e.preventDefault) e.preventDefault();
+            if (submitting) return;
+
+            const validItems = distAfkirItems.map(i => ({
+              ...i,
+              quantity: parseInt(i.quantity, 10) || 0
+            })).filter(i => i.quantity > 0);
+
+            if (validItems.length === 0) {
+              setToast({ type: 'error', message: 'Harap isi minimal 1 produk afkir dengan jumlah valid (> 0).' });
+              return;
+            }
+
+            const totalQty = validItems.reduce((acc, i) => acc + i.quantity, 0);
+            setSubmitting(true);
+
+            try {
+              const res = await api.post('/pemasaran/distribusi', {
+                date: formDate,
+                afkirItems: validItems,
+                notes: formNotes,
+              });
+
+              if (res.data?.success) {
+                setToast({
+                  type: 'success',
+                  message: res.data.message || `Data Produk Rusak/Afkir (${totalQty} botol) berhasil disimpan!`,
+                });
+                setShowModal(false);
+                fetchData();
+              }
+            } catch (err) {
+              const msg = err.response?.data?.message || 'Gagal menyimpan data produk afkir.';
+              setToast({ type: 'error', message: msg });
+            } finally {
+              setSubmitting(false);
+            }
+          };
+
+          // A. PILIH KOMPONEN DISTRIBUSI (MENU)
+          if (distribusiSubCategory === 'MENU') {
+            return (
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <Truck className="w-5 h-5 text-amber-600" />
+                          <span>PILIH KOMPONEN DISTRIBUSI</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">Pilih jenis transaksi distribusi yang ingin diinput.</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg">✕</button>
+                  </div>
+
+                  <div className="space-y-3 py-2">
+                    {/* Option A: PENJUALAN */}
+                    <div
+                      onClick={() => setDistribusiSubCategory('PENJUALAN')}
+                      className="group p-4 bg-emerald-50/60 hover:bg-emerald-100/70 border-2 border-emerald-200 hover:border-emerald-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
                     >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Kembali</span>
-                    </button>
-                    <div>
-                      <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                        <span>🚚 INPUT DISTRIBUSI</span>
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium">Input penjualan, hibah, dan produk rusak/afkir</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
-                </div>
-
-                <form onSubmit={handleSaveDistribusiExcel} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
-                    <input
-                      type="date"
-                      value={formDate}
-                      onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  {/* A. PENJUALAN SECTION */}
-                  <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3">
-                    <label className="block text-xs font-black text-amber-900 uppercase">A. PENJUALAN (Botol / Cup)</label>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Tujuan Distribusi</label>
-                        <select
-                          value={distTujuan}
-                          onChange={(e) => setDistTujuan(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                        >
-                          <option value="EDUWISATA">EDUWISATA</option>
-                          <option value="SPPG">SPPG</option>
-                          <option value="LAIN-LAIN">LAIN-LAIN</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Produk</label>
-                        <select
-                          value={distProduk}
-                          onChange={(e) => {
-                            const p = e.target.value;
-                            setDistProduk(p);
-                            if (p === 'Yogurt') setDistUkuran('200 ml');
-                          }}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                        >
-                          <option value="Susu">Susu Pasteurisasi</option>
-                          <option value="Yogurt">Yogurt</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran</label>
-                        <select
-                          value={distUkuran}
-                          onChange={(e) => setDistUkuran(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                        >
-                          {distProduk === 'Susu' ? (
-                            <>
-                              <option value="115 ml">115 ml</option>
-                              <option value="130 ml">130 ml</option>
-                              <option value="200 ml">200 ml</option>
-                              <option value="250 ml">250 ml</option>
-                            </>
-                          ) : (
-                            <option value="200 ml">200 ml</option>
-                          )}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={distJumlah}
-                            onChange={(e) => setDistJumlah(e.target.value)}
-                            className="w-full pl-3 pr-14 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-amber-500 outline-none"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">botol</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* B. HIBAH SECTION */}
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                      <label className="text-xs font-black text-slate-900 uppercase">B. HIBAH (Botol)</label>
-                      <span className="text-xs font-bold text-amber-800 font-mono">
-                        Total Hibah: {totalHibah} botol
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <strong className="block text-[11px] font-bold text-slate-500 uppercase">INTERNAL:</strong>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">Internal - Susu</label>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0 botol"
-                            value={hibahInternalSusu}
-                            onChange={(e) => setHibahInternalSusu(e.target.value)}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono"
-                          />
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
+                          🛒
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">Internal - Yogurt</label>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0 botol"
-                            value={hibahInternalYogurt}
-                            onChange={(e) => setHibahInternalYogurt(e.target.value)}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono"
-                          />
+                          <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-emerald-900 flex items-center gap-2">
+                            <span>1. PENJUALAN</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Input penjualan produk (Eduwisata, SPPG, & Lain-lain).
+                          </p>
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
+                            Bisa tambah multiple produk
+                          </span>
                         </div>
                       </div>
+                      <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                    </div>
 
-                      <strong className="block text-[11px] font-bold text-slate-500 uppercase pt-1">EKSTERNAL:</strong>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Eksternal - Susu</label>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0 botol"
-                          value={hibahEksternalSusu}
-                          onChange={(e) => setHibahEksternalSusu(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono"
-                        />
+                    {/* Option B: HIBAH */}
+                    <div
+                      onClick={() => setDistribusiSubCategory('HIBAH')}
+                      className="group p-4 bg-blue-50/60 hover:bg-blue-100/70 border-2 border-blue-200 hover:border-blue-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
+                          🎁
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-blue-900 flex items-center gap-2">
+                            <span>2. HIBAH</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Input hibah produk susu & yogurt (Internal & Eksternal).
+                          </p>
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-md">
+                            Bisa tambah multiple produk
+                          </span>
+                        </div>
                       </div>
+                      <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                    </div>
+
+                    {/* Option C: RUSAK / AFKIR */}
+                    <div
+                      onClick={() => setDistribusiSubCategory('AFKIR')}
+                      className="group p-4 bg-rose-50/60 hover:bg-rose-100/70 border-2 border-rose-200 hover:border-rose-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
+                          ⚠️
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-rose-900 flex items-center gap-2">
+                            <span>3. PRODUK RUSAK / AFKIR</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Input pencatatan produk rusak, afkir, atau kadaluwarsa.
+                          </p>
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded-md">
+                            Bisa tambah multiple produk
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-rose-600 group-hover:translate-x-1 transition-transform shrink-0" />
                     </div>
                   </div>
 
-                  {/* C. RUSAK / AFKIR SECTION */}
-                  <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3">
-                    <label className="block text-xs font-black text-rose-900 uppercase">C. RUSAK / AFKIR (Botol)</label>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Produk Afkir</label>
-                        <select
-                          value={afkirProduk}
-                          onChange={(e) => setAfkirProduk(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
-                        >
-                          <option value="Susu">Susu</option>
-                          <option value="Yogurt">Yogurt</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Ukuran Afkir</label>
-                        <select
-                          value={afkirUkuran}
-                          onChange={(e) => setAfkirUkuran(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
-                        >
-                          <option value="115 ml">115 ml</option>
-                          <option value="130 ml">130 ml</option>
-                          <option value="200 ml">200 ml</option>
-                          <option value="250 ml">250 ml</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Jumlah Rusak / Afkir</label>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0 botol"
-                          value={afkirJumlah}
-                          onChange={(e) => setAfkirJumlah(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Alasan Kerusakan</label>
-                        <input
-                          type="text"
-                          placeholder="Alasan..."
-                          value={afkirAlasan}
-                          onChange={(e) => setAfkirAlasan(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
-                    <textarea
-                      rows="2"
-                      placeholder="Catatan..."
-                      value={formNotes}
-                      onChange={(e) => setFormNotes(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
-                    ></textarea>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-end pt-3 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => setShowModal(false)}
-                      className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                      className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors"
                     >
                       Batal
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveDistribusiExcel}
-                      disabled={submitting}
-                      className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      {submitting ? (
-                        <>
-                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                          <span>Menyimpan...</span>
-                        </>
-                      ) : (
-                        <span>Simpan Data Distribusi</span>
-                      )}
-                    </button>
                   </div>
-                </form>
-              </div>
-            </div>
-          );
-        }
-
-        // --- SUB-FORM 4: SISA STOK ---
-        if (selectedMainCategory === 'SISA_STOK' && !editingPkg) {
-          // Compute automatic sisa stok representation from packagings & sales
-          let botol115Count = 0;
-          let botol250Count = 0;
-          let yogurtCount = 0;
-
-          packagings.forEach((p) => {
-            if (p.status === 'DITERIMA' || p.status === 'MENUNGGU_PENERIMAAN') {
-              let items = [];
-              if (p.packagingDetails) {
-                try {
-                  const parsed = JSON.parse(p.packagingDetails);
-                  if (Array.isArray(parsed)) items = parsed;
-                } catch (e) {}
-              }
-
-              if (items.length > 0) {
-                items.forEach((it) => {
-                  const cat = (it.productCategory || p.productCategory || '').toLowerCase();
-                  const sz = (it.size || '').toLowerCase();
-                  const q = parseInt(it.quantity, 10) || 0;
-
-                  if (cat.includes('yogurt')) {
-                    yogurtCount += q;
-                  } else if (sz.includes('115')) {
-                    botol115Count += q;
-                  } else if (sz.includes('250')) {
-                    botol250Count += q;
-                  } else {
-                    botol250Count += q;
-                  }
-                });
-              } else {
-                botol250Count += p.totalPackagedQty || 0;
-              }
-            }
-          });
-
-          const totalStokBotol = botol115Count + botol250Count + yogurtCount;
-
-          return (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setModalStep(1)}
-                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Kembali</span>
-                    </button>
-                    <div>
-                      <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                        <span>📊 REKAP SISA STOK</span>
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium">Perhitungan stok otomatis dari transaksi sistem</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
-                </div>
-
-                <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1 text-xs text-purple-900">
-                  <span className="font-black block">Formula Perhitungan Sisa Stok:</span>
-                  <p className="font-mono text-[11px] font-bold">
-                    STOK AWAL + HASIL PENGOLAHAN - PENJUALAN - HIBAH - RUSAK/AFKIR = SISA STOK
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-xs text-slate-800 block">1. Susu Ukuran 115 ml</span>
-                      <span className="text-[10px] text-slate-500 font-semibold">[ AUTO CALCULATE ]</span>
-                    </div>
-                    <span className="font-black text-sm font-mono text-slate-900">{botol115Count} botol</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-xs text-slate-800 block">2. Susu Ukuran 250 ml</span>
-                      <span className="text-[10px] text-slate-500 font-semibold">[ AUTO CALCULATE ]</span>
-                    </div>
-                    <span className="font-black text-sm font-mono text-slate-900">{botol250Count} botol</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-xs text-slate-800 block">3. Yogurt 200 ml</span>
-                      <span className="text-[10px] text-slate-500 font-semibold">[ AUTO CALCULATE ]</span>
-                    </div>
-                    <span className="font-black text-sm font-mono text-slate-900">{yogurtCount} botol</span>
-                  </div>
-
-                  <div className="p-4 bg-purple-900 text-white rounded-2xl flex justify-between items-center shadow-lg">
-                    <div>
-                      <span className="font-black text-xs uppercase tracking-wider block">4. JUMLAH STOK (Botol)</span>
-                      <span className="text-[10px] text-amber-300 font-semibold">Total Sisa Stok Produk Jadi</span>
-                    </div>
-                    <span className="text-xl font-black text-amber-400 font-mono">{totalStokBotol} botol</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900"
-                  >
-                    Tutup
-                  </button>
                 </div>
               </div>
-            </div>
-          );
+            );
+          }
+
+          // B. FORM 1: PENJUALAN
+          if (distribusiSubCategory === 'PENJUALAN') {
+            const totalSalesPcs = distSalesItems.reduce((sum, item) => sum + (parseInt(item.quantity, 10) || 0), 0);
+
+            return (
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDistribusiSubCategory('MENU')}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Kembali</span>
+                      </button>
+                      <div>
+                        <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <span>🛒 INPUT DISTRIBUSI PENJUALAN</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">Input penjualan Eduwisata, SPPG, dan Lain-lain</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                  </div>
+
+                  <form onSubmit={handleSaveSalesSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Transaksi</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
+                        required
+                      />
+                    </div>
+
+                    {/* DYNAMIC ITEM LIST FOR PENJUALAN */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-amber-900 uppercase tracking-wider">DAFTAR PRODUK PENJUALAN:</label>
+                        <button
+                          type="button"
+                          onClick={handleAddSalesItem}
+                          className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Tambah Produk</span>
+                        </button>
+                      </div>
+
+                      {distSalesItems.map((item, index) => (
+                        <div key={item.id} className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3 relative">
+                          <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                            <span className="text-xs font-extrabold text-amber-900">Produk #{index + 1}</span>
+                            {distSalesItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSalesItem(item.id)}
+                                className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                                title="Hapus Produk"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Tujuan</label>
+                              <select
+                                value={item.target}
+                                onChange={(e) => handleUpdateSalesItem(item.id, 'target', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="EDUWISATA">EDUWISATA</option>
+                                <option value="SPPG">SPPG</option>
+                                <option value="LAIN-LAIN">LAIN-LAIN</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Produk</label>
+                              <select
+                                value={item.product}
+                                onChange={(e) => handleUpdateSalesItem(item.id, 'product', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="Susu">Susu Pasteurisasi</option>
+                                <option value="Yogurt">Yogurt</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Ukuran</label>
+                              <select
+                                value={item.size}
+                                onChange={(e) => handleUpdateSalesItem(item.id, 'size', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                {item.product === 'Susu' ? (
+                                  <>
+                                    <option value="115 ml">115 ml</option>
+                                    <option value="130 ml">130 ml</option>
+                                    <option value="200 ml">200 ml</option>
+                                    <option value="250 ml">250 ml</option>
+                                  </>
+                                ) : (
+                                  <option value="200 ml">200 ml</option>
+                                )}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Kemasan</label>
+                              <select
+                                value={item.packagingType}
+                                onChange={(e) => handleUpdateSalesItem(item.id, 'packagingType', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="Botol">Botol</option>
+                                <option value="Cup">Cup</option>
+                              </select>
+                            </div>
+
+                            <div className="col-span-2 sm:col-span-2">
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Jumlah</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="0"
+                                  value={item.quantity}
+                                  onChange={(e) => handleUpdateSalesItem(item.id, 'quantity', e.target.value)}
+                                  className="w-full pl-3 pr-14 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono outline-none focus:ring-2 focus:ring-amber-500"
+                                />
+                                <span className="absolute right-3 top-2 text-xs font-extrabold text-slate-400">pcs</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-3.5 bg-slate-900 text-white rounded-2xl flex items-center justify-between shadow-md">
+                      <span className="text-xs font-bold uppercase tracking-wider">TOTAL PENJUALAN:</span>
+                      <span className="text-base font-black text-amber-400 font-mono">
+                        {totalSalesPcs} pcs
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Catatan..."
+                        value={formNotes}
+                        onChange={(e) => setFormNotes(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
+                      ></textarea>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveSalesSubmit}
+                        disabled={submitting}
+                        className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        {submitting ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            <span>Menyimpan...</span>
+                          </>
+                        ) : (
+                          <span>Simpan Data Penjualan</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            );
+          }
+
+          // C. FORM 2: HIBAH
+          if (distribusiSubCategory === 'HIBAH') {
+            const totalHibahBotol = distHibahItems.reduce((sum, item) => sum + (parseInt(item.quantity, 10) || 0), 0);
+
+            return (
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDistribusiSubCategory('MENU')}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Kembali</span>
+                      </button>
+                      <div>
+                        <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <span>🎁 INPUT DISTRIBUSI HIBAH</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">Input hibah produk internal & eksternal</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                  </div>
+
+                  <form onSubmit={handleSaveHibahSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Transaksi</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        required
+                      />
+                    </div>
+
+                    {/* DYNAMIC ITEM LIST FOR HIBAH */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-blue-900 uppercase tracking-wider">DAFTAR PRODUK HIBAH:</label>
+                        <button
+                          type="button"
+                          onClick={handleAddHibahItem}
+                          className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Tambah Produk</span>
+                        </button>
+                      </div>
+
+                      {distHibahItems.map((item, index) => (
+                        <div key={item.id} className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3 relative">
+                          <div className="flex items-center justify-between border-b border-blue-200/80 pb-2">
+                            <span className="text-xs font-extrabold text-blue-900">Hibah #{index + 1}</span>
+                            {distHibahItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveHibahItem(item.id)}
+                                className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                                title="Hapus Hibah"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Hibah</label>
+                              <select
+                                value={item.type}
+                                onChange={(e) => handleUpdateHibahItem(item.id, 'type', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="Internal - Susu">Internal - Susu</option>
+                                <option value="Internal - Yogurt">Internal - Yogurt</option>
+                                <option value="Eksternal - Susu">Eksternal - Susu</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Ukuran</label>
+                              <select
+                                value={item.size}
+                                onChange={(e) => handleUpdateHibahItem(item.id, 'size', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="115 ml">115 ml</option>
+                                <option value="130 ml">130 ml</option>
+                                <option value="200 ml">200 ml</option>
+                                <option value="250 ml">250 ml</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Jumlah</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="0"
+                                  value={item.quantity}
+                                  onChange={(e) => handleUpdateHibahItem(item.id, 'quantity', e.target.value)}
+                                  className="w-full pl-3 pr-14 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <span className="absolute right-3 top-2 text-xs font-extrabold text-slate-400">botol</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-3.5 bg-blue-900 text-white rounded-2xl flex items-center justify-between shadow-md">
+                      <span className="text-xs font-bold uppercase tracking-wider">TOTAL HIBAH:</span>
+                      <span className="text-base font-black text-amber-400 font-mono">
+                        {totalHibahBotol} botol
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Catatan..."
+                        value={formNotes}
+                        onChange={(e) => setFormNotes(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                      ></textarea>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveHibahSubmit}
+                        disabled={submitting}
+                        className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        {submitting ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            <span>Menyimpan...</span>
+                          </>
+                        ) : (
+                          <span>Simpan Data Hibah</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            );
+          }
+
+          // D. FORM 3: RUSAK / AFKIR
+          if (distribusiSubCategory === 'AFKIR') {
+            const totalAfkirBotol = distAfkirItems.reduce((sum, item) => sum + (parseInt(item.quantity, 10) || 0), 0);
+
+            return (
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDistribusiSubCategory('MENU')}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Kembali</span>
+                      </button>
+                      <div>
+                        <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <span>⚠️ INPUT PRODUK RUSAK / AFKIR</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">Input pencatatan produk rusak, afkir, atau kadaluwarsa</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                  </div>
+
+                  <form onSubmit={handleSaveAfkirSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Laporan</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-rose-500 outline-none"
+                        required
+                      />
+                    </div>
+
+                    {/* DYNAMIC ITEM LIST FOR AFKIR */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-rose-900 uppercase tracking-wider">DAFTAR PRODUK AFKIR:</label>
+                        <button
+                          type="button"
+                          onClick={handleAddAfkirItem}
+                          className="px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Tambah Produk</span>
+                        </button>
+                      </div>
+
+                      {distAfkirItems.map((item, index) => (
+                        <div key={item.id} className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3 relative">
+                          <div className="flex items-center justify-between border-b border-rose-200/80 pb-2">
+                            <span className="text-xs font-extrabold text-rose-900">Produk Afkir #{index + 1}</span>
+                            {distAfkirItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAfkirItem(item.id)}
+                                className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                                title="Hapus Item Afkir"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Produk</label>
+                              <select
+                                value={item.product}
+                                onChange={(e) => handleUpdateAfkirItem(item.id, 'product', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="Susu">Susu</option>
+                                <option value="Yogurt">Yogurt</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Ukuran</label>
+                              <select
+                                value={item.size}
+                                onChange={(e) => handleUpdateAfkirItem(item.id, 'size', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                              >
+                                <option value="115 ml">115 ml</option>
+                                <option value="130 ml">130 ml</option>
+                                <option value="200 ml">200 ml</option>
+                                <option value="250 ml">250 ml</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Jumlah Rusak/Afkir</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="0"
+                                  value={item.quantity}
+                                  onChange={(e) => handleUpdateAfkirItem(item.id, 'quantity', e.target.value)}
+                                  className="w-full pl-3 pr-14 py-1.5 rounded-xl border border-slate-300 text-xs font-bold font-mono outline-none focus:ring-2 focus:ring-rose-500"
+                                />
+                                <span className="absolute right-3 top-2 text-xs font-extrabold text-slate-400">botol</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">Alasan Kerusakan</label>
+                              <input
+                                type="text"
+                                placeholder="Misal: Pecah / Kadaluwarsa"
+                                value={item.reason}
+                                onChange={(e) => handleUpdateAfkirItem(item.id, 'reason', e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-3.5 bg-rose-950 text-white rounded-2xl flex items-center justify-between shadow-md">
+                      <span className="text-xs font-bold uppercase tracking-wider">TOTAL PRODUK AFKIR:</span>
+                      <span className="text-base font-black text-amber-400 font-mono">
+                        {totalAfkirBotol} botol
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Catatan..."
+                        value={formNotes}
+                        onChange={(e) => setFormNotes(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-rose-500 outline-none"
+                      ></textarea>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveAfkirSubmit}
+                        disabled={submitting}
+                        className="px-5 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        {submitting ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            <span>Menyimpan...</span>
+                          </>
+                        ) : (
+                          <span>Simpan Data Afkir</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            );
+          }
         }
 
         // DEFAULT FALLBACK FOR EDITING EXISTING PACKAGING RECORD

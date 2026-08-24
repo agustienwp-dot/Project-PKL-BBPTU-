@@ -674,6 +674,136 @@ export async function GET(request) {
 
     const jumlahStokPcs = Math.max(0, totalPackagedQtySum - totalOutflowQtySum);
 
+    // 6. Detailed Packaging Variant Breakdown Stock (Botol 115ml, Botol 250ml, Cup, Plastik Bantal, Yogurt)
+    let botol115Packaged = 0, botol250Packaged = 0, cupPackaged = 0, plastikBantalPackaged = 0, yogurtPackaged = 0;
+    let botol115Outflow = 0, botol250Outflow = 0, cupOutflow = 0, plastikBantalOutflow = 0, yogurtOutflow = 0;
+
+    const allPackagings = await prisma.milkPackaging.findMany({
+      where: { status: { not: 'DIBATALKAN' } }
+    });
+
+    allPackagings.forEach(p => {
+      const isYogurt = (p.productCategory || '').toLowerCase().includes('yogurt') || 
+                       (p.productSubtype || '').toLowerCase().includes('yogurt');
+
+      if (isYogurt) {
+        yogurtPackaged += (p.totalPackagedQty || 0);
+        return;
+      }
+
+      let parsedDetails = [];
+      if (p.packagingDetails) {
+        try {
+          parsedDetails = JSON.parse(p.packagingDetails);
+        } catch (e) {}
+      }
+
+      if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
+        parsedDetails.forEach(item => {
+          const qty = parseInt(item.quantity, 10) || 0;
+          const pkgType = (item.packagingType || '').toLowerCase();
+          const size = (item.size || '').toLowerCase();
+
+          if (pkgType.includes('cup')) {
+            cupPackaged += qty;
+          } else if (pkgType.includes('plastik') || pkgType.includes('bantal')) {
+            plastikBantalPackaged += qty;
+          } else if (size.includes('115')) {
+            botol115Packaged += qty;
+          } else {
+            botol250Packaged += qty;
+          }
+        });
+      } else {
+        const qty = p.totalPackagedQty || 0;
+        const mainPkg = (p.packagingType || '').toLowerCase();
+        const mainSize = (p.packageSize || '').toLowerCase();
+
+        if (mainPkg.includes('cup') || p.cupQty > 0) {
+          cupPackaged += (p.cupQty || qty);
+        } else if (mainPkg.includes('plastik') || mainPkg.includes('bantal') || p.plastikBantalQty > 0) {
+          plastikBantalPackaged += (p.plastikBantalQty || qty);
+        } else if (mainSize.includes('115')) {
+          botol115Packaged += (p.botolQty || qty);
+        } else {
+          botol250Packaged += (p.botolQty || qty);
+        }
+      }
+    });
+
+    const allProdPkg = await prisma.milkProduction.findMany({
+      where: { packagedQty: { gt: 0 } },
+      include: { category: true }
+    });
+
+    allProdPkg.forEach(pr => {
+      const isYogurt = pr.productType === 'OLAHAN' || 
+                       (pr.category?.name || '').toLowerCase().includes('yogurt');
+      const qty = pr.packagedQty || 0;
+      const pkgType = (pr.packagingType || '').toLowerCase();
+
+      if (isYogurt) {
+        yogurtPackaged += qty;
+      } else if (pkgType.includes('cup')) {
+        cupPackaged += qty;
+      } else if (pkgType.includes('plastik') || pkgType.includes('bantal')) {
+        plastikBantalPackaged += qty;
+      } else {
+        botol250Packaged += qty;
+      }
+    });
+
+    const allSales = await prisma.milkSale.findMany({
+      where: { status: { not: 'Dibatalkan' } }
+    });
+
+    allSales.forEach(s => {
+      const isYogurt = (s.productCategory || '').toLowerCase().includes('yogurt') || 
+                       (s.productSubtype || '').toLowerCase().includes('yogurt');
+      const qty = s.quantity || 0;
+      const notes = (s.notes || '').toLowerCase();
+      const pkgType = (s.packagingType || '').toLowerCase();
+
+      if (isYogurt) {
+        yogurtOutflow += qty;
+      } else if (pkgType.includes('cup') || notes.includes('cup')) {
+        cupOutflow += qty;
+      } else if (pkgType.includes('plastik') || notes.includes('plastik') || notes.includes('bantal')) {
+        plastikBantalOutflow += qty;
+      } else if (notes.includes('115')) {
+        botol115Outflow += qty;
+      } else {
+        botol250Outflow += qty;
+      }
+    });
+
+    const allOutflows = await prisma.milkOutflow.findMany();
+
+    allOutflows.forEach(o => {
+      const notes = (o.notes || '').toLowerCase();
+      const isYogurt = o.productType === 'OLAHAN' || notes.includes('yogurt');
+      const qty = o.quantity || 0;
+      const pkgType = (o.packagingType || '').toLowerCase();
+
+      if (isYogurt) {
+        yogurtOutflow += qty;
+      } else if (pkgType.includes('cup') || notes.includes('cup')) {
+        cupOutflow += qty;
+      } else if (pkgType.includes('plastik') || notes.includes('plastik') || notes.includes('bantal')) {
+        plastikBantalOutflow += qty;
+      } else if (notes.includes('115')) {
+        botol115Outflow += qty;
+      } else {
+        botol250Outflow += qty;
+      }
+    });
+
+    const stokBotol115 = Math.max(0, botol115Packaged - botol115Outflow);
+    const stokBotol250 = Math.max(0, botol250Packaged - botol250Outflow);
+    const stokCup = Math.max(0, cupPackaged - cupOutflow);
+    const stokPlastikBantal = Math.max(0, plastikBantalPackaged - plastikBantalOutflow);
+    const stokYogurt = Math.max(0, yogurtPackaged - yogurtOutflow);
+
     // Packaging Daily Charts (7 Days & Month)
     const getPackagingDailyChartData = async (daysCount) => {
       const chartData = [];
@@ -793,10 +923,10 @@ export async function GET(request) {
     } catch (e) {}
 
     const [rawPkgList, rawProdList, rawSalesList, rawOutList] = await Promise.all([
-      prisma.milkPackaging.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
-      prisma.milkProduction.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
-      prisma.milkSale.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
-      prisma.milkOutflow.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }),
+      prisma.milkPackaging.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }).catch(() => []),
+      prisma.milkProduction.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }).catch(() => []),
+      prisma.milkSale.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }).catch(() => []),
+      prisma.milkOutflow.findMany({ take: 6, orderBy: { updatedAt: 'desc' }, include: { createdBy: { select: { name: true } } } }).catch(() => []),
     ]);
 
     const activityList = [];
@@ -890,6 +1020,11 @@ export async function GET(request) {
           stokAkhirPcs,
           sisaBahanLiters,
           jumlahStokPcs,
+          stokBotol115,
+          stokBotol250,
+          stokCup,
+          stokPlastikBantal,
+          stokYogurt,
           dikemasHariIniPcs: hasilPengemasanHariIni,
           outflowHariIni,
           chart7Days: packagingChart7Days,
@@ -946,7 +1081,7 @@ export async function GET(request) {
           totalPackagedQty: totalPackagingAgg._sum.total_packaged_qty || 0,
           chart7Days,
           chart30Days,
-          recentPackagings,
+          recentPackagings: rawPkgList,
           recentLogs,
         },
         segar: {

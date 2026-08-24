@@ -84,6 +84,11 @@ export default function DashboardPage() {
       stokAkhirPcs = 0,
       sisaBahanLiters = 0,
       jumlahStokPcs = 0,
+      stokBotol115 = 0,
+      stokBotol250 = 0,
+      stokCup = 0,
+      stokPlastikBantal = 0,
+      stokYogurt = 0,
       chart7Days = [],
       chart30Days = [],
       recentPackagings = [],
@@ -195,6 +200,89 @@ export default function DashboardPage() {
                 {jumlahStokPcs.toLocaleString()} <span className="text-xs font-bold text-emerald-200">pcs</span>
               </p>
               <p className="text-[11px] text-emerald-200 font-semibold mt-1">Total produk tersedia</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 2.5 STOK RINCIAN PER KEMASAN PRODUK (5 CARDS) */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-emerald-600" />
+              <span>Rincian Stok Produk Siap Edar</span>
+            </h2>
+            <span className="text-xs text-slate-400 font-semibold">Persediaan Real-time per Jenis Kemasan</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {/* Card 1: BOTOL 115 ML */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 hover:shadow transition-all space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 block">Susu Botol 115ml</span>
+                <span className="text-base">🥛</span>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 font-mono">
+                  {stokBotol115.toLocaleString()} <span className="text-xs font-bold text-slate-400">pcs</span>
+                </p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Ready Botol 115 ml</p>
+              </div>
+            </div>
+
+            {/* Card 2: BOTOL 250 ML */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 hover:shadow transition-all space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 block">Susu Botol 250ml</span>
+                <span className="text-base">🍾</span>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 font-mono">
+                  {stokBotol250.toLocaleString()} <span className="text-xs font-bold text-slate-400">pcs</span>
+                </p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Ready Botol 250 ml</p>
+              </div>
+            </div>
+
+            {/* Card 3: SUSU CUP */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 hover:shadow transition-all space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 block">Susu Cup</span>
+                <span className="text-base">🍨</span>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 font-mono">
+                  {stokCup.toLocaleString()} <span className="text-xs font-bold text-slate-400">pcs</span>
+                </p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Ready Susu Cup</p>
+              </div>
+            </div>
+
+            {/* Card 4: PLASTIK BANTAL */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 hover:shadow transition-all space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 block">Susu Plastik Bantal</span>
+                <span className="text-base">🧃</span>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 font-mono">
+                  {stokPlastikBantal.toLocaleString()} <span className="text-xs font-bold text-slate-400">pcs</span>
+                </p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Ready Plastik Bantal</p>
+              </div>
+            </div>
+
+            {/* Card 5: YOGURT */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-2xl border border-amber-200 shadow-sm hover:shadow transition-all space-y-2 col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wide text-amber-800 block">Stok Yogurt</span>
+                <span className="text-base">🍧</span>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-amber-900 font-mono">
+                  {stokYogurt.toLocaleString()} <span className="text-xs font-bold text-amber-700">pcs</span>
+                </p>
+                <p className="text-[10px] text-amber-700 font-semibold mt-0.5">Total Stok Yogurt</p>
+              </div>
             </div>
           </div>
         </div>
