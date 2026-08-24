@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { BBPTUHPTLogo } from '@/components/Logos';
 import { 
   LayoutDashboard, 
   Milk, 
@@ -168,11 +169,9 @@ export default function DashboardLayout({ children }) {
       
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#1E3F20] text-white border-b border-[#2b592e] sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-white text-[#1E3F20] flex items-center justify-center font-black">
-            <Milk className="w-5 h-5 text-[#1E3F20]" />
-          </div>
-          <span className="font-bold text-base text-white">STOK SUSU</span>
+        <div className="flex items-center gap-2.5">
+          <BBPTUHPTLogo className="w-9 h-9" />
+          <span className="font-bold text-xs text-white tracking-wide">BBPTUHPT BATURRADEN</span>
         </div>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -190,13 +189,11 @@ export default function DashboardLayout({ children }) {
       >
         <div className="flex flex-col h-full">
           {/* Logo Area */}
-          <div className="p-6 flex items-center gap-3 border-b border-white/10">
-            <div className="h-10 w-10 rounded-xl bg-white text-[#1E3F20] flex items-center justify-center shadow-lg font-black text-lg">
-              <Milk className="w-6 h-6 text-[#1E3F20]" />
-            </div>
+          <div className="p-4 sm:p-5 flex items-center gap-3 border-b border-white/10">
+            <BBPTUHPTLogo className="w-12 h-12 shrink-0" />
             <div>
-              <h2 className="font-extrabold text-base text-white leading-tight">STOK SUSU</h2>
-              <span className="text-[10px] text-emerald-200 font-semibold tracking-wide block uppercase">Sistem Management Stok</span>
+              <h2 className="font-extrabold text-xs sm:text-sm text-white leading-tight tracking-wide">BBPTUHPT BATURRADEN</h2>
+              <span className="text-[10px] text-emerald-200 font-semibold tracking-wide block uppercase mt-0.5">Sistem Management Stok</span>
             </div>
           </div>
 
@@ -232,25 +229,23 @@ export default function DashboardLayout({ children }) {
           </nav>
 
           {/* User Profile Box & Logout */}
-          <div className="p-4 border-t border-white/10 bg-[#16331a]">
-            <div className="p-3 bg-[#102613] rounded-xl border border-white/10 mb-3 space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center text-white font-bold text-xs">
-                  <User className="w-4 h-4" />
-                </div>
-                <p className="text-xs font-bold text-white truncate">{user?.name || 'Pengguna'}</p>
+          <div className="p-4 border-t border-white/10 space-y-2">
+            <div className="flex items-center gap-3 px-2 py-1.5">
+              <div className="w-8 h-8 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-white shrink-0">
+                <User className="w-4 h-4" />
               </div>
-              <div className={`inline-block text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border ${roleInfo.bg}`}>
-                {roleInfo.label}
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-white truncate">{user?.name || 'Pengguna'}</span>
+                <span className="text-[10px] text-emerald-200 font-medium truncate opacity-90">{roleInfo.label}</span>
               </div>
             </div>
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Keluar (Logout)</span>
+              <LogOut className="w-4 h-4 text-emerald-200" />
+              <span>Keluar</span>
             </button>
           </div>
         </div>

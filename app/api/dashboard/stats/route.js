@@ -16,11 +16,21 @@ export async function GET(request) {
     }
 
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const utcStartOfToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
+    const utcEndOfToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999));
+    const localStartOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const localEndOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const startOfToday = utcStartOfToday < localStartOfToday ? utcStartOfToday : localStartOfToday;
+    const endOfToday = utcEndOfToday > localEndOfToday ? utcEndOfToday : localEndOfToday;
+
+    const utcStartOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0));
+    const utcEndOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999));
+    const localStartOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const localEndOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const startOfMonth = utcStartOfMonth < localStartOfMonth ? utcStartOfMonth : localStartOfMonth;
+    const endOfMonth = utcEndOfMonth > localEndOfMonth ? utcEndOfMonth : localEndOfMonth;
 
     // Get categories for SEGAR vs OLAHAN
     const segarCategories = await prisma.milkCategory.findMany({ where: { product_type: 'SEGAR' }, orderBy: { name: 'asc' } });

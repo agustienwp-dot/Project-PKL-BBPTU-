@@ -249,11 +249,15 @@ export async function GET(request) {
       );
     }
 
-    // Sort descending by newest update / creation time so latest updated items are on top
+    // Sort descending by date DESC then created_at DESC so latest inputs are on top
     filteredList.sort((a, b) => {
-      const timeA = new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || a.date || 0).getTime();
-      const timeB = new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || b.date || 0).getTime();
-      return timeB - timeA;
+      const dateA = new Date(a.date || 0).getTime();
+      const dateB = new Date(b.date || 0).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.id || '').localeCompare(a.id || '');
     });
 
     return NextResponse.json({ success: true, data: filteredList });

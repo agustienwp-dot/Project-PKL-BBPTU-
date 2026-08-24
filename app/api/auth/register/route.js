@@ -25,9 +25,9 @@ export async function POST(request) {
       );
     }
 
-    if (cleanPassword.length < 6) {
+    if (cleanPassword.length < 8) {
       return NextResponse.json(
-        { success: false, message: 'Password minimal 6 karakter.' },
+        { success: false, message: 'Kata sandi minimal 8 karakter.' },
         { status: 400 }
       );
     }

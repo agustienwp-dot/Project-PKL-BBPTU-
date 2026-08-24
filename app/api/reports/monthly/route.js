@@ -114,6 +114,7 @@ export async function GET(request) {
       limpakuwus: { pagi: 0, sore: 0, total: 0 },
       manggala: { pagi: 0, sore: 0, total: 0 },
       eduwisata: { pagi: 0, sore: 0, total: 0 },
+      kambing: { pagi: 0, sore: 0, total: 0 },
       grandTotal: 0,
     };
 
@@ -153,14 +154,23 @@ export async function GET(request) {
       totalProcessedLiters += processed;
       totalPackaged += pkgQty;
 
-      const fKey = normalizeFarmKey(fOrigin);
       const isSore = (p.shift || '').toLowerCase().includes('sore');
-      if (isSore) {
-        farmsMonthlyTotal[fKey].sore += gross;
+      if (aType === 'KAMBING') {
+        if (isSore) {
+          farmsMonthlyTotal.kambing.sore += gross;
+        } else {
+          farmsMonthlyTotal.kambing.pagi += gross;
+        }
+        farmsMonthlyTotal.kambing.total += gross;
       } else {
-        farmsMonthlyTotal[fKey].pagi += gross;
+        const fKey = normalizeFarmKey(fOrigin);
+        if (isSore) {
+          farmsMonthlyTotal[fKey].sore += gross;
+        } else {
+          farmsMonthlyTotal[fKey].pagi += gross;
+        }
+        farmsMonthlyTotal[fKey].total += gross;
       }
-      farmsMonthlyTotal[fKey].total += gross;
       farmsMonthlyTotal.grandTotal += gross;
 
       const pkg = p.packaging_type || p.packagingType || 'botol';
@@ -212,6 +222,7 @@ export async function GET(request) {
         limpakuwus: { pagi: 0, sore: 0, total: 0 },
         manggala: { pagi: 0, sore: 0, total: 0 },
         eduwisata: { pagi: 0, sore: 0, total: 0 },
+        kambing: { pagi: 0, sore: 0, total: 0 },
         grandTotal: 0,
       };
 
@@ -242,14 +253,23 @@ export async function GET(request) {
         dayProcessedLiters += processed;
         dayPackaged += pkgQty;
 
-        const fKey = normalizeFarmKey(fOrigin);
         const isSore = (p.shift || '').toLowerCase().includes('sore');
-        if (isSore) {
-          farmsBreakdown[fKey].sore += gross;
+        if (aType === 'KAMBING') {
+          if (isSore) {
+            farmsBreakdown.kambing.sore += gross;
+          } else {
+            farmsBreakdown.kambing.pagi += gross;
+          }
+          farmsBreakdown.kambing.total += gross;
         } else {
-          farmsBreakdown[fKey].pagi += gross;
+          const fKey = normalizeFarmKey(fOrigin);
+          if (isSore) {
+            farmsBreakdown[fKey].sore += gross;
+          } else {
+            farmsBreakdown[fKey].pagi += gross;
+          }
+          farmsBreakdown[fKey].total += gross;
         }
-        farmsBreakdown[fKey].total += gross;
         farmsBreakdown.grandTotal += gross;
 
         const pkg = p.packaging_type || p.packagingType || 'botol';

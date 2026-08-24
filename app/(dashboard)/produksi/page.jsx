@@ -94,13 +94,64 @@ export default function ProduksiPage() {
         api.get('/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
       ]);
 
-      if (pRes.data && pRes.data.success && Array.isArray(pRes.data.data) && pRes.data.data.length > 0) {
-        setProductions(pRes.data.data);
+      if (pRes.data && pRes.data.success && Array.isArray(pRes.data.data)) {
+        const normProds = pRes.data.data.map((p) => {
+          const aType = p.animal_type || p.animalType || 'SAPI';
+          const fOrigin = p.farm_origin || p.farmOrigin || 'Manggala';
+          const grossL = p.gross_volume_liters ?? p.grossVolumeLiters ?? 0;
+          const pedetL = p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0;
+          const afkirL = p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0;
+          const rawL = p.raw_volume_liters ?? p.rawVolumeLiters ?? 0;
+          const hStatus = p.handover_status || p.handoverStatus || 'MENUNGGU_VERIFIKASI';
+          const catId = p.category_id || p.categoryId;
+          const prType = p.product_type || p.productType || 'SEGAR';
+
+          const fFoto = p.foto_timbangan || p.fotoTimbangan || null;
+
+          return {
+            ...p,
+            animalType: aType,
+            animal_type: aType,
+            farmOrigin: fOrigin,
+            farm_origin: fOrigin,
+            grossVolumeLiters: grossL,
+            gross_volume_liters: grossL,
+            pedetVolumeLiters: pedetL,
+            pedet_volume_liters: pedetL,
+            afkirVolumeLiters: afkirL,
+            afkir_volume_liters: afkirL,
+            rawVolumeLiters: rawL,
+            raw_volume_liters: rawL,
+            handoverStatus: hStatus,
+            handover_status: hStatus,
+            categoryId: catId,
+            category_id: catId,
+            productType: prType,
+            product_type: prType,
+            fotoTimbangan: fFoto,
+            foto_timbangan: fFoto,
+          };
+        });
+        setProductions(normProds);
       }
       if (cRes.data && cRes.data.success && Array.isArray(cRes.data.data)) {
-        setCategories(cRes.data.data);
-        if (!formCategoryId && cRes.data.data.length > 0) {
-          setFormCategoryId(cRes.data.data[0].id);
+        const normCats = cRes.data.data.map((c) => {
+          const aType = c.animal_type || c.animalType || 'SAPI';
+          const prType = c.product_type || c.productType || 'SEGAR';
+          const defPkg = c.default_packaging || c.defaultPackaging || 'botol';
+          return {
+            ...c,
+            animalType: aType,
+            animal_type: aType,
+            productType: prType,
+            product_type: prType,
+            defaultPackaging: defPkg,
+            default_packaging: defPkg,
+          };
+        });
+        setCategories(normCats);
+        if (!formCategoryId && normCats.length > 0) {
+          setFormCategoryId(normCats[0].id);
         }
       }
       if (baRes.data && baRes.data.success && Array.isArray(baRes.data.data)) {
@@ -132,7 +183,7 @@ export default function ProduksiPage() {
     setFormAnimalType('SAPI');
     setFormShift('Pagi');
     setFormFarmOrigin('Manggala');
-    const sapiCats = categories.filter(c => !c.animalType || c.animalType === 'SAPI');
+    const sapiCats = categories.filter(c => (c.animal_type || c.animalType) === 'SAPI');
     if (sapiCats.length > 0) setFormCategoryId(sapiCats[0].id);
     else if (categories.length > 0) setFormCategoryId(categories[0].id);
     setFormGrossLiters('');
@@ -148,21 +199,24 @@ export default function ProduksiPage() {
     setEditingProd(p);
     setFormErrors({});
     setFormDate(new Date(p.date).toISOString().split('T')[0]);
-    setFormAnimalType(p.animalType || 'SAPI');
+    const aType = p.animal_type || p.animalType || 'SAPI';
+    setFormAnimalType(aType);
     setFormShift(p.shift || 'Pagi');
-    setFormFarmOrigin(p.farmOrigin || 'Manggala');
-    setFormCategoryId(p.categoryId);
-    const gross = p.grossVolumeLiters > 0 ? p.grossVolumeLiters.toString() : p.rawVolumeLiters.toString();
-    setFormGrossLiters(gross);
-    setFormPedetLiters(p.pedetVolumeLiters > 0 ? p.pedetVolumeLiters.toString() : '');
-    setFormAfkirLiters(p.afkirVolumeLiters > 0 ? p.afkirVolumeLiters.toString() : '');
+    setFormFarmOrigin(p.farm_origin || p.farmOrigin || 'Manggala');
+    setFormCategoryId(p.category_id || p.categoryId);
+    const grossVal = (p.gross_volume_liters ?? p.grossVolumeLiters ?? 0) > 0 ? (p.gross_volume_liters ?? p.grossVolumeLiters) : (p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
+    setFormGrossLiters(grossVal ? grossVal.toString() : '');
+    const pedetVal = p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0;
+    setFormPedetLiters(pedetVal > 0 ? pedetVal.toString() : '');
+    const afkirVal = p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0;
+    setFormAfkirLiters(afkirVal > 0 ? afkirVal.toString() : '');
     setFormNotes(p.notes || '');
-    setFormFotoTimbangan(p.fotoTimbangan || '');
-    setFormNomorSegel(p.nomorSegel || '');
+    setFormFotoTimbangan(p.foto_timbangan || p.fotoTimbangan || '');
+    setFormNomorSegel(p.nomor_segel || p.nomorSegel || '');
     setShowModal(true);
   };
 
-  const filteredFormCategories = categories.filter(c => !c.animalType || c.animalType === formAnimalType);
+  const filteredFormCategories = categories.filter(c => (c.animal_type || c.animalType) === formAnimalType);
 
   const handlePromptSubmit = (e) => {
     if (e) e.preventDefault();
@@ -246,12 +300,15 @@ export default function ProduksiPage() {
 
     try {
       let targetCatId = formCategoryId;
+      const matchingCats = categories.filter(c => (c.animal_type || c.animalType) === formAnimalType);
+      if (matchingCats.length > 0 && (!targetCatId || !matchingCats.some(c => c.id === targetCatId))) {
+        targetCatId = matchingCats[0].id;
+      }
       if (!targetCatId && categories.length > 0) {
-        const matchCat = categories.find(c => c.animalType === formAnimalType);
-        targetCatId = matchCat ? matchCat.id : categories[0].id;
+        targetCatId = categories[0].id;
       }
       const cat = categories.find(c => c.id === targetCatId);
-      const pkg = cat?.defaultPackaging || 'botol';
+      const pkg = cat?.defaultPackaging || cat?.default_packaging || 'botol';
 
       const payload = {
         date: formDate,
@@ -280,24 +337,35 @@ export default function ProduksiPage() {
         }));
 
         setToast({ type: 'success', message: 'Laporan produksi susu berhasil diperbarui!' });
+        const savedObj = res.data?.data || payload;
+        const normalizedObj = {
+          ...savedObj,
+          fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
+          foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
+        };
+
+        setToast({ type: 'success', message: 'Laporan produksi susu berhasil diperbarui!' });
         setShowModal(false);
-        if (res.data?.data) {
-          setProductions(prev => prev.map(p => p.id === editingProd.id ? { ...p, ...res.data.data } : p));
-        }
+        setProductions(prev => prev.map(p => p.id === editingProd.id ? { ...p, ...normalizedObj } : p));
         fetchData();
       } else {
         const res = await api.post('/farm/production', payload).catch(() => ({
           data: { success: true, data: { ...payload, id: `prod-${Date.now()}` } }
         }));
 
+        const savedObj = res.data?.data || payload;
+        const normalizedObj = {
+          ...savedObj,
+          fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
+          foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
+        };
+
         setToast({
           type: 'success',
           message: `✓ Laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil disimpan!`
         });
         setShowModal(false);
-        if (res.data?.data) {
-          setProductions(prev => [res.data.data, ...prev.filter(p => p.id !== res.data.data.id)]);
-        }
+        setProductions(prev => [normalizedObj, ...prev.filter(p => p.id !== normalizedObj.id)]);
         fetchData();
       }
     } catch (err) {
@@ -434,9 +502,13 @@ export default function ProduksiPage() {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs sm:text-sm">
               {(() => {
                 const sortedProductions = [...filteredProductions].sort((a, b) => {
-                  const timeA = new Date(a.updatedAt || a.createdAt || a.date).getTime();
-                  const timeB = new Date(b.updatedAt || b.createdAt || b.date).getTime();
-                  return timeB - timeA;
+                  const dateA = new Date(a.date || 0).getTime();
+                  const dateB = new Date(b.date || 0).getTime();
+                  if (dateB !== dateA) return dateB - dateA;
+                  const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
+                  const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+                  if (timeB !== timeA) return timeB - timeA;
+                  return (b.id || '').localeCompare(a.id || '');
                 });
 
                 return sortedProductions.length > 0 ? (
@@ -448,7 +520,8 @@ export default function ProduksiPage() {
                     const feedLabel = p.animalType === 'KAMBING' ? 'Cempe' : 'Pedet';
                     const shiftDisplay = p.shift || 'Pagi';
                     const farmDisplay = p.farmOrigin || 'Manggala';
-                    const isAccepted = ['DITERIMA', 'SUDAH_DITERIMA', 'ACC', 'CONFIRMED', 'VERIFIED', 'SELESAI'].includes(p.handoverStatus || p.status);
+                    const hStatus = p.handover_status || p.handoverStatus;
+                    const isAccepted = ['DITERIMA', 'SUDAH_DITERIMA', 'ACC', 'CONFIRMED', 'VERIFIED'].includes(hStatus);
                     const isBaCreated =
                       existingBaProductionIds.has(p.id) ||
                       p.hasBa ||
@@ -508,8 +581,8 @@ export default function ProduksiPage() {
                               ✅ Diterima
                             </span>
                           ) : (
-                            <span className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 font-extrabold text-xs inline-flex items-center gap-1">
-                              ⏳ Diproses
+                            <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 font-extrabold text-xs inline-flex items-center gap-1 shadow-sm">
+                              🚚 Dikirim
                             </span>
                           )}
                         </td>
@@ -699,6 +772,7 @@ export default function ProduksiPage() {
                         <option value="Manggala">Manggala</option>
                         <option value="Limpakuwus">Limpakuwus</option>
                         <option value="Tegal Sari">Tegal Sari</option>
+                        <option value="Eduwisata">Eduwisata</option>
                       </select>
                       {formErrors.formFarmOrigin && <p className="text-[11px] font-bold text-red-600 mt-1 flex items-center gap-1">⚠️ {formErrors.formFarmOrigin}</p>}
                     </div>
@@ -888,7 +962,7 @@ export default function ProduksiPage() {
         );
       })()}
 
-      {/* DETAIL MODAL (DESAIN BESAR, CLEAR & MUDAH DIBACA - SMOOTH MOBILE SCROLL) */}
+      {/* DETAIL MODAL (MATCHED EXACTLY TO INPUT FORM STRUCTURE & FIELDS) */}
       {selectedProd && (() => {
         const grossL = selectedProd.grossVolumeLiters > 0 ? selectedProd.grossVolumeLiters : selectedProd.rawVolumeLiters;
         const pedetL = selectedProd.pedetVolumeLiters || 0;
@@ -897,95 +971,138 @@ export default function ProduksiPage() {
 
         return (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-start sm:items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-auto max-h-[90vh] overflow-y-auto border border-slate-200">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <h3 className="font-black text-slate-900 text-lg flex items-center gap-2.5">
-                  <Milk className="w-6 h-6 text-emerald-600" />
+            <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-200 my-auto max-h-[90vh] overflow-y-auto border border-slate-200">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h3 className="font-black text-slate-900 text-base sm:text-lg flex items-center gap-2">
+                  <Milk className="w-5 h-5 text-emerald-600" />
                   <span>Detail Produksi Susu</span>
                 </h3>
-                <button onClick={() => setSelectedProd(null)} className="text-slate-400 hover:text-slate-700 text-xl font-bold p-1 rounded-lg">✕</button>
+                <button onClick={() => setSelectedProd(null)} className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 rounded-lg">✕</button>
               </div>
 
-              <div className="space-y-4 text-sm">
-                {/* Jenis Ternak & Tanggal */}
-                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                  <span className="font-bold text-slate-600">Jenis Ternak:</span>
-                  <span className="font-black text-slate-900 text-base">
+              <div className="space-y-3.5 text-xs sm:text-sm">
+                {/* 1. Jenis Ternak */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Ternak</label>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-extrabold text-slate-900 text-xs flex items-center gap-2">
                     {selectedProd.animalType === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
-                  </span>
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                  <span className="font-bold text-slate-600">Tanggal Produksi:</span>
-                  <span className="font-black text-slate-900 text-base">
+                {/* 2. Tanggal Produksi */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Produksi</label>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 text-xs">
                     {new Date(selectedProd.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </span>
+                  </div>
                 </div>
 
-                {/* Kegiatan Perah & Asal Farm */}
-                <div className="grid grid-cols-2 gap-3 border-b border-slate-100 pb-3">
-                  <div className="flex justify-between items-center bg-slate-100/80 p-3 rounded-2xl border border-slate-200">
-                    <span className="font-bold text-slate-600">Kegiatan:</span>
-                    <span className="font-black text-slate-900 text-sm">
+                {/* 3. Kegiatan Perah & Asal Farm */}
+                <div className={`grid ${selectedProd.animalType === 'KAMBING' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Kegiatan Perah</label>
+                    <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 text-xs">
                       {selectedProd.shift === 'Sore' ? '🌇 Sore' : '🌅 Pagi'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center bg-slate-100/80 p-3 rounded-2xl border border-slate-200">
-                    <span className="font-bold text-slate-600">Asal Farm:</span>
-                    <span className="font-black text-slate-900 text-sm">
-                      📍 {selectedProd.farmOrigin || 'Manggala'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Volumes */}
-                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                  <span className="font-bold text-slate-700">Produksi Susu:</span>
-                  <span className="font-black text-slate-900 text-base">{grossL} Liter</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 flex justify-between items-center">
-                    <span className="font-bold text-amber-950">Susu {feedLabel}:</span>
-                    <span className="font-black text-amber-900 text-base">-{pedetL} L</span>
-                  </div>
-                  <div className="bg-rose-50 p-3 rounded-2xl border border-rose-200 flex justify-between items-center">
-                    <span className="font-bold text-rose-950">Susu Afkir:</span>
-                    <span className="font-black text-rose-900 text-base">-{afkirL} L</span>
-                  </div>
-                </div>
-
-                {/* (diserah terimakan) */}
-                <div className="flex justify-between items-center border-2 border-emerald-400 bg-emerald-50/90 p-4 rounded-2xl shadow-sm">
-                  <span className="font-extrabold text-emerald-950 text-base">(diserah terimakan):</span>
-                  <span className="font-black text-emerald-700 text-xl font-mono">{selectedProd.rawVolumeLiters} Liter</span>
-                </div>
-
-                {/* Foto Timbangan */}
-                {selectedProd.fotoTimbangan && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <span className="font-bold text-slate-700 block">Foto Timbangan / Wadah Susu:</span>
-                    <div className="w-full h-44 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-300 p-2 shadow-inner">
-                      <img src={selectedProd.fotoTimbangan} alt="Foto Timbangan" className="max-w-full max-h-full object-contain" />
                     </div>
                   </div>
-                )}
 
-                <div className="flex justify-between items-center border-t border-slate-100 pt-3 text-xs">
-                  <span className="font-bold text-slate-500">Petugas Input:</span>
+                  {selectedProd.animalType !== 'KAMBING' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Asal Farm</label>
+                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 text-xs">
+                        📍 {selectedProd.farmOrigin || 'Manggala'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Produksi Susu (Liter) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Produksi Susu (Liter)</label>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-900 text-sm font-mono">
+                    {grossL} Liter
+                  </div>
+                </div>
+
+                {/* 5. Susu Pedet & Susu Afkir */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu {feedLabel} (Liter)</label>
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl font-black text-amber-900 text-xs font-mono">
+                      {pedetL > 0 ? `-${pedetL} Liter` : '0 Liter'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-rose-800 mb-1">Susu Afkir / Rusak (L)</label>
+                    <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl font-black text-rose-900 text-xs font-mono">
+                      {afkirL > 0 ? `-${afkirL} Liter` : '0 Liter'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Live Summary Box (diserah terimakan) */}
+                <div className="bg-[#F5F5F0] border-2 border-emerald-500 rounded-2xl p-3.5 space-y-1.5 text-xs font-mono">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Produksi Susu:</span>
+                    <span className="font-bold">{grossL} Liter</span>
+                  </div>
+                  {pedetL > 0 && (
+                    <div className="flex justify-between text-amber-800">
+                      <span>Susu Pakan ({feedLabel}):</span>
+                      <span className="font-bold">-{pedetL} Liter</span>
+                    </div>
+                  )}
+                  {afkirL > 0 && (
+                    <div className="flex justify-between text-rose-800">
+                      <span>Susu Afkir / Rusak:</span>
+                      <span className="font-bold">-{afkirL} Liter</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1.5 border-t border-slate-300 text-slate-900 font-sans items-center">
+                    <span className="font-extrabold text-emerald-900">(diserah terimakan):</span>
+                    <span className="font-black text-emerald-700 text-base font-mono">{selectedProd.rawVolumeLiters} Liter</span>
+                  </div>
+                </div>
+
+                {/* 7. Foto Timbangan / Wadah Susu */}
+                <div className="space-y-1.5 border-t border-slate-200 pt-3">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Foto Timbangan / Wadah Susu
+                  </label>
+                  {(selectedProd.fotoTimbangan || selectedProd.foto_timbangan) ? (
+                    <div className="w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-300 p-2">
+                      <div className="w-full h-44 flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden">
+                        <img src={selectedProd.fotoTimbangan || selectedProd.foto_timbangan} alt="Foto Timbangan" className="max-w-full max-h-full object-contain" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 text-xs font-medium text-center">
+                      Foto timbangan tidak dilampirkan.
+                    </div>
+                  )}
+                </div>
+
+                {/* 8. Petugas Input */}
+                <div className="flex justify-between items-center pt-2 text-xs border-t border-slate-100">
+                  <span className="font-bold text-slate-600">Petugas Input:</span>
                   <span className="font-extrabold text-slate-800">{selectedProd.createdBy?.name || 'Admin Farm'}</span>
                 </div>
 
-                <div className="space-y-1.5">
-                  <span className="font-bold text-slate-600 block">Catatan:</span>
-                  <p className="p-3 bg-slate-50 rounded-2xl text-slate-800 font-semibold border border-slate-200 text-xs">{selectedProd.notes || 'Tidak ada catatan.'}</p>
+                {/* 9. Catatan */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Catatan</label>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold text-xs">
+                    {selectedProd.notes || 'Tidak ada catatan.'}
+                  </div>
                 </div>
               </div>
 
               <div className="flex justify-end pt-3 border-t border-slate-200">
                 <button
+                  type="button"
                   onClick={() => setSelectedProd(null)}
-                  className="px-6 py-2.5 bg-slate-100 text-slate-800 rounded-xl text-sm font-black hover:bg-slate-200 transition-colors shadow-sm"
+                  className="px-6 py-2.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-extrabold hover:bg-slate-200 transition-colors shadow-sm"
                 >
                   Tutup
                 </button>

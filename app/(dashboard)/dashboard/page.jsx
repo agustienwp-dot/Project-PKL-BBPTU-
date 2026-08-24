@@ -49,6 +49,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
+    const interval = setInterval(() => fetchDashboardData(), 5000);
+    const handleFocus = () => fetchDashboardData();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user]);
 
   const farmStats = statsData?.farm || {};

@@ -20,15 +20,26 @@ export async function GET(request, { params }) {
       },
     });
 
-    if (!item) {
-      const memMatch = (global.__inMemoryProductionList || []).find((i) => i.id === id);
-      if (memMatch) {
-        return NextResponse.json({ success: true, data: memMatch });
-      }
-      return NextResponse.json({ success: false, message: 'Data produksi tidak ditemukan' }, { status: 404 });
-    }
+    const normalizedItem = {
+      ...item,
+      farmOrigin: item.farmOrigin || item.farm_origin,
+      categoryId: item.categoryId || item.category_id,
+      productType: item.productType || item.product_type,
+      animalType: item.animalType || item.animal_type,
+      packagingType: item.packagingType || item.packaging_type,
+      grossVolumeLiters: item.grossVolumeLiters ?? item.gross_volume_liters,
+      pedetVolumeLiters: item.pedetVolumeLiters ?? item.pedet_volume_liters,
+      afkirVolumeLiters: item.afkirVolumeLiters ?? item.afkir_volume_liters,
+      soldFreshVolumeLiters: item.soldFreshVolumeLiters ?? item.sold_fresh_volume_liters,
+      rawVolumeLiters: item.rawVolumeLiters ?? item.raw_volume_liters,
+      processedLiters: item.processedLiters ?? item.processed_liters,
+      packagedQty: item.packagedQty ?? item.packaged_qty,
+      createdBy: item.createdBy || item.created_by,
+      fotoTimbangan: item.fotoTimbangan || item.foto_timbangan || null,
+      foto_timbangan: item.foto_timbangan || item.fotoTimbangan || null,
+    };
 
-    return NextResponse.json({ success: true, data: item });
+    return NextResponse.json({ success: true, data: normalizedItem });
   } catch (error) {
     console.error('GET /api/farm/production/[id] error:', error);
     const memMatch = (global.__inMemoryProductionList || []).find((i) => i.id === id);
@@ -47,7 +58,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = params;
-    const { date, shift, farmOrigin, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes } = await request.json();
+    const { date, shift, farmOrigin, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes, fotoTimbangan } = await request.json();
 
     if (date) {
       const now = new Date();
@@ -115,6 +126,7 @@ export async function PUT(request, { params }) {
           processed_liters: finalProcessed,
           packaged_qty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
           notes: notes !== undefined ? notes : existing.notes,
+          foto_timbangan: fotoTimbangan !== undefined ? fotoTimbangan : (existing.foto_timbangan || existing.fotoTimbangan),
         },
         include: {
           category: true,
@@ -145,6 +157,8 @@ export async function PUT(request, { params }) {
         processed_liters: finalProcessed,
         packaged_qty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
         notes: notes !== undefined ? notes : existing.notes,
+        foto_timbangan: fotoTimbangan !== undefined ? fotoTimbangan : (existing.foto_timbangan || existing.fotoTimbangan),
+        fotoTimbangan: fotoTimbangan !== undefined ? fotoTimbangan : (existing.fotoTimbangan || existing.foto_timbangan),
         // Camelcase compatibility for UI
         farmOrigin: farmOrigin !== undefined ? farmOrigin : (existing.farmOrigin || existing.farm_origin),
         categoryId: categoryId !== undefined ? categoryId : (existing.categoryId || existing.category_id),
@@ -175,6 +189,8 @@ export async function PUT(request, { params }) {
       updated.processedLiters = updated.processedLiters ?? updated.processed_liters;
       updated.packagedQty = updated.packagedQty ?? updated.packaged_qty;
       updated.createdBy = updated.createdBy || updated.created_by;
+      updated.fotoTimbangan = updated.fotoTimbangan || updated.foto_timbangan;
+      updated.foto_timbangan = updated.foto_timbangan || updated.fotoTimbangan;
     }
 
     if (global.__inMemoryProductionList) {

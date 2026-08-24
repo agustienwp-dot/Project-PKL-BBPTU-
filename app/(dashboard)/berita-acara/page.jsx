@@ -91,7 +91,27 @@ function BeritaAcaraContent() {
 
       const res = await api.get(url);
       if (res.data.success) {
-        setBaList(res.data.data || []);
+        const normBaList = (res.data.data || []).map(b => ({
+          ...b,
+          animalType: b.animal_type || b.animalType || 'SAPI',
+          animal_type: b.animal_type || b.animalType || 'SAPI',
+          farmLocation: b.farm_location || b.farmLocation || 'Tegalsari',
+          farm_location: b.farm_location || b.farmLocation || 'Tegalsari',
+          totalProduksi: b.total_produksi ?? b.totalProduksi ?? 0,
+          total_produksi: b.total_produksi ?? b.totalProduksi ?? 0,
+          penggunaanPedet: b.penggunaan_pedet ?? b.penggunaanPedet ?? 0,
+          penggunaan_pedet: b.penggunaan_pedet ?? b.penggunaanPedet ?? 0,
+          lainLain: b.lain_lain ?? b.lainLain ?? 0,
+          lain_lain: b.lain_lain ?? b.lainLain ?? 0,
+          diserahterimakan: b.diserahterimakan ?? 0,
+          nomorBa: b.nomor_ba || b.nomorBa || '',
+          nomor_ba: b.nomor_ba || b.nomorBa || '',
+          penyerahName: b.penyerah_name || b.penyerahName || 'Seksi Pemeliharaan',
+          penyerah_name: b.penyerah_name || b.penyerahName || 'Seksi Pemeliharaan',
+          penerimaName: b.penerima_name || b.penerimaName || 'Seksi Pemasaran',
+          penerima_name: b.penerima_name || b.penerimaName || 'Seksi Pemasaran',
+        }));
+        setBaList(normBaList);
       }
     } catch (err) {
       console.error('Error fetching Berita Acara list:', err);
@@ -166,22 +186,28 @@ function BeritaAcaraContent() {
             setFormDate(new Date(p.date).toISOString().split('T')[0]);
             setFormShift(p.shift || 'Pagi');
             
-            let rawFarm = (p.farmOrigin || 'Manggala').replace(/^Farm\s+/i, '').trim();
+            let rawFarm = (p.farm_origin || p.farmOrigin || 'Manggala').replace(/^Farm\s+/i, '').trim();
             if (rawFarm === 'Tegal Sari' || rawFarm === 'Tegalsari') rawFarm = 'Tegalsari';
             else if (rawFarm === 'Limpakuwus') rawFarm = 'Limpakuwus';
             else if (rawFarm === 'Eduwisata') rawFarm = 'Eduwisata';
             else rawFarm = 'Manggala';
             
             setFormFarmLocation(rawFarm);
-            setFormAnimalType(p.animalType || 'SAPI');
+            setFormAnimalType(p.animal_type || p.animalType || pAnimal || 'SAPI');
 
-            const gross = p.grossVolumeLiters > 0 ? p.grossVolumeLiters : (p.rawVolumeLiters + (p.pedetVolumeLiters || 0) + (p.afkirVolumeLiters || 0));
-            setFormTotalProduksi(gross > 0 ? gross.toString() : '');
-            setFormPenggunaanPedet((p.pedetVolumeLiters || 0).toString());
-            setFormAfkir((p.afkirVolumeLiters || 0).toString());
+            const pedetVal = p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0;
+            const afkirVal = p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0;
+            const rawVal = p.raw_volume_liters ?? p.rawVolumeLiters ?? 0;
+            const grossVal = (p.gross_volume_liters ?? p.grossVolumeLiters ?? 0) > 0 
+              ? (p.gross_volume_liters ?? p.grossVolumeLiters) 
+              : (rawVal + pedetVal + afkirVal);
+
+            setFormTotalProduksi(grossVal > 0 ? grossVal.toString() : '');
+            setFormPenggunaanPedet(pedetVal.toString());
+            setFormAfkir(afkirVal.toString());
             setFormLainLain('0');
 
-            const diserah = p.rawVolumeLiters > 0 ? p.rawVolumeLiters : Math.max(0, gross - (p.pedetVolumeLiters || 0) - (p.afkirVolumeLiters || 0));
+            const diserah = rawVal > 0 ? rawVal : Math.max(0, grossVal - pedetVal - afkirVal);
             setFormDiserahterimakan(diserah > 0 ? diserah.toString() : '');
             setShowFormModal(true);
           }
@@ -235,19 +261,19 @@ function BeritaAcaraContent() {
       return;
     }
     setEditingBa(ba);
-    setFormProductionId(ba.productionId || '');
+    setFormProductionId(ba.productionId || ba.production_id || '');
     setFormDate(new Date(ba.date).toISOString().split('T')[0]);
     setFormShift(ba.shift || 'Pagi');
-    setFormFarmLocation(ba.farmLocation || 'Tegalsari');
-    setFormAnimalType(ba.animalType || 'SAPI');
+    setFormFarmLocation(ba.farm_location || ba.farmLocation || 'Tegalsari');
+    setFormAnimalType(ba.animal_type || ba.animalType || 'SAPI');
     setFormUnit(ba.unit || 'Kg');
-    setFormTotalProduksi(ba.totalProduksi.toString());
-    setFormPenggunaanPedet((ba.penggunaanPedet || 0).toString());
+    setFormTotalProduksi((ba.total_produksi ?? ba.totalProduksi ?? 0).toString());
+    setFormPenggunaanPedet((ba.penggunaan_pedet ?? ba.penggunaanPedet ?? 0).toString());
     setFormAfkir((ba.afkir || 0).toString());
-    setFormLainLain((ba.lainLain || 0).toString());
+    setFormLainLain((ba.lain_lain ?? ba.lainLain ?? 0).toString());
     setFormDiserahterimakan((ba.diserahterimakan || 0).toString());
-    setFormPenyerahName(ba.penyerahName || user?.name || 'Seksi Pemeliharaan');
-    setFormPenerimaName(ba.penerimaName || 'Seksi Pemasaran');
+    setFormPenyerahName(ba.penyerah_name || ba.penyerahName || user?.name || 'Seksi Pemeliharaan');
+    setFormPenerimaName(ba.penerima_name || ba.penerimaName || 'Seksi Pemasaran');
     setFormNotes(ba.notes || '');
     setShowFormModal(true);
   };
@@ -531,9 +557,13 @@ function BeritaAcaraContent() {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
               {(() => {
                 const sortedBaList = [...baList].sort((a, b) => {
-                  const timeA = new Date(a.updatedAt || a.createdAt || a.date || 0).getTime();
-                  const timeB = new Date(b.updatedAt || b.createdAt || b.date || 0).getTime();
-                  return timeB - timeA;
+                  const dateA = new Date(a.date || 0).getTime();
+                  const dateB = new Date(b.date || 0).getTime();
+                  if (dateB !== dateA) return dateB - dateA;
+                  const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
+                  const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+                  if (timeB !== timeA) return timeB - timeA;
+                  return (b.id || '').localeCompare(a.id || '');
                 });
                 if (sortedBaList.length === 0) {
                   return (
@@ -560,10 +590,18 @@ function BeritaAcaraContent() {
                         <span className="text-[10px] text-slate-500 font-semibold">{ba.shift}</span>
                       </td>
                       <td className="p-4">
-                        <span className="font-bold text-slate-900 block">{ba.farmLocation}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 inline-block mt-0.5">
-                          {ba.animalType === 'KAMBING' ? '🐐 KAMBING' : '🐄 SAPI'}
-                        </span>
+                        {(ba.animal_type || ba.animalType) === 'KAMBING' ? (
+                          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 inline-block">
+                            🐐 KAMBING
+                          </span>
+                        ) : (
+                          <>
+                            <span className="font-bold text-slate-900 block">{ba.farm_location || ba.farmLocation || 'Tegalsari'}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 inline-block mt-0.5">
+                              🐄 SAPI
+                            </span>
+                          </>
+                        )}
                       </td>
                       <td className="p-4 text-right font-black text-emerald-700 text-sm">
                         {ba.diserahterimakan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">{ba.unit || 'Liter'}</span>
@@ -683,20 +721,6 @@ function BeritaAcaraContent() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Farm / Lokasi</label>
-                    <select
-                      value={formFarmLocation}
-                      onChange={(e) => setFormFarmLocation(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="Tegalsari">Farm Tegalsari</option>
-                      <option value="Limpakuwus">Farm Limpakuwus</option>
-                      <option value="Manggala">Farm Manggala</option>
-                      <option value="Eduwisata">Eduwisata</option>
-                    </select>
-                  </div>
-
-                  <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Ternak</label>
                     <select
                       value={formAnimalType}
@@ -707,6 +731,22 @@ function BeritaAcaraContent() {
                       <option value="KAMBING">KAMBING</option>
                     </select>
                   </div>
+
+                  {formAnimalType === 'SAPI' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Farm / Lokasi</label>
+                      <select
+                        value={formFarmLocation}
+                        onChange={(e) => setFormFarmLocation(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="Tegalsari">Farm Tegalsari</option>
+                        <option value="Limpakuwus">Farm Limpakuwus</option>
+                        <option value="Manggala">Farm Manggala</option>
+                        <option value="Eduwisata">Eduwisata</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -732,7 +772,9 @@ function BeritaAcaraContent() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Penggunaan Pedet ({formUnit})</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {formAnimalType === 'KAMBING' ? `Penggunaan Cempe (${formUnit})` : `Penggunaan Pedet (${formUnit})`}
+                    </label>
                     <input
                       type="number"
                       step="0.1"
