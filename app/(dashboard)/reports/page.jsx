@@ -238,20 +238,20 @@ export default function ReportsPage() {
   const isAllAnimals = animalType === 'ALL';
 
   return (
-    <div className="space-y-8 pb-12 print:p-0 print:bg-white print:text-black">
+    <div className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden print:p-0 print:bg-white print:text-black">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* Header section (Hidden on print) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 print:hidden">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Rekapitulasi Stok & Laporan Bulanan</h1>
+          <h1 className="text-xl md:text-2xl font-black text-slate-900">Rekapitulasi Stok & Laporan Bulanan</h1>
           <p className="text-xs text-slate-500 font-medium">Pantau akumulasi harian (tanggal 1–31) dan total bulanan produksi & pengeluaran.</p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={exportToExcelMatrix}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-bold shadow-md transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Export Excel</span>
@@ -259,7 +259,7 @@ export default function ReportsPage() {
 
           <button
             onClick={handlePrint}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>Cetak / Print Laporan</span>
@@ -268,7 +268,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Filter Section (Hidden on print) */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 print:hidden">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 shrink-0 print:hidden">
         <select
           value={animalType}
           onChange={(e) => setAnimalType(e.target.value)}
@@ -304,30 +304,30 @@ export default function ReportsPage() {
       </div>
 
       {/* Printable / Display Official Document Header */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0">
-        <div className="text-center space-y-1.5 border-b border-slate-200 pb-4 print:border-black">
-          <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-wide print:text-black">
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden space-y-4 print:border-none print:shadow-none print:p-0">
+        <div className="text-center space-y-1.5 border-b border-slate-200 pb-3 shrink-0 print:border-black">
+          <h2 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-wide print:text-black">
             SERAH TERIMA SUSU MURNI {isKambingOnly ? 'KAMBING' : isAllAnimals ? 'SAPI & KAMBING' : 'SAPI'} BBPTU HPT BATURRADEN
           </h2>
-          <h3 className="text-sm md:text-base font-bold text-slate-700 uppercase tracking-wide print:text-black">
+          <h3 className="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide print:text-black">
             DARI SEKSI PELAYANAN TEKNIK KE SEKSI PEMASARAN
           </h3>
-          <p className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-widest pt-1 print:text-black">
+          <p className="text-xs font-extrabold text-slate-800 uppercase tracking-widest pt-0.5 print:text-black">
             TAHUN {year}
           </p>
         </div>
 
-        <div className="flex items-center justify-between font-bold text-xs text-slate-800 print:text-black uppercase tracking-wider">
+        <div className="flex items-center justify-between font-bold text-xs text-slate-800 shrink-0 print:text-black uppercase tracking-wider">
           <div>
             BULAN : <span className="font-black text-emerald-950 print:text-black">{monthNames[month - 1]} {year}</span>
           </div>
         </div>
 
-        {/* OFFICIAL REKAPITULASI TABLE */}
+        {/* OFFICIAL REKAPITULASI TABLE - Only inside of table scrolls */}
         {loading ? (
           <div className="p-12 text-center"><LoadingSpinner text="Memuat Rekapitulasi Serah Terima Susu..." /></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto flex-1 min-h-0">
             <table className="w-full text-center text-[11px] border-collapse border border-slate-300 print:border-black font-mono">
               <thead>
                 {/* Row 1 Header */}

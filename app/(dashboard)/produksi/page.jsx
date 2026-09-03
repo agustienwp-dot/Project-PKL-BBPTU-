@@ -419,11 +419,11 @@ export default function ProduksiPage() {
   });
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Produksi Susu</h1>
           <p className="text-xs text-slate-500 font-medium">
@@ -434,7 +434,7 @@ export default function ProduksiPage() {
         {canManage && (
           <button
             onClick={openAddModal}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>+ Input Produksi Susu</span>
@@ -443,7 +443,7 @@ export default function ProduksiPage() {
       </div>
 
       {/* Filter & Search Section */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
           {/* Search bar */}
           <div className="relative flex-1 min-w-[200px]">
@@ -492,19 +492,19 @@ export default function ProduksiPage() {
         </div>
       </div>
 
-      {/* Production History Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+      {/* Production History Table Card - Only inside of table scrolls */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
           <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
             <span>Tabel Data Produksi Susu</span>
           </h2>
         </div>
 
-        {/* UNIFIED HORIZONTAL SCROLLABLE TABLE VIEW (Sama di HP & Laptop) */}
-        <div className="overflow-x-auto">
+        {/* UNIFIED HORIZONTAL & VERTICAL SCROLLABLE TABLE VIEW */}
+        <div className="overflow-auto flex-1 min-h-0">
           <table className="w-full text-left text-sm min-w-[850px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-[#1E3F20] text-white">
               <tr className="bg-[#1E3F20] text-white font-extrabold text-xs uppercase tracking-wider">
                 <th className="py-3.5 px-4 whitespace-nowrap rounded-tl-xl">Tanggal Produksi</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Kegiatan</th>

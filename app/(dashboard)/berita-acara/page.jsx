@@ -479,17 +479,17 @@ function BeritaAcaraContent() {
   // Remove blocking full-page loading spinner for instant render
 
   return (
-    <div className="space-y-6 pb-12 print:p-0 print:m-0">
+    <div className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden print:p-0 print:m-0">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* HEADER SECTION (Hidden on Print) */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 print:hidden">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1E3F20] to-emerald-600 text-white flex items-center justify-center font-black text-xl shadow-md">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1E3F20] to-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-md">
             📄
           </div>
           <div>
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               <span>Berita Acara Serah Terima</span>
             </h1>
             <p className="text-xs text-slate-500 font-semibold mt-0.5">
@@ -497,11 +497,10 @@ function BeritaAcaraContent() {
             </p>
           </div>
         </div>
-
       </div>
 
       {/* SEARCH & FILTERS (Hidden on Print) */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0 print:hidden">
         <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-2 rounded-2xl text-xs text-slate-600 flex-1 min-w-[220px]">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
@@ -549,12 +548,12 @@ function BeritaAcaraContent() {
         </div>
       </div>
 
-      {/* BERITA ACARA TABLE LIST (Hidden on Print) */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden print:hidden">
-        {/* UNIFIED HORIZONTAL SCROLLABLE TABLE VIEW (Sama di HP & Laptop) */}
-        <div className="overflow-x-auto">
+      {/* BERITA ACARA TABLE LIST (Hidden on Print) - Only inside of table scrolls */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0 print:hidden">
+        {/* UNIFIED HORIZONTAL & VERTICAL SCROLLABLE TABLE VIEW */}
+        <div className="overflow-auto flex-1 min-h-0">
           <table className="w-full text-left border-collapse text-xs min-w-[850px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-[#1E3F20] text-white">
               <tr className="bg-[#1E3F20] text-white font-extrabold text-xs uppercase tracking-wider">
                 <th className="py-3.5 px-4 w-12 text-center rounded-tl-xl">No</th>
                 <th className="py-3.5 px-4">Nomor BA</th>
