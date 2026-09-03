@@ -89,7 +89,7 @@ export function formatBaItem(item) {
   };
 }
 
-// Helper to generate sequential BA Number (e.g. BA-FS-20260820-001)
+// Helper to generate sequential BA Number per year with date format (e.g. BA-MG-20260821-002)
 async function generateNomorBa(farmLocation = 'FS', targetDate = null) {
   let farmCode = 'FS';
   if (farmLocation && typeof farmLocation === 'string') {
@@ -107,22 +107,22 @@ async function generateNomorBa(farmLocation = 'FS', targetDate = null) {
   const day = dateObj.getDate().toString().padStart(2, '0');
   const dateStr = `${year}${month}${day}`;
 
-  const prefix = `BA-${farmCode}-${dateStr}`;
+  const yearPrefix = `BA-${farmCode}-${year}`;
 
   try {
     const count = await prisma.beritaAcara.count({
       where: {
-        nomor_ba: { startsWith: prefix },
+        nomor_ba: { startsWith: yearPrefix },
       },
     });
 
-    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(prefix)).length;
+    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(yearPrefix)).length;
     const nextNum = (Math.max(count, memCount) + 1).toString().padStart(3, '0');
-    return `${prefix}-${nextNum}`;
+    return `BA-${farmCode}-${dateStr}-${nextNum}`;
   } catch (err) {
-    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(prefix)).length;
+    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(yearPrefix)).length;
     const nextNum = (memCount + 1).toString().padStart(3, '0');
-    return `${prefix}-${nextNum}`;
+    return `BA-${farmCode}-${dateStr}-${nextNum}`;
   }
 }
 
@@ -340,7 +340,7 @@ export async function POST(request) {
           shift: shift || 'Pagi',
           farm_location: farmLocation || 'Tegalsari',
           animal_type: animalType || 'SAPI',
-          unit: unit || 'Kg',
+          unit: unit || 'Lt',
           total_produksi: totProd,
           penggunaan_pedet: pedetVol,
           afkir: afkirVol,
@@ -377,8 +377,9 @@ export async function POST(request) {
 
     if (createdBa) {
       const formatted = formatBaItem(createdBa);
-      if (productionId && !formatted.productionId) {
+      if (productionId) {
         formatted.productionId = productionId;
+        formatted.production_id = productionId;
       }
       global.__inMemoryBaList.unshift(formatted);
       return NextResponse.json({ success: true, data: formatted, message: 'Berita Acara berhasil dibuat.' });
@@ -394,7 +395,7 @@ export async function POST(request) {
       shift: shift || 'Pagi',
       farm_location: farmLocation || 'Tegalsari',
       animal_type: animalType || 'SAPI',
-      unit: unit || 'Kg',
+      unit: unit || 'Lt',
       total_produksi: totProd,
       penggunaan_pedet: pedetVol,
       afkir: afkirVol,
@@ -422,7 +423,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       data: fallbackBa,
-      message: `✓ Berita Acara ${fallbackNomorBa} (${diserahVol} ${unit || 'Kg'}) berhasil disimpan! 🚀`,
+      message: `✓ Berita Acara ${fallbackNomorBa} (${diserahVol} ${unit || 'Lt'}) berhasil disimpan! 🚀`,
     });
   } catch (error) {
     console.error('POST /api/berita-acara error:', error);
@@ -436,7 +437,7 @@ export async function POST(request) {
       shift: body?.shift || 'Pagi',
       farm_location: body?.farmLocation || 'Tegalsari',
       animal_type: body?.animalType || 'SAPI',
-      unit: body?.unit || 'Kg',
+      unit: body?.unit || 'Lt',
       total_produksi: parseFloat(body?.totalProduksi || 0),
       penggunaan_pedet: parseFloat(body?.penggunaanPedet || 0),
       afkir: parseFloat(body?.afkir || 0),
@@ -454,7 +455,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       data: fallbackBa,
-      message: `✓ Berita Acara (${diserahVol} ${body?.unit || 'Kg'}) berhasil disimpan! 🚀`,
+      message: `✓ Berita Acara (${diserahVol} ${body?.unit || 'Lt'}) berhasil disimpan! 🚀`,
     });
   }
 }

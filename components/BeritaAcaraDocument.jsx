@@ -16,7 +16,7 @@ export default function BeritaAcaraDocument({ ba }) {
       ? n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
       : '';
 
-  const unitLabel = ba.unit || 'Kg';
+  const unitLabel = (ba.unit && ba.unit !== 'Kg') ? ba.unit : 'Lt';
 
   return (
     <div className="bg-white text-black font-serif p-8 md:p-12 max-w-4xl mx-auto border border-slate-300 shadow-md print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full">
@@ -40,6 +40,9 @@ export default function BeritaAcaraDocument({ ba }) {
         </h2>
         <p className="text-xs md:text-sm font-medium text-slate-800">
           Dari Seksi Pelayanan Teknik ke Seksi Pemasaran
+        </p>
+        <p className="text-xs md:text-sm font-sans font-bold text-slate-900 pt-0.5 tracking-wide">
+          Nomor: {ba.nomorBa || ba.nomor_ba || '-'}
         </p>
       </div>
 

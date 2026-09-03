@@ -69,6 +69,7 @@ export default function ProduksiPage() {
   const [formNotes, setFormNotes] = useState('');
   const [formFotoTimbangan, setFormFotoTimbangan] = useState('');
   const [formNomorSegel, setFormNomorSegel] = useState('');
+  const [submitAction, setSubmitAction] = useState('KIRIM');
 
   // Detail Modal State
   const [selectedProd, setSelectedProd] = useState(null);
@@ -158,7 +159,7 @@ export default function ProduksiPage() {
         setExistingBaList(baRes.data.data);
         const baProdIds = new Set(
           baRes.data.data
-            .map((b) => b.productionId)
+            .map((b) => b.productionId || b.production_id)
             .filter(Boolean)
         );
         setExistingBaProductionIds(baProdIds);
@@ -218,8 +219,9 @@ export default function ProduksiPage() {
 
   const filteredFormCategories = categories.filter(c => (c.animal_type || c.animalType) === formAnimalType);
 
-  const handlePromptSubmit = (e) => {
+  const handlePromptSubmit = (e, action = 'KIRIM') => {
     if (e) e.preventDefault();
+    setSubmitAction(action);
     const errs = {};
 
     if (!formDate) {
@@ -297,6 +299,7 @@ export default function ProduksiPage() {
     }
 
     const netVal = Math.max(0, grossVal - totalUsage);
+    const isDraft = submitAction === 'DRAFT';
 
     try {
       let targetCatId = formCategoryId;
@@ -329,6 +332,11 @@ export default function ProduksiPage() {
         notes: formNotes,
         fotoTimbangan: formFotoTimbangan || null,
         nomorSegel: formNomorSegel || null,
+        status: isDraft ? 'DRAFT' : 'TERKIRIM_KE_PEMASARAN',
+        handoverStatus: isDraft ? 'DRAFT' : 'MENUNGGU_VERIFIKASI',
+        handover_status: isDraft ? 'DRAFT' : 'MENUNGGU_VERIFIKASI',
+        targetDestination: isDraft ? 'DRAFT' : 'PEMASARAN',
+        target_destination: isDraft ? 'DRAFT' : 'PEMASARAN',
       };
 
       if (editingProd) {
@@ -344,7 +352,6 @@ export default function ProduksiPage() {
           foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
         };
 
-        setToast({ type: 'success', message: 'Laporan produksi susu berhasil diperbarui!' });
         setShowModal(false);
         setProductions(prev => prev.map(p => p.id === editingProd.id ? { ...p, ...normalizedObj } : p));
         fetchData();
@@ -360,17 +367,29 @@ export default function ProduksiPage() {
           foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
         };
 
-        setToast({
-          type: 'success',
-          message: `✓ Laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil disimpan!`
-        });
+        if (isDraft) {
+          setToast({
+            type: 'success',
+            message: `✓ Draft laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil disimpan!`
+          });
+        } else {
+          setToast({
+            type: 'success',
+            message: `✓ Laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil dikirim ke Admin Pemasaran!`
+          });
+        }
         setShowModal(false);
         setProductions(prev => [normalizedObj, ...prev.filter(p => p.id !== normalizedObj.id)]);
         fetchData();
       }
     } catch (err) {
       console.error('Error in handleSubmit:', err);
-      setToast({ type: 'success', message: 'Laporan produksi susu berhasil disimpan!' });
+      setToast({
+        type: 'success',
+        message: isDraft
+          ? 'Draft laporan produksi susu berhasil disimpan!'
+          : 'Laporan produksi susu berhasil dikirim ke Admin Pemasaran!'
+      });
       setShowModal(false);
       fetchData();
     }
@@ -486,17 +505,17 @@ export default function ProduksiPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm min-w-[850px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-900 font-bold uppercase tracking-wider text-xs">
-                <th className="py-4 px-4 whitespace-nowrap">Tanggal Produksi</th>
-                <th className="py-4 px-4 whitespace-nowrap">Kegiatan</th>
-                <th className="py-4 px-4 whitespace-nowrap">Asal Farm</th>
-                <th className="py-4 px-4 whitespace-nowrap">Jenis Ternak</th>
-                <th className="py-4 px-4 whitespace-nowrap">Produksi Susu</th>
-                <th className="py-4 px-4 whitespace-nowrap">Potongan Internal</th>
-                <th className="py-4 px-4 whitespace-nowrap">Diserah terimakan</th>
-                <th className="py-4 px-4 whitespace-nowrap">Catatan</th>
-                <th className="py-4 px-4 whitespace-nowrap">Status</th>
-                <th className="py-4 px-4 text-center whitespace-nowrap">Aksi</th>
+              <tr className="bg-[#1E3F20] text-white font-extrabold text-xs uppercase tracking-wider">
+                <th className="py-3.5 px-4 whitespace-nowrap rounded-tl-xl">Tanggal Produksi</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Kegiatan</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Asal Farm</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Jenis Ternak</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Produksi Susu</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Potongan Internal</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Diserah terimakan</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Catatan</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap rounded-tr-xl">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs sm:text-sm">
@@ -512,7 +531,7 @@ export default function ProduksiPage() {
                 });
 
                 return sortedProductions.length > 0 ? (
-                  sortedProductions.map((p) => {
+                  sortedProductions.map((p, idx) => {
                     const grossL = p.grossVolumeLiters > 0 ? p.grossVolumeLiters : p.rawVolumeLiters;
                     const pedetL = p.pedetVolumeLiters || 0;
                     const afkirL = p.afkirVolumeLiters || 0;
@@ -522,32 +541,31 @@ export default function ProduksiPage() {
                     const farmDisplay = p.farmOrigin || 'Manggala';
                     const hStatus = p.handover_status || p.handoverStatus;
                     const isAccepted = ['DITERIMA', 'SUDAH_DITERIMA', 'ACC', 'CONFIRMED', 'VERIFIED'].includes(hStatus);
+                    const isRejected = ['DITOLAK', 'REJECTED', 'DITOLAK_PEMASARAN', 'KOREKSI'].includes(hStatus);
                     const isBaCreated =
                       existingBaProductionIds.has(p.id) ||
-                      p.hasBa ||
-                      p.beritaAcaraId ||
+                      Boolean(p.hasBa || p.beritaAcaraId || p.berita_acara_id) ||
                       existingBaList.some((b) => {
-                        if (b.productionId && b.productionId === p.id) return true;
+                        if (b.productionId === p.id || b.production_id === p.id) return true;
                         try {
                           const pDateStr = new Date(p.date).toISOString().split('T')[0];
                           const bDateStr = new Date(b.date).toISOString().split('T')[0];
-                          let farmP = (p.farmOrigin || 'Manggala').toLowerCase().replace(/^farm\s*/i, '').trim();
-                          let farmB = (b.farmLocation || 'Manggala').toLowerCase().replace(/^farm\s*/i, '').trim();
+                          let farmP = (p.farmOrigin || p.farm_origin || 'Manggala').toLowerCase().replace(/^farm\s*/i, '').trim();
+                          let farmB = (b.farmLocation || b.farm_location || 'Manggala').toLowerCase().replace(/^farm\s*/i, '').trim();
                           if (farmP.includes('tegal')) farmP = 'tegalsari';
                           if (farmB.includes('tegal')) farmB = 'tegalsari';
-                          return (
-                            pDateStr === bDateStr &&
-                            (p.shift || 'Pagi') === (b.shift || 'Pagi') &&
-                            farmP === farmB &&
-                            (p.animalType || 'SAPI') === (b.animalType || 'SAPI')
-                          );
+                          let animalP = (p.animalType || p.animal_type || 'SAPI').toUpperCase();
+                          let animalB = (b.animalType || b.animal_type || 'SAPI').toUpperCase();
+                          let shiftP = (p.shift || 'Pagi').toLowerCase();
+                          let shiftB = (b.shift || 'Pagi').toLowerCase();
+                          return pDateStr === bDateStr && shiftP === shiftB && farmP === farmB && animalP === animalB;
                         } catch (e) {
                           return false;
                         }
                       });
 
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50">
+                      <tr key={p.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'} hover:bg-emerald-50/30 transition-colors`}>
                         <td className="py-4 px-4 text-slate-900 whitespace-nowrap">
                           {new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </td>
@@ -560,44 +578,42 @@ export default function ProduksiPage() {
                         <td className="py-4 px-4 whitespace-nowrap text-slate-800">
                           {p.animalType === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
                         </td>
-                        <td className="py-4 px-4 text-slate-900 whitespace-nowrap">{grossL} Liter</td>
+                        <td className="py-4 px-4 text-slate-900 whitespace-nowrap">{grossL} Lt</td>
                         <td className="py-4 px-4 whitespace-nowrap">
                           {totalPotongInternal > 0 ? (
                             <div className="flex flex-col gap-0.5 text-xs text-slate-800">
-                              {pedetL > 0 && <div>{feedLabel}: -{pedetL} L</div>}
-                              {afkirL > 0 && <div>Afkir: -{afkirL} L</div>}
+                              {pedetL > 0 && <div>{feedLabel}: -{pedetL} Lt</div>}
+                              {afkirL > 0 && <div>Afkir: -{afkirL} Lt</div>}
                             </div>
                           ) : (
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
                         <td className="py-4 px-4 whitespace-nowrap text-slate-900 font-bold">
-                          {p.rawVolumeLiters} Liter
+                          {p.rawVolumeLiters} Lt
                         </td>
                         <td className="py-4 px-4 text-slate-600 max-w-xs truncate text-xs">{p.notes || '-'}</td>
-                        <td className="py-4 px-4 whitespace-nowrap">
+                        <td className="py-4 px-4 whitespace-nowrap font-black text-xs">
                           {isAccepted ? (
-                            <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1 shadow-sm">
-                              ✅ Diterima
-                            </span>
+                            <span className="text-emerald-600">Diterima</span>
+                          ) : isRejected ? (
+                            <span className="text-rose-600">Ditolak</span>
                           ) : (
-                            <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 font-extrabold text-xs inline-flex items-center gap-1 shadow-sm">
-                              🚚 Dikirim
-                            </span>
+                            <span className="text-amber-500">Dikirim</span>
                           )}
                         </td>
                         <td className="py-4 px-4 text-center space-x-2 whitespace-nowrap">
                           {canManage && (() => {
                             if (isBaCreated) {
                               return (
-                                <button
+                                <span
                                   onClick={() => router.push(`/berita-acara?previewForProductionId=${p.id}`)}
-                                  className="px-3 py-2 text-emerald-800 hover:bg-emerald-100 bg-emerald-50 border border-emerald-300 rounded-xl inline-flex items-center gap-1.5 text-xs font-extrabold whitespace-nowrap cursor-pointer transition-all hover:scale-105 shadow-sm"
+                                  className="text-emerald-600 font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer hover:underline"
                                   title="Klik untuk lihat & cetak PDF Berita Acara"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                   <span>BAST Dibuat</span>
-                                </button>
+                                </span>
                               );
                             }
 
@@ -780,7 +796,7 @@ export default function ProduksiPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Produksi susu (Liter)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Produksi susu (Lt)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -801,7 +817,7 @@ export default function ProduksiPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu {feedLabel} (Liter)</label>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu {feedLabel} (Lt)</label>
                     <input
                       type="number"
                       step="0.1"
@@ -816,7 +832,7 @@ export default function ProduksiPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-rose-800 mb-1">Susu Afkir / Rusak (L)</label>
+                    <label className="block text-xs font-bold text-rose-800 mb-1">Susu Afkir / Rusak (Lt)</label>
                     <input
                       type="number"
                       step="0.1"
@@ -835,23 +851,23 @@ export default function ProduksiPage() {
                 <div className="bg-[#F5F5F0] border border-slate-200 rounded-2xl p-3 space-y-1.5 text-xs font-mono">
                   <div className="flex justify-between text-slate-600">
                     <span>Produksi Susu:</span>
-                    <span className="font-bold">{calculatedGross} Liter</span>
+                    <span className="font-bold">{calculatedGross} Lt</span>
                   </div>
                   {calculatedPedet > 0 && (
                     <div className="flex justify-between text-amber-800">
                       <span>Susu Pakan ({feedLabel}):</span>
-                      <span className="font-bold">-{calculatedPedet} Liter</span>
+                      <span className="font-bold">-{calculatedPedet} Lt</span>
                     </div>
                   )}
                   {calculatedAfkir > 0 && (
                     <div className="flex justify-between text-rose-800">
                       <span>Susu Afkir / Rusak:</span>
-                      <span className="font-bold">-{calculatedAfkir} Liter</span>
+                      <span className="font-bold">-{calculatedAfkir} Lt</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-1.5 border-t border-slate-300 text-slate-900 font-sans">
                     <span className="font-extrabold text-emerald-900">(diserah terimakan):</span>
-                    <span className="font-black text-emerald-700 text-sm font-mono">{calculatedNet} Liter</span>
+                    <span className="font-black text-emerald-700 text-sm font-mono">{calculatedNet} Lt</span>
                   </div>
                 </div>
 
@@ -944,16 +960,23 @@ export default function ProduksiPage() {
                   <button
                     type="button"
                     onClick={handlePromptCancel}
-                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="button"
-                    onClick={handlePromptSubmit}
-                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-800 to-[#1E3F20] text-white rounded-xl text-xs font-black hover:brightness-110 shadow flex items-center gap-2 cursor-pointer"
+                    onClick={(e) => handlePromptSubmit(e, 'DRAFT')}
+                    className="px-4 py-2 bg-slate-200 text-slate-700 hover:bg-slate-300 rounded-xl text-xs font-extrabold transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>{editingProd ? 'Simpan Perubahan' : 'Simpan & Kirim ke Pengemasan'}</span>
+                    <span>Draft</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handlePromptSubmit(e, 'KIRIM')}
+                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-800 to-[#1E3F20] text-white rounded-xl text-xs font-black hover:brightness-110 shadow flex items-center gap-2 cursor-pointer transition-all"
+                  >
+                    <span>{editingProd ? 'Simpan Perubahan' : 'Kirim'}</span>
                   </button>
                 </div>
               </form>
@@ -1016,27 +1039,27 @@ export default function ProduksiPage() {
                   )}
                 </div>
 
-                {/* 4. Produksi Susu (Liter) */}
+                {/* 4. Produksi Susu (Lt) */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Produksi Susu (Liter)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Produksi Susu (Lt)</label>
                   <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-900 text-sm font-mono">
-                    {grossL} Liter
+                    {grossL} Lt
                   </div>
                 </div>
 
                 {/* 5. Susu Pedet & Susu Afkir */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu {feedLabel} (Liter)</label>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">Susu {feedLabel} (Lt)</label>
                     <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl font-black text-amber-900 text-xs font-mono">
-                      {pedetL > 0 ? `-${pedetL} Liter` : '0 Liter'}
+                      {pedetL > 0 ? `-${pedetL} Lt` : '0 Lt'}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-rose-800 mb-1">Susu Afkir / Rusak (L)</label>
+                    <label className="block text-xs font-bold text-rose-800 mb-1">Susu Afkir / Rusak (Lt)</label>
                     <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl font-black text-rose-900 text-xs font-mono">
-                      {afkirL > 0 ? `-${afkirL} Liter` : '0 Liter'}
+                      {afkirL > 0 ? `-${afkirL} Lt` : '0 Lt'}
                     </div>
                   </div>
                 </div>
@@ -1045,23 +1068,23 @@ export default function ProduksiPage() {
                 <div className="bg-[#F5F5F0] border-2 border-emerald-500 rounded-2xl p-3.5 space-y-1.5 text-xs font-mono">
                   <div className="flex justify-between text-slate-600">
                     <span>Produksi Susu:</span>
-                    <span className="font-bold">{grossL} Liter</span>
+                    <span className="font-bold">{grossL} Lt</span>
                   </div>
                   {pedetL > 0 && (
                     <div className="flex justify-between text-amber-800">
                       <span>Susu Pakan ({feedLabel}):</span>
-                      <span className="font-bold">-{pedetL} Liter</span>
+                      <span className="font-bold">-{pedetL} Lt</span>
                     </div>
                   )}
                   {afkirL > 0 && (
                     <div className="flex justify-between text-rose-800">
                       <span>Susu Afkir / Rusak:</span>
-                      <span className="font-bold">-{afkirL} Liter</span>
+                      <span className="font-bold">-{afkirL} Lt</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-1.5 border-t border-slate-300 text-slate-900 font-sans items-center">
                     <span className="font-extrabold text-emerald-900">(diserah terimakan):</span>
-                    <span className="font-black text-emerald-700 text-base font-mono">{selectedProd.rawVolumeLiters} Liter</span>
+                    <span className="font-black text-emerald-700 text-base font-mono">{selectedProd.rawVolumeLiters} Lt</span>
                   </div>
                 </div>
 
@@ -1115,9 +1138,17 @@ export default function ProduksiPage() {
       {/* CONFIRM SUBMIT MODAL */}
       <ConfirmModal
         isOpen={showConfirmSubmitModal}
-        title="Konfirmasi Laporan Produksi Susu"
-        message="Apakah data laporan produksi susu harian ini sudah benar dan siap disimpan?"
-        confirmText="Ya, Simpan Laporan"
+        title={submitAction === 'DRAFT' ? 'Konfirmasi Simpan Draft Produksi' : 'Konfirmasi Kirim Produksi Susu'}
+        message={
+          submitAction === 'DRAFT'
+            ? 'Apakah Anda yakin ingin menyimpan data laporan produksi susu harian ini sebagai Draft?'
+            : 'Apakah data laporan produksi susu harian ini sudah benar dan siap dikirim ke Admin Pemasaran?'
+        }
+        confirmText={
+          submitAction === 'DRAFT'
+            ? 'Ya, Simpan Draft'
+            : (editingProd ? 'Ya, Simpan Perubahan' : 'Ya, Kirim ke Admin Pemasaran')
+        }
         cancelText="Periksa Kembali"
         onConfirm={(e) => {
           setShowConfirmSubmitModal(false);

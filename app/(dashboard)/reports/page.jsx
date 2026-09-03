@@ -96,12 +96,12 @@ export default function ReportsPage() {
             <tr style="background-color:#e2e8f0; font-weight:bold;">
               ${
                 isKambingOnly
-                  ? `<th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th>`
+                  ? `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
                   : isAll
-                  ? `<th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th>`
-                  : `<th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th><th>PAGI (LTR)</th><th>SORE (LTR)</th><th>JUMLAH (LTR)</th>`
+                  ? `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
+                  : `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
               }
-              <th style="background-color:#94a3b8;">TOTAL (LTR)</th>
+              <th style="background-color:#94a3b8;">TOTAL (Lt)</th>
             </tr>
           </thead>
           <tbody>
@@ -412,7 +412,7 @@ export default function ReportsPage() {
                   <td className="border border-slate-300 print:border-black px-1 py-0.5"></td>
                   <td className="border border-slate-300 print:border-black px-1 py-0.5"></td>
                   {[...Array(isKambingOnly ? 4 : isAllAnimals ? 16 : 13)].map((_, i) => (
-                    <td key={i} className="border border-slate-300 print:border-black px-1 py-0.5">( LTR )</td>
+                    <td key={i} className="border border-slate-300 print:border-black px-1 py-0.5">( Lt )</td>
                   ))}
                 </tr>
               </thead>
