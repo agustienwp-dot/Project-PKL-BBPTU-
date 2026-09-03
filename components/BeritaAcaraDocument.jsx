@@ -27,6 +27,7 @@ export default function BeritaAcaraDocument({ ba }) {
   const selectedLocation = (ba.farmLocation || ba.location || 'Pengemasan & Olahan').toUpperCase();
 
   const locationsList = ['TEGALSARI', 'LIMPAKUWUS', 'MANGGALA', 'EDUWISATA'];
+  const unitLabel = (ba.unit && ba.unit !== 'Kg') ? ba.unit : 'Lt';
 
   return (
     <div className="printable-document bg-white text-black font-serif p-8 md:p-12 max-w-3xl mx-auto border border-slate-300 shadow-md print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full print:text-black">
@@ -75,6 +76,9 @@ export default function BeritaAcaraDocument({ ba }) {
           )}
         </p>
         <p className="text-xs font-bold font-sans pt-1">
+          Nomor: {ba.nomorBa || ba.nomor_ba || '-'}
+        </p>
+        <p className="text-xs md:text-sm font-sans font-bold text-slate-900 pt-0.5 tracking-wide">
           Nomor: {ba.nomorBa || ba.nomor_ba || '-'}
         </p>
       </div>

@@ -606,33 +606,14 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-12 bg-[#F6F8FA] -m-6 p-6 min-h-screen">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
-      {/* TOP BAR / HEADER */}
-      <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl md:text-2xl font-black text-slate-900">
-                Hi, {user?.name || 'Admin Farm'}!
-              </h1>
-            </div>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">
-              <span>Ringkasan Statistik Perah & Penyerahan Susu • {todayFormatted}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* SEARCH, NOTIFICATION & ACCOUNT BADGE */}
-        <div className="flex items-center gap-2.5">
-          <div className="hidden sm:flex items-center gap-2 bg-slate-100/80 border border-slate-200/60 px-3.5 py-2 rounded-2xl text-xs text-slate-500 w-44 md:w-56">
-            <span className="font-medium">Cari data farm...</span>
-          </div>
-
-          <NotificationDropdown />
-
-          <div className="px-3.5 py-2 rounded-2xl bg-slate-100 border border-slate-200/80 text-slate-800 text-xs font-bold flex items-center gap-2 shadow-sm">
-            <span className="text-xs font-extrabold">{user?.name || 'Admin Farm'}</span>
-          </div>
-        </div>
+      {/* WELCOME HEADER */}
+      <div className="px-1 pt-1 pb-1">
+        <h1 className="text-xl md:text-2xl font-black text-slate-900">
+          Hi, {user?.name || 'Admin Farm'}!
+        </h1>
+        <p className="text-xs text-slate-500 font-semibold mt-1">
+          <span>Ringkasan Statistik Perah & Penyerahan Susu • {todayFormatted}</span>
+        </p>
       </div>
 
       {/* 1. TOP HORIZONTAL WIDGET CARDS ROW */}

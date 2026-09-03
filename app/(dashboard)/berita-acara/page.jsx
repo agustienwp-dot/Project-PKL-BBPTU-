@@ -92,6 +92,16 @@ function BeritaAcaraContent() {
   const [selectedPackaging, setSelectedPackaging] = useState(null);
   const [formOlahanItems, setFormOlahanItems] = useState([]);
 
+  const [formAnimalType, setFormAnimalType] = useState('SAPI');
+  const [formUnit, setFormUnit] = useState('Lt');
+  const [formTotalProduksi, setFormTotalProduksi] = useState('');
+  const [formPenggunaanPedet, setFormPenggunaanPedet] = useState('');
+  const [formAfkir, setFormAfkir] = useState('');
+  const [formLainLain, setFormLainLain] = useState('');
+  const [formDiserahterimakan, setFormDiserahterimakan] = useState('');
+  const [formPenyerahName, setFormPenyerahName] = useState(user?.name || 'Seksi Pemeliharaan');
+  const [formPenerimaName, setFormPenerimaName] = useState('Seksi Pemasaran');
+  const [formPenerimaUserId, setFormPenerimaUserId] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
   const canManage = ['ADMIN_FARM', 'ADMIN_PENGEMASAN', 'ADMIN_PEMASARAN', 'SUPERADMIN'].includes(user?.role);
@@ -232,6 +242,23 @@ function BeritaAcaraContent() {
     }
 
     setFormOlahanItems(items);
+  const openCreateModal = () => {
+    setEditingBa(null);
+    setFormProductionId('');
+    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormShift('Pagi');
+    setFormFarmLocation('Tegalsari');
+    setFormAnimalType('SAPI');
+    setFormUnit('Lt');
+    setFormTotalProduksi('');
+    setFormPenggunaanPedet('0');
+    setFormAfkir('0');
+    setFormLainLain('0');
+    setFormDiserahterimakan('');
+    setFormPenyerahName(user?.name || 'Seksi Pemeliharaan');
+    setFormPenerimaName('Seksi Pemasaran');
+    setFormNotes('');
+    setShowFormModal(true);
   };
 
   const openEditModal = (ba) => {
@@ -245,6 +272,19 @@ function BeritaAcaraContent() {
     setFormPenyerahJabatan(ba.giverDept || ba.penyerahName || 'Tim Kerja Layanan Pemasaran');
     setFormPenerimaName(ba.penerimaName || ba.receiverName || '');
     setFormPenerimaJabatan(ba.receiverTitle || '');
+    setFormProductionId(ba.productionId || ba.production_id || '');
+    setFormDate(new Date(ba.date).toISOString().split('T')[0]);
+    setFormShift(ba.shift || 'Pagi');
+    setFormFarmLocation(ba.farm_location || ba.farmLocation || 'Tegalsari');
+    setFormAnimalType(ba.animal_type || ba.animalType || 'SAPI');
+    setFormUnit(ba.unit || 'Lt');
+    setFormTotalProduksi((ba.total_produksi ?? ba.totalProduksi ?? 0).toString());
+    setFormPenggunaanPedet((ba.penggunaan_pedet ?? ba.penggunaanPedet ?? 0).toString());
+    setFormAfkir((ba.afkir || 0).toString());
+    setFormLainLain((ba.lain_lain ?? ba.lainLain ?? 0).toString());
+    setFormDiserahterimakan((ba.diserahterimakan || 0).toString());
+    setFormPenyerahName(ba.penyerah_name || ba.penyerahName || user?.name || 'Seksi Pemeliharaan');
+    setFormPenerimaName(ba.penerima_name || ba.penerimaName || 'Seksi Pemasaran');
     setFormNotes(ba.notes || '');
 
     if (targetType === 'PEMBELIAN') {
@@ -439,12 +479,56 @@ function BeritaAcaraContent() {
     }
   };
 
+  const handleStatusChange = async (baId, newStatus) => {
+    try {
+      const res = await api.put(`/berita-acara/${baId}`, { status: newStatus });
+      if (res.data.success) {
+        setToast({ type: 'success', message: res.data.message || `Status berhasil diubah.` });
+        fetchBaList();
+        if (previewBa?.id === baId) setPreviewBa(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      setToast({ type: 'error', message: err.response?.data?.message || 'Gagal mengubah status.' });
+    }
+  };
+
+  const getStatusBadge = (ba, isHeader = false) => {
+    const status = typeof ba === 'string' ? ba : ba?.status;
+
+    if (isHeader) {
+      if (status === 'DRAFT') {
+        return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-slate-100 text-slate-700 border border-slate-300 shadow-sm">Draft</span>;
+      }
+      if (status === 'TERKIRIM_KE_PEMASARAN' || status === 'MENUNGGU_TANDA_TANGAN' || status === 'MENUNGGU_KONFIRMASI' || status === 'MENUNGGU' || status === 'DIKIRIM') {
+        return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">Menunggu Konfirmasi</span>;
+      }
+      if (status === 'DITOLAK' || status === 'REJECTED') {
+        return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">Ditolak</span>;
+      }
+      return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-sm">Selesai</span>;
+    }
+
+    if (status === 'DRAFT') {
+      return <span className="font-bold text-xs text-slate-600">Draft</span>;
+    }
+    if (status === 'TERKIRIM_KE_PEMASARAN' || status === 'MENUNGGU_TANDA_TANGAN' || status === 'MENUNGGU_KONFIRMASI' || status === 'MENUNGGU' || status === 'DIKIRIM') {
+      return <span className="font-black text-xs text-amber-500">Menunggu Konfirmasi</span>;
+    }
+    if (status === 'DITOLAK' || status === 'REJECTED') {
+      return <span className="font-black text-xs text-rose-600">Ditolak</span>;
+    }
+    return <span className="font-black text-xs text-emerald-600">Selesai</span>;
+  };
+
+  // Remove blocking full-page loading spinner for instant render
+
   return (
-    <div className="space-y-6 pb-12 print:p-0 print:m-0">
+    <div className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden print:p-0 print:m-0">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* HEADER SECTION (Hidden on Print) */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 print:hidden">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-[#1E3F20] text-white flex items-center justify-center font-black text-xl shadow-md">
             📄
@@ -452,27 +536,22 @@ function BeritaAcaraContent() {
           <div>
             <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
               <span>Berita Acara</span>
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1E3F20] to-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-md">
+            📄
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <span>Berita Acara Serah Terima</span>
             </h1>
             <p className="text-xs text-slate-500 font-semibold mt-0.5">
               Buat dan kelola berita acara serah terima susu
             </p>
           </div>
         </div>
-
-        {canManage && (
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="px-5 py-3 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Buat Berita Acara</span>
-          </button>
-        )}
       </div>
 
       {/* SEARCH & FILTERS (Hidden on Print) */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0 print:hidden">
         <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-2 rounded-2xl text-xs text-slate-600 flex-1 min-w-[220px]">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
@@ -506,74 +585,68 @@ function BeritaAcaraContent() {
         </div>
       </div>
 
-      {/* BERITA ACARA TABLE LIST (Hidden on Print) */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden print:hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-slate-700" />
-            <h2 className="font-black text-slate-900 text-sm">Riwayat Berita Acara</h2>
-          </div>
-          <span className="text-xs text-slate-400 font-semibold">Total: {baList.length} dokumen</span>
-        </div>
-
-        <div className="overflow-x-auto">
+      {/* BERITA ACARA TABLE LIST (Hidden on Print) - Only inside of table scrolls */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0 print:hidden">
+        {/* UNIFIED HORIZONTAL & VERTICAL SCROLLABLE TABLE VIEW */}
+        <div className="overflow-auto flex-1 min-h-0">
           <table className="w-full text-left border-collapse text-xs min-w-[850px]">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-black uppercase text-[11px] border-b border-slate-200">
-                <th className="p-4">NOMOR BAST</th>
-                <th className="p-4">TANGGAL</th>
-                <th className="p-4">JENIS DOKUMEN</th>
-                <th className="p-4">PIHAK MENERIMA</th>
-                <th className="p-4">LOKASI / KETERANGAN</th>
-                <th className="p-4">DIBUAT OLEH</th>
-                <th className="p-4 text-center">AKSI</th>
+            <thead className="sticky top-0 z-10 bg-[#1E3F20] text-white">
+              <tr className="bg-[#1E3F20] text-white font-extrabold text-xs uppercase tracking-wider">
+                <th className="py-3.5 px-4 w-12 text-center rounded-tl-xl">No</th>
+                <th className="py-3.5 px-4">Nomor BA</th>
+                <th className="py-3.5 px-4">Tanggal & Shift</th>
+                <th className="py-3.5 px-4">Asal Farm</th>
+                <th className="py-3.5 px-4">Jenis Ternak</th>
+                <th className="py-3.5 px-4 text-center">Diserahterimakan</th>
+                <th className="py-3.5 px-4">Pihak Penyerah</th>
+                <th className="py-3.5 px-4">Pihak Penerima</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4 text-center rounded-tr-xl">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-              {baList.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-slate-400 font-semibold">
-                    Belum ada dokumen Berita Acara yang ditemukan.
-                  </td>
-                </tr>
-              ) : (
-                baList.map((ba) => {
-                  const dateObj = new Date(ba.date);
-                  const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                  const shiftStr = ba.shift || ba.period ? ` (${ba.shift || ba.period})` : '';
-
-                  const isPembelian = ba.type === 'PEMBELIAN' || (ba.nomorBa && ba.nomorBa.includes('BAST-PB'));
-                  const isHibah = ba.type === 'HIBAH' || (ba.nomorBa && ba.nomorBa.includes('BAST-HB'));
-                  const isOlahan = ba.type === 'SUSU_OLAHAN' || (ba.nomorBa && ba.nomorBa.includes('BAST-OLAHAN'));
+              {(() => {
+                const sortedBaList = [...baList].sort((a, b) => {
+                  const dateA = new Date(a.date || 0).getTime();
+                  const dateB = new Date(b.date || 0).getTime();
+                  if (dateB !== dateA) return dateB - dateA;
+                  const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
+                  const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+                  if (timeB !== timeA) return timeB - timeA;
+                  return (b.id || '').localeCompare(a.id || '');
+                });
+                if (sortedBaList.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={10} className="p-12 text-center text-slate-400 font-semibold">
+                        Belum ada dokumen Berita Acara yang ditemukan.
+                      </td>
+                    </tr>
+                  );
+                }
+                return sortedBaList.map((ba, idx) => {
+                  const dateStr = new Date(ba.date).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  });
 
                   return (
-                    <tr key={ba.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-4 font-mono font-bold text-slate-900">{ba.nomorBa}</td>
-                      <td className="p-4 font-medium text-slate-700">{dateStr}{shiftStr}</td>
-                      <td className="p-4 font-bold text-[11px] text-slate-900">
-                        {isOlahan ? (
-                          `HASIL SUSU OLAHAN ${ba.status === 'DITERIMA_PEMASARAN' ? '(DITERIMA)' : '(MENUNGGU PEMASARAN)'}`
-                        ) : isPembelian ? (
-                          'PEMBELIAN'
-                        ) : isHibah ? (
-                          'HIBAH'
-                        ) : (
-                          'SERAH TERIMA'
-                        )}
+                    <tr key={ba.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'} hover:bg-emerald-50/30 transition-colors`}>
+                      <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
+                      <td className="p-4 font-mono font-black text-slate-900">{ba.nomorBa}</td>
+                      <td className="p-4">
+                        <span className="font-bold block text-slate-900">{dateStr}</span>
+                        <span className="text-[10px] text-slate-500 font-semibold">{ba.shift}</span>
                       </td>
-                      <td className="p-4 font-bold text-slate-800">{ba.penerimaName || ba.receiverName || '-'}</td>
-                      <td className="p-4 text-slate-600">
-                        {isHibah ? (
-                          <span>{ba.purpose || ba.notes || 'untuk seragam'}</span>
-                        ) : (
-                          <span className="flex items-center gap-1 font-semibold text-slate-700">
-                            <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>{ba.farmLocation || ba.location || 'Pengemasan & Olahan'}</span>
-                          </span>
-                        )}
+                      <td className="p-4 font-bold text-slate-800 whitespace-nowrap">
+                        {ba.farm_location || ba.farmLocation || 'Tegalsari'}
                       </td>
-                      <td className="p-4 text-slate-500 font-semibold text-[11px]">
-                        {ba.createdBy?.role || (ba.penyerahName?.includes('Pemasaran') ? 'ADMIN_PEMASARAN' : 'ADMIN_PENGEMASAN')}
+                      <td className="p-4 whitespace-nowrap text-slate-800 font-semibold">
+                        {(ba.animal_type || ba.animalType) === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
+                      </td>
+                      <td className="p-4 text-center font-black text-emerald-700 text-sm">
+                        {ba.diserahterimakan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">{ba.unit || 'Liter'}</span>
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-2">
