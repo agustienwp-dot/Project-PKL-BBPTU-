@@ -66,7 +66,7 @@ function BeritaAcaraContent() {
   const [formShift, setFormShift] = useState('Pagi');
   const [formFarmLocation, setFormFarmLocation] = useState('Tegalsari');
   const [formAnimalType, setFormAnimalType] = useState('SAPI');
-  const [formUnit, setFormUnit] = useState('Kg');
+  const [formUnit, setFormUnit] = useState('Lt');
   const [formTotalProduksi, setFormTotalProduksi] = useState('');
   const [formPenggunaanPedet, setFormPenggunaanPedet] = useState('');
   const [formAfkir, setFormAfkir] = useState('');
@@ -243,7 +243,7 @@ function BeritaAcaraContent() {
     setFormShift('Pagi');
     setFormFarmLocation('Tegalsari');
     setFormAnimalType('SAPI');
-    setFormUnit('Kg');
+    setFormUnit('Lt');
     setFormTotalProduksi('');
     setFormPenggunaanPedet('0');
     setFormAfkir('0');
@@ -266,7 +266,7 @@ function BeritaAcaraContent() {
     setFormShift(ba.shift || 'Pagi');
     setFormFarmLocation(ba.farm_location || ba.farmLocation || 'Tegalsari');
     setFormAnimalType(ba.animal_type || ba.animalType || 'SAPI');
-    setFormUnit(ba.unit || 'Kg');
+    setFormUnit(ba.unit || 'Lt');
     setFormTotalProduksi((ba.total_produksi ?? ba.totalProduksi ?? 0).toString());
     setFormPenggunaanPedet((ba.penggunaan_pedet ?? ba.penggunaanPedet ?? 0).toString());
     setFormAfkir((ba.afkir || 0).toString());
@@ -450,17 +450,30 @@ function BeritaAcaraContent() {
 
   const getStatusBadge = (ba, isHeader = false) => {
     const status = typeof ba === 'string' ? ba : ba?.status;
-    const baseClass = isHeader
-      ? 'px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 shadow-sm'
-      : 'px-3 py-1 rounded-full font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1';
+
+    if (isHeader) {
+      if (status === 'DRAFT') {
+        return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-slate-100 text-slate-700 border border-slate-300 shadow-sm">Draft</span>;
+      }
+      if (status === 'TERKIRIM_KE_PEMASARAN' || status === 'MENUNGGU_TANDA_TANGAN' || status === 'MENUNGGU_KONFIRMASI' || status === 'MENUNGGU' || status === 'DIKIRIM') {
+        return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">Menunggu Konfirmasi</span>;
+      }
+      if (status === 'DITOLAK' || status === 'REJECTED') {
+        return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">Ditolak</span>;
+      }
+      return <span className="px-3.5 py-2 rounded-xl font-extrabold text-xs whitespace-nowrap inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-sm">Selesai</span>;
+    }
 
     if (status === 'DRAFT') {
-      return <span className={`${baseClass} bg-slate-100 text-slate-700 border border-slate-300`}>📝 Draft</span>;
+      return <span className="font-bold text-xs text-slate-600">Draft</span>;
     }
-    if (status === 'TERKIRIM_KE_PEMASARAN' || status === 'MENUNGGU_TANDA_TANGAN' || status === 'MENUNGGU_KONFIRMASI' || status === 'MENUNGGU') {
-      return <span className={`${baseClass} bg-slate-100 text-slate-700 border border-slate-300`}>⏳ Menunggu</span>;
+    if (status === 'TERKIRIM_KE_PEMASARAN' || status === 'MENUNGGU_TANDA_TANGAN' || status === 'MENUNGGU_KONFIRMASI' || status === 'MENUNGGU' || status === 'DIKIRIM') {
+      return <span className="font-black text-xs text-amber-500">Menunggu Konfirmasi</span>;
     }
-    return <span className={`${baseClass} bg-emerald-100 text-emerald-800 border border-emerald-300`}>✅ Selesai</span>;
+    if (status === 'DITOLAK' || status === 'REJECTED') {
+      return <span className="font-black text-xs text-rose-600">Ditolak</span>;
+    }
+    return <span className="font-black text-xs text-emerald-600">Selesai</span>;
   };
 
   // Remove blocking full-page loading spinner for instant render
@@ -542,16 +555,17 @@ function BeritaAcaraContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs min-w-[850px]">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 font-extrabold uppercase border-b border-slate-200">
-                <th className="p-4 w-12 text-center">No</th>
-                <th className="p-4">Nomor BA</th>
-                <th className="p-4">Tanggal & Shift</th>
-                <th className="p-4">Farm & Ternak</th>
-                <th className="p-4 text-right">Diserahterimakan</th>
-                <th className="p-4">Pihak Penyerah</th>
-                <th className="p-4">Pihak Penerima</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-center">Aksi</th>
+              <tr className="bg-[#1E3F20] text-white font-extrabold text-xs uppercase tracking-wider">
+                <th className="py-3.5 px-4 w-12 text-center rounded-tl-xl">No</th>
+                <th className="py-3.5 px-4">Nomor BA</th>
+                <th className="py-3.5 px-4">Tanggal & Shift</th>
+                <th className="py-3.5 px-4">Asal Farm</th>
+                <th className="py-3.5 px-4">Jenis Ternak</th>
+                <th className="py-3.5 px-4 text-center">Diserahterimakan</th>
+                <th className="py-3.5 px-4">Pihak Penyerah</th>
+                <th className="py-3.5 px-4">Pihak Penerima</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4 text-center rounded-tr-xl">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -568,7 +582,7 @@ function BeritaAcaraContent() {
                 if (sortedBaList.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={9} className="p-12 text-center text-slate-400 font-semibold">
+                      <td colSpan={10} className="p-12 text-center text-slate-400 font-semibold">
                         Belum ada dokumen Berita Acara yang ditemukan.
                       </td>
                     </tr>
@@ -582,28 +596,20 @@ function BeritaAcaraContent() {
                   });
 
                   return (
-                    <tr key={ba.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={ba.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'} hover:bg-emerald-50/30 transition-colors`}>
                       <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
                       <td className="p-4 font-mono font-black text-slate-900">{ba.nomorBa}</td>
                       <td className="p-4">
                         <span className="font-bold block text-slate-900">{dateStr}</span>
                         <span className="text-[10px] text-slate-500 font-semibold">{ba.shift}</span>
                       </td>
-                      <td className="p-4">
-                        {(ba.animal_type || ba.animalType) === 'KAMBING' ? (
-                          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 inline-block">
-                            🐐 KAMBING
-                          </span>
-                        ) : (
-                          <>
-                            <span className="font-bold text-slate-900 block">{ba.farm_location || ba.farmLocation || 'Tegalsari'}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 inline-block mt-0.5">
-                              🐄 SAPI
-                            </span>
-                          </>
-                        )}
+                      <td className="p-4 font-bold text-slate-800 whitespace-nowrap">
+                        {ba.farm_location || ba.farmLocation || 'Tegalsari'}
                       </td>
-                      <td className="p-4 text-right font-black text-emerald-700 text-sm">
+                      <td className="p-4 whitespace-nowrap text-slate-800 font-semibold">
+                        {(ba.animal_type || ba.animalType) === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
+                      </td>
+                      <td className="p-4 text-center font-black text-emerald-700 text-sm">
                         {ba.diserahterimakan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">{ba.unit || 'Liter'}</span>
                       </td>
                       <td className="p-4 font-semibold text-slate-700">{ba.penyerahName}</td>
