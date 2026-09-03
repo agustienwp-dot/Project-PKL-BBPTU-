@@ -17,6 +17,9 @@ export async function GET(request) {
         where: { id: authUser.id },
         select: { id: true, name: true, email: true, role: true, createdAt: true },
       });
+      if (user && user.name && user.name.toUpperCase().includes('PENGEMASAN')) {
+        user.role = 'ADMIN_PENGEMASAN';
+      }
     } catch (e) {
       user = null;
     }
@@ -29,11 +32,22 @@ export async function GET(request) {
             where: { id: adminId },
           });
           if (adminAcc) {
+            let mappedRole = (adminAcc.role || '').toUpperCase();
+            if (!mappedRole || mappedRole === 'ADMIN_FARM') {
+              if (adminAcc.username && adminAcc.username.toUpperCase().includes('PENGEMASAN')) {
+                mappedRole = 'ADMIN_PENGEMASAN';
+              } else if (adminAcc.username && adminAcc.username.toUpperCase().includes('PEMASARAN')) {
+                mappedRole = 'ADMIN_PEMASARAN';
+              } else {
+                mappedRole = 'ADMIN_FARM';
+              }
+            }
+
             user = {
               id: adminAcc.id.toString(),
               name: adminAcc.username,
               email: `${adminAcc.username}@susu.com`,
-              role: (adminAcc.role || 'ADMIN_FARM').toUpperCase(),
+              role: mappedRole,
             };
           }
         } catch (e) {

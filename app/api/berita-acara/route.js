@@ -4,57 +4,55 @@ import { getAuthUser, resolveValidUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// Global In-Memory Store for instant persistence across fallback / DB states
 if (!global.__inMemoryBaList) {
   global.__inMemoryBaList = [];
 }
 
-// Helper to format/normalize BA item with both snake_case and camelCase getters for UI compatibility
 export function formatBaItem(item) {
   if (!item) return item;
-  const nomorBa = item.nomor_ba || item.nomorBa;
-  const farmLocation = item.farm_location || item.farmLocation;
-  const animalType = item.animal_type || item.animalType;
-  const totalProduksi = item.total_produksi ?? item.totalProduksi ?? 0;
-  const penggunaanPedet = item.penggunaan_pedet ?? item.penggunaanPedet ?? 0;
+  const nomorBa = item.nomorBa || item.nomor_ba;
+  const farmLocation = item.farmLocation || item.location || item.farm_location;
+  const animalType = item.animalType || item.animal_type;
+  const totalProduksi = item.totalProduksi ?? item.total_produksi ?? 0;
+  const penggunaanPedet = item.penggunaanPedet ?? item.penggunaan_pedet ?? 0;
   const afkir = item.afkir ?? 0;
-  const lainLain = item.lain_lain ?? item.lainLain ?? 0;
+  const lainLain = item.lainLain ?? item.lain_lain ?? 0;
   const diserahterimakan = item.diserahterimakan ?? 0;
-  const penerimaRole = item.penerima_role || item.penerimaRole;
-  const penerimaUserId = item.penerima_user_id || item.penerimaUserId;
-  const penerimaName = item.penerima_name || item.penerimaName;
-  const penyerahRole = item.penyerah_role || item.penyerahRole;
-  const penyerahUserId = item.penyerah_user_id || item.penyerahUserId;
-  const penyerahName = item.penyerah_name || item.penyerahName;
-  const digitalSignature = item.digital_signature || item.digitalSignature;
-  const signedAt = item.signed_at || item.signedAt;
-  const signedByName = item.signed_by_name || item.signedByName;
-  const sentAt = item.sent_at || item.sentAt;
-  const readAt = item.read_at || item.readAt;
-  const printedAt = item.printed_at || item.printedAt;
-  const productionId = item.production_id || item.productionId;
-  const createdById = item.created_by_id || item.createdById;
-  const createdBy = item.created_by || item.createdBy;
-  const createdAt = item.created_at || item.createdAt;
-  const updatedAt = item.updated_at || item.updatedAt;
+  const penerimaRole = item.penerimaRole || item.penerima_role;
+  const penerimaUserId = item.penerimaUserId || item.penerima_user_id;
+  const penerimaName = item.penerimaName || item.receiverName || item.penerima_name;
+  const penyerahRole = item.penyerahRole || item.penyerah_role;
+  const penyerahUserId = item.penyerahUserId || item.penyerah_user_id;
+  const penyerahName = item.penyerahName || item.giverName || item.penyerah_name;
+  const digitalSignature = item.digitalSignature || item.digital_signature;
+  const signedAt = item.signedAt || item.signed_at;
+  const signedByName = item.signedByName || item.signed_by_name;
+  const sentAt = item.sentAt || item.sent_at;
+  const readAt = item.readAt || item.read_at;
+  const printedAt = item.printedAt || item.printed_at;
+  const productionId = item.productionId || item.production_id;
+  const createdById = item.createdById || item.created_by_id;
+  const createdBy = item.createdBy || item.created_by;
+  const createdAt = item.createdAt || item.created_at;
+  const updatedAt = item.updatedAt || item.updated_at;
 
   const prod = item.production ? {
     ...item.production,
-    farmOrigin: item.production.farm_origin || item.production.farmOrigin,
-    animalType: item.production.animal_type || item.production.animalType,
-    grossVolumeLiters: item.production.gross_volume_liters ?? item.production.grossVolumeLiters,
-    pedetVolumeLiters: item.production.pedet_volume_liters ?? item.production.pedetVolumeLiters,
-    afkirVolumeLiters: item.production.afkir_volume_liters ?? item.production.afkirVolumeLiters,
-    soldFreshVolumeLiters: item.production.sold_fresh_volume_liters ?? item.production.soldFreshVolumeLiters,
-    rawVolumeLiters: item.production.raw_volume_liters ?? item.production.rawVolumeLiters,
-    keteranganPenjualan: item.production.keterangan_penjualan || item.production.keteranganPenjualan,
+    farmOrigin: item.production.farmOrigin || item.production.farm_origin,
+    animalType: item.production.animalType || item.production.animal_type,
+    grossVolumeLiters: item.production.grossVolumeLiters ?? item.production.gross_volume_liters,
+    pedetVolumeLiters: item.production.pedetVolumeLiters ?? item.production.pedet_volume_liters,
+    afkirVolumeLiters: item.production.afkirVolumeLiters ?? item.production.afkir_volume_liters,
+    soldFreshVolumeLiters: item.production.soldFreshVolumeLiters ?? item.production.sold_fresh_volume_liters,
+    rawVolumeLiters: item.production.rawVolumeLiters ?? item.production.raw_volume_liters,
+    keteranganPenjualan: item.production.keteranganPenjualan || item.production.keterangan_penjualan,
   } : null;
 
   const logs = (item.logs || []).map((l) => ({
     ...l,
-    actorName: l.actor_name || l.actorName,
-    actorRole: l.actor_role || l.actorRole,
-    createdAt: l.created_at || l.createdAt,
+    actorName: l.actorName || l.actor_name,
+    actorRole: l.actorRole || l.actor_role,
+    createdAt: l.createdAt || l.created_at,
   }));
 
   return {
@@ -89,7 +87,6 @@ export function formatBaItem(item) {
   };
 }
 
-// Helper to generate sequential BA Number per year with date format (e.g. BA-MG-20260821-002)
 async function generateNomorBa(farmLocation = 'FS', targetDate = null) {
   let farmCode = 'FS';
   if (farmLocation && typeof farmLocation === 'string') {
@@ -139,6 +136,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const type = searchParams.get('type');
     const farmLocation = searchParams.get('farmLocation');
     const animalType = searchParams.get('animalType');
     const date = searchParams.get('date');
@@ -150,14 +148,17 @@ export async function GET(request) {
     if (status && status !== 'ALL') {
       where.status = status;
     }
+    if (type) {
+      where.type = type.toUpperCase();
+    }
     if (farmLocation && farmLocation !== 'ALL') {
-      where.farm_location = { contains: farmLocation };
+      where.farmLocation = { contains: farmLocation };
     }
     if (animalType && animalType !== 'ALL') {
-      where.animal_type = animalType;
+      where.animalType = animalType;
     }
     if (productionId) {
-      where.production_id = productionId;
+      where.productionId = productionId;
     }
     if (date) {
       const dStart = new Date(date);
@@ -168,19 +169,20 @@ export async function GET(request) {
     }
     if (search) {
       where.OR = [
-        { nomor_ba: { contains: search } },
-        { farm_location: { contains: search } },
-        { penyerah_name: { contains: search } },
-        { penerima_name: { contains: search } },
+        { nomorBa: { contains: search } },
+        { farmLocation: { contains: search } },
+        { location: { contains: search } },
+        { penyerahName: { contains: search } },
+        { penerimaName: { contains: search } },
+        { giverName: { contains: search } },
+        { receiverName: { contains: search } },
+        { purpose: { contains: search } },
         { notes: { contains: search } },
       ];
     }
 
-    // Role-based visibility
-    if (authUser.role === 'ADMIN_PEMASARAN') {
-      where.status = {
-        in: ['TERKIRIM_KE_PEMASARAN', 'DIBACA_PEMASARAN', 'DICETAK', 'SUDAH_DITANDATANGANI'],
-      };
+    if (authUser.role === 'ADMIN_PEMASARAN' && (!status || status === 'ALL')) {
+      // Allow Admin Pemasaran to see all status documents
     }
 
     let items = [];
@@ -193,115 +195,66 @@ export async function GET(request) {
               id: true,
               date: true,
               shift: true,
-              farm_origin: true,
-              animal_type: true,
-              gross_volume_liters: true,
-              pedet_volume_liters: true,
-              afkir_volume_liters: true,
-              sold_fresh_volume_liters: true,
-              raw_volume_liters: true,
-              keterangan_penjualan: true,
+              farmOrigin: true,
+              animalType: true,
+              grossVolumeLiters: true,
+              pedetVolumeLiters: true,
+              afkirVolumeLiters: true,
+              soldFreshVolumeLiters: true,
+              rawVolumeLiters: true,
+              keteranganPenjualan: true,
             },
           },
-          created_by: {
+          createdBy: {
             select: { id: true, name: true, email: true, role: true },
           },
           logs: {
-            orderBy: { created_at: 'asc' },
+            orderBy: { createdAt: 'asc' },
           },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { date: 'desc' },
       });
     } catch (e) {
       console.error('prisma.beritaAcara.findMany error:', e);
       items = [];
     }
 
-    const formattedDbItems = items.map(formatBaItem);
+    const dbIds = new Set(items.map((i) => i.id));
+    const formattedDb = items.map((i) => formatBaItem(i));
 
-    // Merge DB items with in-memory store items to guarantee newly created items appear
-    const mergedList = [...formattedDbItems];
-    const existingIds = new Set(mergedList.map((i) => i.id));
     for (const memItem of global.__inMemoryBaList) {
-      const formattedMem = formatBaItem(memItem);
-      if (!existingIds.has(formattedMem.id)) {
-        mergedList.push(formattedMem);
-        existingIds.add(formattedMem.id);
+      if (!dbIds.has(memItem.id)) {
+        formattedDb.push(formatBaItem(memItem));
+        dbIds.add(memItem.id);
       }
     }
 
-    // Filter merged list if needed
-    let filteredList = mergedList;
-    if (farmLocation && farmLocation !== 'ALL') {
-      filteredList = filteredList.filter((i) => (i.farmLocation || i.farm_location || '').toLowerCase().includes(farmLocation.toLowerCase()));
-    }
-    if (status && status !== 'ALL') {
-      filteredList = filteredList.filter((i) => i.status === status);
-    }
-    if (search) {
-      const s = search.toLowerCase();
-      filteredList = filteredList.filter(
-        (i) =>
-          (i.nomorBa || i.nomor_ba || '').toLowerCase().includes(s) ||
-          (i.farmLocation || i.farm_location || '').toLowerCase().includes(s) ||
-          (i.penyerahName || i.penyerah_name || '').toLowerCase().includes(s) ||
-          (i.penerimaName || i.penerima_name || '').toLowerCase().includes(s)
-      );
-    }
+    formattedDb.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 
-    // Sort descending by date DESC then created_at DESC so latest inputs are on top
-    filteredList.sort((a, b) => {
-      const dateA = new Date(a.date || 0).getTime();
-      const dateB = new Date(b.date || 0).getTime();
-      if (dateB !== dateA) return dateB - dateA;
-      const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
-      const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
-      if (timeB !== timeA) return timeB - timeA;
-      return (b.id || '').localeCompare(a.id || '');
-    });
-
-    return NextResponse.json({ success: true, data: filteredList });
+    return NextResponse.json({ success: true, data: formattedDb });
   } catch (error) {
     console.error('GET /api/berita-acara error:', error);
-    return NextResponse.json({ success: true, data: (global.__inMemoryBaList || []).map(formatBaItem) });
+    const memFormatted = global.__inMemoryBaList.map((i) => formatBaItem(i));
+    return NextResponse.json({ success: true, data: memFormatted });
   }
 }
 
 export async function POST(request) {
-  let body = {};
-  let authUser = null;
   try {
-    authUser = getAuthUser(request);
+    const authUser = getAuthUser(request);
     if (!authUser) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    body = await request.json();
+    const body = await request.json();
     const {
-      productionId,
-      date,
-      shift,
-      farmLocation,
-      animalType,
-      unit,
-      totalProduksi,
-      penggunaanPedet,
-      afkir,
-      lainLain,
-      diserahterimakan,
-      penerimaName,
-      penerimaUserId,
-      penyerahName,
-      notes,
+      type, bastType, date, shift, farmLocation, animalType, unit, totalProduksi,
+      penggunaanPedet, afkir, lainLain, diserahterimakan, penerimaName, penerimaUserId,
+      penyerahName, giverName, giverTitle, giverDept, receiverName, receiverTitle,
+      receiverDept, purpose, notes, items, productionId, period, location
     } = body;
 
-    // Validation
-    if (!farmLocation || !penyerahName || !penerimaName) {
-      return NextResponse.json(
-        { success: false, message: 'Harap lengkapi semua field wajib (Farm, Penyerah, Penerima).' },
-        { status: 400 }
-      );
-    }
+    const bType = type || bastType || 'SERAH_TERIMA_FARM';
 
     let totProd = parseFloat(totalProduksi || 0);
     const pedetVol = parseFloat(penggunaanPedet || 0);
@@ -313,13 +266,11 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Nilai volume tidak boleh negatif.' }, { status: 400 });
     }
 
-    // Auto adjust totalProduksi if user entered higher diserahterimakan or if totalProduksi wasn't auto filled
     const calculatedTotal = diserahVol + pedetVol + afkirVol + lainVol;
     if (totProd <= 0 || diserahVol > totProd || calculatedTotal > totProd) {
       totProd = calculatedTotal > 0 ? calculatedTotal : diserahVol;
     }
 
-    // Check productionId valid relation
     let validProdId = null;
     if (productionId) {
       const prodExist = await prisma.milkProduction.findUnique({ where: { id: productionId } }).catch(() => null);
@@ -327,46 +278,60 @@ export async function POST(request) {
     }
 
     const validUserId = await resolveValidUserId(authUser);
-    const nomorBa = await generateNomorBa(farmLocation, date);
-    const initialStatus = body.status || 'TERKIRIM_KE_PEMASARAN';
+    const nomorBa = body.nomorBA || body.nomorBa || await generateNomorBa(farmLocation || location, date);
+    const initialStatus = body.status || (bType === 'SUSU_OLAHAN' ? 'DRAFT' : 'TERKIRIM_KE_PEMASARAN');
+    const itemsJson = typeof items === 'string' ? items : (items ? JSON.stringify(items) : null);
+    const packagingId = body.packagingId || null;
 
     let createdBa = null;
     try {
       createdBa = await prisma.beritaAcara.create({
         data: {
-          nomor_ba: nomorBa,
-          production_id: validProdId,
+          nomorBa,
+          type: bType,
+          productionId: validProdId,
+          packagingId: packagingId,
           date: date ? new Date(date) : new Date(),
+          period: period || null,
           shift: shift || 'Pagi',
-          farm_location: farmLocation || 'Tegalsari',
-          animal_type: animalType || 'SAPI',
-          unit: unit || 'Lt',
-          total_produksi: totProd,
-          penggunaan_pedet: pedetVol,
+          farmLocation: farmLocation || location || 'Pengemasan & Olahan',
+          location: location || farmLocation || 'Pengemasan & Olahan',
+          animalType: animalType || 'SAPI',
+          unit: unit || 'Botol',
+          totalProduksi: totProd,
+          penggunaanPedet: pedetVol,
           afkir: afkirVol,
-          lain_lain: lainVol,
+          lainLain: lainVol,
           diserahterimakan: diserahVol,
-          penerima_role: 'Seksi Pemasaran',
-          penerima_user_id: penerimaUserId || null,
-          penerima_name: penerimaName || 'Seksi Pemasaran',
-          penyerah_role: 'Seksi YANTEK',
-          penyerah_user_id: validUserId,
-          penyerah_name: penyerahName || authUser.name || 'Admin Farm Produksi',
+          penerimaRole: 'Seksi Pemasaran',
+          penerimaUserId: penerimaUserId || null,
+          penerimaName: penerimaName || receiverName || 'Seksi Pemasaran',
+          penyerahRole: authUser.role === 'ADMIN_PENGEMASAN' ? 'Seksi Pengemasan & Olahan' : 'Seksi YANTEK',
+          penyerahUserId: validUserId,
+          penyerahName: penyerahName || giverName || authUser.name || 'Admin Pengemasan',
+          giverName: giverName || penyerahName || authUser.name || 'Admin Pengemasan',
+          giverTitle: giverTitle || null,
+          giverDept: giverDept || (authUser.role === 'ADMIN_PENGEMASAN' ? 'Tim Pengemasan & Olahan' : 'Tim Kerja Layanan Pemasaran'),
+          receiverName: receiverName || penerimaName || 'Seksi Pemasaran',
+          receiverTitle: receiverTitle || null,
+          receiverDept: receiverDept || null,
+          purpose: purpose || null,
           status: initialStatus,
           notes: notes || null,
-          created_by_id: validUserId,
+          items: itemsJson,
+          createdById: validUserId,
           logs: {
             create: {
-              action: initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED',
-              actor_name: authUser.name || 'Admin Farm',
-              actor_role: authUser.role || 'ADMIN_FARM',
-              notes: `Berita Acara ${nomorBa} dibuat dan ${initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'langsung dikirim ke Seksi Pemasaran' : 'disimpan sebagai draft'}.`,
+              action: initialStatus === 'MENUNGGU_KONFIRMASI_PEMASARAN' ? 'SENT' : (initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED'),
+              actorName: authUser.name || 'Admin',
+              actorRole: authUser.role || 'ADMIN',
+              notes: `Berita Acara ${nomorBa} dibuat.`,
             },
           },
         },
         include: {
           production: true,
-          created_by: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
           logs: true,
         },
       });
@@ -385,35 +350,37 @@ export async function POST(request) {
       return NextResponse.json({ success: true, data: formatted, message: 'Berita Acara berhasil dibuat.' });
     }
 
-    // Fallback if DB create fails
-    const fallbackNomorBa = nomorBa;
     const fallbackBa = formatBaItem({
       id: `ba-${Date.now()}`,
-      nomor_ba: fallbackNomorBa,
-      production_id: productionId || null,
+      nomorBa,
+      type: bType,
+      productionId: validProdId,
       date: date || new Date().toISOString(),
       shift: shift || 'Pagi',
-      farm_location: farmLocation || 'Tegalsari',
-      animal_type: animalType || 'SAPI',
-      unit: unit || 'Lt',
-      total_produksi: totProd,
-      penggunaan_pedet: pedetVol,
+      farmLocation: farmLocation || location || 'Tegalsari',
+      animalType: animalType || 'SAPI',
+      unit: unit || 'Kg',
+      totalProduksi: totProd,
+      penggunaanPedet: pedetVol,
       afkir: afkirVol,
-      lain_lain: lainVol,
+      lainLain: lainVol,
       diserahterimakan: diserahVol,
-      penyerah_name: penyerahName || authUser?.name || 'Admin Farm Produksi',
-      penerima_name: penerimaName || 'Seksi Pemasaran',
+      penyerahName: penyerahName || giverName || authUser?.name || 'Admin Farm Produksi',
+      penerimaName: penerimaName || receiverName || 'Seksi Pemasaran',
+      giverName: giverName || penyerahName || authUser?.name || 'Admin Farm Produksi',
+      receiverName: receiverName || penerimaName || 'Seksi Pemasaran',
       status: initialStatus,
       notes: notes || null,
-      created_at: new Date().toISOString(),
+      items: itemsJson,
+      createdAt: new Date().toISOString(),
       logs: [
         {
           id: `log-${Date.now()}`,
           action: initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED',
-          actor_name: authUser?.name || 'Admin Farm',
-          actor_role: authUser?.role || 'ADMIN_FARM',
-          notes: `Berita Acara ${fallbackNomorBa} berhasil dibuat dan ${initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'dikirim ke Seksi Pemasaran' : 'disimpan sebagai draft'}.`,
-          created_at: new Date().toISOString(),
+          actorName: authUser?.name || 'Admin Farm',
+          actorRole: authUser?.role || 'ADMIN_FARM',
+          notes: `Berita Acara ${nomorBa} berhasil dibuat.`,
+          createdAt: new Date().toISOString(),
         },
       ],
     });

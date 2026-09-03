@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import prisma, { isDbOffline, markDbOffline, markDbOnline } from '@/lib/prisma';
-import { getAuthUser, resolveValidUserId } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { getAuthUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,59 +8,66 @@ if (!global.__inMemoryProductionList) {
   global.__inMemoryProductionList = [];
 }
 
-export async function GET(request) {
-  if (isDbOffline()) {
-    return NextResponse.json({ success: true, data: global.__inMemoryProductionList || [] });
-  }
-
+async function resolveValidUserId(authUser) {
+  if (!authUser || !authUser.id) return null;
   try {
-    const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('categoryId');
-    const productType = searchParams.get('productType');
-    const animalType = searchParams.get('animalType');
-    const date = searchParams.get('date');
+    const found = await prisma.user.findUnique({ where: { id: authUser.id } });
+    if (found) return found.id;
 
-    const where = {};
-    if (categoryId) where.category_id = categoryId;
-    if (productType) where.product_type = productType;
-    if (animalType) where.animal_type = animalType;
-    if (date) {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-      where.date = {
-        gte: startDate,
-        lte: endDate,
-      };
+    if (authUser.email) {
+      const foundByEmail = await prisma.user.findUnique({ where: { email: authUser.email } });
+      if (foundByEmail) return foundByEmail.id;
     }
 
-    let productions = [];
+    const firstUser = await prisma.user.findFirst();
+    if (firstUser) return firstUser.id;
+  } catch (e) {
+    console.error('resolveValidUserId error:', e);
+  }
+  return null;
+}
+
+export async function GET(request) {
+  try {
+    const authUser = getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const animalType = searchParams.get('animalType');
+    const productType = searchParams.get('productType');
+
+    const whereClause = {};
+    if (animalType) whereClause.animalType = animalType;
+    if (productType) whereClause.productType = productType;
+
+    let dbProductions = [];
     try {
-      productions = await prisma.milkProduction.findMany({
-        where,
+      dbProductions = await prisma.milkProduction.findMany({
+        where: whereClause,
+        orderBy: { date: 'desc' },
         include: {
           category: true,
-          created_by: {
+          createdBy: {
             select: { id: true, name: true, email: true },
           },
         },
-        orderBy: [
-          { date: 'desc' },
-          { created_at: 'desc' },
-        ],
       });
     } catch (e) {
-      productions = [];
+      console.error('prisma.milkProduction.findMany error:', e);
+      dbProductions = [];
     }
 
-    // Merge in-memory productions
-    const mergedList = [...productions];
-    const existingIds = new Set(mergedList.map((p) => p.id));
+    const mergedList = [...dbProductions];
+    const existingIds = new Set(dbProductions.map((p) => p.id));
+
     for (const memProd of global.__inMemoryProductionList) {
       if (!existingIds.has(memProd.id)) {
-        mergedList.push(memProd);
-        existingIds.add(memProd.id);
+        if (!animalType || memProd.animalType === animalType) {
+          mergedList.push(memProd);
+          existingIds.add(memProd.id);
+        }
       }
     }
 
@@ -68,24 +75,25 @@ export async function GET(request) {
       const dateA = new Date(a.date || 0).getTime();
       const dateB = new Date(b.date || 0).getTime();
       if (dateB !== dateA) return dateB - dateA;
-      const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
-      const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+      const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
       if (timeB !== timeA) return timeB - timeA;
       return (b.id || '').localeCompare(a.id || '');
     });
 
-    let filtered = mergedList;
-    if (animalType) {
-      filtered = filtered.filter((p) => p.animalType === animalType);
-    }
+    const mappedProductions = mergedList.map((p) => {
+      const gross = p.grossVolumeLiters > 0 ? p.grossVolumeLiters : p.rawVolumeLiters;
+      const sisa = Math.max(0, (p.rawVolumeLiters || 0) - (p.processedLiters || 0));
+      return {
+        ...p,
+        grossVolumeLiters: gross,
+        sisaVolumeLiters: sisa,
+        fotoTimbangan: p.fotoTimbangan || null,
+        farmOrigin: p.farmOrigin || 'Manggala',
+      };
+    });
 
-    const formatted = filtered.map((p) => ({
-      ...p,
-      fotoTimbangan: p.fotoTimbangan || p.foto_timbangan || null,
-      foto_timbangan: p.foto_timbangan || p.fotoTimbangan || null,
-    }));
-
-    return NextResponse.json({ success: true, data: formatted });
+    return NextResponse.json({ success: true, data: mappedProductions });
   } catch (error) {
     console.error('GET /api/farm/production error:', error);
     return NextResponse.json({ success: true, data: global.__inMemoryProductionList });
@@ -95,11 +103,16 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const authUser = getAuthUser(request);
-    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN')) {
-      return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm atau Superadmin yang dapat menginput produksi' }, { status: 403 });
+    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN' && authUser.role !== 'ADMIN_PENGEMASAN')) {
+      return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm, Admin Pengemasan, atau Superadmin yang dapat menginput produksi' }, { status: 403 });
     }
 
-    const { date, shift, farmOrigin, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes, fotoTimbangan, nomorSegel } = await request.json();
+    const { 
+      date, shift, farmOrigin, categoryId, productType, animalType, packagingType, 
+      grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, 
+      keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, 
+      processedLiters, packagedQty, notes, fotoTimbangan, nomorSegel 
+    } = await request.json();
 
     if (date) {
       const now = new Date();
@@ -110,48 +123,38 @@ export async function POST(request) {
       }
     }
 
-    let validCatId = categoryId;
+    let targetCategoryId = categoryId;
     let category = null;
 
-    if (validCatId) {
-      category = await prisma.milkCategory.findUnique({ where: { id: validCatId } }).catch(() => null);
-    }
-
-    if (category && animalType && (category.animal_type || category.animalType) !== animalType) {
-      const matchCat = await prisma.milkCategory.findFirst({
-        where: { animal_type: animalType },
-      }).catch(() => null);
-      if (matchCat) {
-        category = matchCat;
-        validCatId = matchCat.id;
-      }
+    if (targetCategoryId) {
+      category = await prisma.milkCategory.findUnique({ where: { id: targetCategoryId } }).catch(() => null);
     }
 
     if (!category) {
       category = await prisma.milkCategory.findFirst({
-        where: animalType ? { animal_type: animalType } : {},
+        where: animalType ? { animalType } : {},
       }).catch(() => null);
-      if (category) {
-        validCatId = category.id;
-      }
+      if (category) targetCategoryId = category.id;
     }
 
     if (!category) {
       category = await prisma.milkCategory.findFirst().catch(() => null);
-      if (category) {
-        validCatId = category.id;
-      }
+      if (category) targetCategoryId = category.id;
     }
 
-    const pType = productType || category?.product_type || 'SEGAR';
-    const aType = animalType || category?.animal_type || 'SAPI';
-    const pkgType = packagingType || category?.default_packaging || 'botol';
+    if (!category) {
+      return NextResponse.json({ success: false, message: 'Kategori susu wajib dipilih atau belum tersedia di database' }, { status: 400 });
+    }
+
+    const pType = productType || category.productType || 'SEGAR';
+    const aType = animalType || category.animalType || 'SAPI';
+    const pkgType = packagingType || category.defaultPackaging || 'botol';
 
     const grossVal = grossVolumeLiters !== undefined ? parseFloat(grossVolumeLiters) || 0 : (parseFloat(rawVolumeLiters) || 0);
     const pedetVal = parseFloat(pedetVolumeLiters) || 0;
     const afkirVal = parseFloat(afkirVolumeLiters) || 0;
-    const soldFreshVal = 0;
-    const totalUsage = pedetVal + afkirVal;
+    const soldFreshVal = parseFloat(soldFreshVolumeLiters) || 0;
+    const totalUsage = pedetVal + afkirVal + soldFreshVal;
 
     const feedLabel = aType === 'KAMBING' ? 'Cempe' : 'Pedet';
     let summaryUsage = usageType || '';
@@ -159,13 +162,13 @@ export async function POST(request) {
       const parts = [];
       if (pedetVal > 0) parts.push(`${feedLabel}: ${pedetVal}L`);
       if (afkirVal > 0) parts.push(`Afkir: ${afkirVal}L`);
+      if (soldFreshVal > 0) parts.push(`Jual Segar: ${soldFreshVal}L`);
       summaryUsage = parts.join(', ');
     }
 
     const netVolume = Math.max(0, grossVal - totalUsage);
-    const finalProcessed = processedLiters !== undefined ? parseFloat(processedLiters) || netVolume : netVolume;
+    const initialProcessed = processedLiters !== undefined ? parseFloat(processedLiters) || 0 : 0;
 
-    // Generate Auto-Kode Transfer & 4-digit PIN for verification handshake
     let generatedKodeTransfer = null;
     let generatedPin = null;
     if (netVolume > 0) {
@@ -182,44 +185,44 @@ export async function POST(request) {
     const validUserId = await resolveValidUserId(authUser);
 
     let production = null;
-    if (validCatId) {
+    try {
       production = await prisma.milkProduction.create({
         data: {
           date: date ? new Date(date) : new Date(),
           shift: shift || 'Pagi',
-          farm_origin: farmOrigin || 'Manggala',
-          category_id: validCatId,
-          product_type: pType,
-          animal_type: aType,
-          packaging_type: pkgType,
-          gross_volume_liters: grossVal,
-          pedet_volume_liters: pedetVal,
-          afkir_volume_liters: afkirVal,
-          sold_fresh_volume_liters: soldFreshVal,
-          keterangan_penjualan: keteranganPenjualan || null,
-          usage_type: summaryUsage || null,
-          usage_volume_liters: totalUsage,
-          raw_volume_liters: netVolume,
-          processed_liters: finalProcessed,
-          packaged_qty: parseInt(packagedQty, 10) || Math.round(netVolume),
-          foto_timbangan: fotoTimbangan || null,
-          nomor_segel: nomorSegel || null,
-          kode_transfer: generatedKodeTransfer,
-          pin_verifikasi: generatedPin,
-          handover_status: netVolume > 0 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
+          farmOrigin: farmOrigin || 'Manggala',
+          categoryId: targetCategoryId,
+          productType: pType,
+          animalType: aType,
+          packagingType: pkgType,
+          grossVolumeLiters: grossVal,
+          pedetVolumeLiters: pedetVal,
+          afkirVolumeLiters: afkirVal,
+          soldFreshVolumeLiters: soldFreshVal,
+          keteranganPenjualan: keteranganPenjualan || null,
+          usageType: summaryUsage || null,
+          usageVolumeLiters: totalUsage,
+          rawVolumeLiters: netVolume,
+          processedLiters: initialProcessed,
+          packagedQty: parseInt(packagedQty, 10) || Math.round(netVolume),
+          fotoTimbangan: fotoTimbangan || null,
+          nomorSegel: nomorSegel || null,
+          kodeTransfer: generatedKodeTransfer,
+          pinVerifikasi: generatedPin,
+          handoverStatus: netVolume > 0 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA',
+          status: 'SELESAI',
           notes: notes || '',
-          created_by_id: validUserId,
+          createdById: validUserId,
         },
         include: {
           category: true,
-          created_by: {
+          createdBy: {
             select: { id: true, name: true, email: true },
           },
         },
-      }).catch((e) => {
-        console.error('prisma.milkProduction.create error:', e);
-        return null;
       });
+    } catch (e) {
+      console.error('prisma.milkProduction.create error:', e);
     }
 
     if (!production) {
@@ -228,59 +231,47 @@ export async function POST(request) {
         date: date || new Date().toISOString(),
         shift: shift || 'Pagi',
         farmOrigin: farmOrigin || 'Manggala',
-        categoryId: validCatId || 'cat-sapi',
+        categoryId: targetCategoryId,
         productType: pType,
         animalType: aType,
+        packagingType: pkgType,
         grossVolumeLiters: grossVal,
         pedetVolumeLiters: pedetVal,
         afkirVolumeLiters: afkirVal,
         soldFreshVolumeLiters: soldFreshVal,
+        usageType: summaryUsage,
+        usageVolumeLiters: totalUsage,
         rawVolumeLiters: netVolume,
-        processedLiters: finalProcessed,
+        processedLiters: initialProcessed,
+        packagedQty: parseInt(packagedQty, 10) || Math.round(netVolume),
+        status: 'SELESAI',
+        handoverStatus: 'MENUNGGU_VERIFIKASI',
+        kodeTransfer: generatedKodeTransfer,
+        pinVerifikasi: generatedPin,
         notes: notes || '',
         fotoTimbangan: fotoTimbangan || null,
-        foto_timbangan: fotoTimbangan || null,
-        createdAt: new Date().toISOString(),
+        category: category,
+        createdBy: { id: authUser.id, name: authUser.name, email: authUser.email },
       };
+      global.__inMemoryProductionList.unshift(production);
     }
 
-    const normalizedProduction = {
-      ...production,
-      fotoTimbangan: production.fotoTimbangan || production.foto_timbangan || fotoTimbangan || null,
-      foto_timbangan: production.foto_timbangan || production.fotoTimbangan || fotoTimbangan || null,
-    };
-
-    // Unshift to in-memory production store
-    global.__inMemoryProductionList.unshift(normalizedProduction);
+    await prisma.systemLog.create({
+      data: {
+        userId: validUserId,
+        userEmail: authUser.email,
+        action: 'CREATE_PRODUCTION',
+        details: `Input produksi ${aType} (${grossVal}L gross, ${netVolume}L net): ${category.name}`,
+      },
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
-      message: `Produksi susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} berhasil disimpan!`,
-      data: normalizedProduction,
+      message: 'Data produksi susu berhasil disimpan!',
+      data: production,
     });
   } catch (error) {
     console.error('POST /api/farm/production error:', error);
-    const mockSuccessProd = {
-      id: `prod-${Date.now()}`,
-      date: new Date().toISOString(),
-      shift: 'Pagi',
-      farmOrigin: 'Manggala',
-      animalType: 'SAPI',
-      grossVolumeLiters: 700,
-      pedetVolumeLiters: 300,
-      afkirVolumeLiters: 12,
-      soldFreshVolumeLiters: 0,
-      rawVolumeLiters: 388,
-      fotoTimbangan: null,
-      foto_timbangan: null,
-      createdAt: new Date().toISOString(),
-    };
-    global.__inMemoryProductionList.unshift(mockSuccessProd);
-    return NextResponse.json({
-      success: true,
-      message: 'Laporan produksi susu berhasil disimpan!',
-      data: mockSuccessProd,
-    });
+    return NextResponse.json({ success: false, message: error?.message || 'Gagal menyimpan data produksi' }, { status: 500 });
   }
 }
-
