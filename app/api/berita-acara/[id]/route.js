@@ -111,22 +111,31 @@ export async function PUT(request, { params }) {
     const nomorBaStr = existing.nomorBa || id;
 
     // Status update only
-    if (body.status && body.status !== existing.status) {
+    if ((body.status && body.status !== existing.status) || body.action === 'CONFIRM_PEMASARAN') {
+      const targetStatus = body.status || (body.action === 'CONFIRM_PEMASARAN' ? 'DITERIMA_PEMASARAN' : existing.status);
+      const updateFields = {
+        status: targetStatus,
+        logs: {
+          create: {
+            action: targetStatus === 'DITERIMA_PEMASARAN' ? 'CONFIRMED' : 'STATUS_CHANGED',
+            actorName: authUser.name || 'Admin',
+            actorRole: authUser.role || 'ADMIN',
+            notes: `Status Berita Acara ${nomorBaStr} diubah menjadi ${targetStatus}.`,
+          },
+        },
+      };
+
+      if (targetStatus === 'DITERIMA_PEMASARAN') {
+        updateFields.confirmedBy = authUser.id;
+        updateFields.confirmedByName = authUser.name || 'Admin Pemasaran';
+        updateFields.confirmedAt = new Date();
+      }
+
       let updatedStatus = null;
       try {
         updatedStatus = await prisma.beritaAcara.update({
           where: { id },
-          data: {
-            status: body.status,
-            logs: {
-              create: {
-                action: 'STATUS_CHANGED',
-                actorName: authUser.name || 'Admin',
-                actorRole: authUser.role || 'ADMIN',
-                notes: `Status Berita Acara ${nomorBaStr} diubah dari ${existing.status} menjadi ${body.status}.`,
-              },
-            },
-          },
+          data: updateFields,
           include: {
             production: true,
             createdBy: { select: { id: true, name: true, email: true } },
@@ -136,7 +145,7 @@ export async function PUT(request, { params }) {
       } catch (e) {
         updatedStatus = {
           ...existing,
-          status: body.status,
+          ...updateFields,
           updatedAt: new Date().toISOString(),
         };
       }
@@ -147,7 +156,7 @@ export async function PUT(request, { params }) {
         if (idx !== -1) global.__inMemoryBaList[idx] = { ...global.__inMemoryBaList[idx], ...formatted };
       }
 
-      return NextResponse.json({ success: true, data: formatted, message: `Status berhasil diubah menjadi ${body.status}.` });
+      return NextResponse.json({ success: true, data: formatted, message: `Berita Acara berhasil dikonfirmasi.` });
     }
 
     // Editing document content

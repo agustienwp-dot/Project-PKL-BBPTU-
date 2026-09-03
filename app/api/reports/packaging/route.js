@@ -205,22 +205,36 @@ export async function GET(request) {
           }
         });
       } else {
-        const qty = p.quantityReceived || p.totalPackagedQty || (p.botolQty + p.cupQty + p.plastikBantalQty) || 0;
-        const cat = (p.productCategory || '').toLowerCase();
-        const size = (p.packageSize || '').toLowerCase();
+        if (p.botolQty > 0 || p.cupQty > 0 || p.plastikBantalQty > 0) {
+          const cat = (p.productCategory || '').toLowerCase();
+          if (cat.includes('yogurt')) {
+            dailyMap[key].yogurt200 += (p.botolQty + p.cupQty + p.plastikBantalQty);
+          } else {
+            const size = (p.packageSize || '').toLowerCase();
+            if (size.includes('115')) dailyMap[key].susu115 += p.botolQty;
+            else dailyMap[key].susu250 += p.botolQty;
 
-        if (cat.includes('yogurt')) {
-          dailyMap[key].yogurt200 += qty;
-        } else if (size.includes('115')) {
-          dailyMap[key].susu115 += qty;
-        } else if (size.includes('130')) {
-          dailyMap[key].susu130 += qty;
-        } else if (size.includes('200')) {
-          dailyMap[key].susu200 += qty;
-        } else if (size.includes('250')) {
-          dailyMap[key].susu250 += qty;
+            dailyMap[key].susu200 += p.cupQty;
+            dailyMap[key].susu250 += p.plastikBantalQty;
+          }
         } else {
-          dailyMap[key].susu250 += qty;
+          const qty = p.quantityReceived || p.totalPackagedQty || 0;
+          const cat = (p.productCategory || '').toLowerCase();
+          const size = (p.packageSize || '').toLowerCase();
+
+          if (cat.includes('yogurt')) {
+            dailyMap[key].yogurt200 += qty;
+          } else if (size.includes('115')) {
+            dailyMap[key].susu115 += qty;
+          } else if (size.includes('130')) {
+            dailyMap[key].susu130 += qty;
+          } else if (size.includes('200')) {
+            dailyMap[key].susu200 += qty;
+          } else if (size.includes('250')) {
+            dailyMap[key].susu250 += qty;
+          } else {
+            dailyMap[key].susu250 += qty;
+          }
         }
       }
 

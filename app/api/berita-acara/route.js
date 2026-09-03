@@ -180,10 +180,8 @@ export async function GET(request) {
       ];
     }
 
-    if (authUser.role === 'ADMIN_PEMASARAN') {
-      where.status = {
-        in: ['TERKIRIM_KE_PEMASARAN', 'DIBACA_PEMASARAN', 'DICETAK', 'SUDAH_DITANDATANGANI'],
-      };
+    if (authUser.role === 'ADMIN_PEMASARAN' && (!status || status === 'ALL')) {
+      // Allow Admin Pemasaran to see all status documents
     }
 
     let items = [];
@@ -280,8 +278,9 @@ export async function POST(request) {
 
     const validUserId = await resolveValidUserId(authUser);
     const nomorBa = body.nomorBA || body.nomorBa || await generateNomorBa(farmLocation || location, date);
-    const initialStatus = body.status || 'TERKIRIM_KE_PEMASARAN';
+    const initialStatus = body.status || (bType === 'SUSU_OLAHAN' ? 'DRAFT' : 'TERKIRIM_KE_PEMASARAN');
     const itemsJson = typeof items === 'string' ? items : (items ? JSON.stringify(items) : null);
+    const packagingId = body.packagingId || null;
 
     let createdBa = null;
     try {
@@ -290,13 +289,14 @@ export async function POST(request) {
           nomorBa,
           type: bType,
           productionId: validProdId,
+          packagingId: packagingId,
           date: date ? new Date(date) : new Date(),
           period: period || null,
           shift: shift || 'Pagi',
-          farmLocation: farmLocation || location || 'Tegalsari',
-          location: location || farmLocation || 'Tegalsari',
+          farmLocation: farmLocation || location || 'Pengemasan & Olahan',
+          location: location || farmLocation || 'Pengemasan & Olahan',
           animalType: animalType || 'SAPI',
-          unit: unit || 'Kg',
+          unit: unit || 'Botol',
           totalProduksi: totProd,
           penggunaanPedet: pedetVol,
           afkir: afkirVol,
@@ -305,12 +305,12 @@ export async function POST(request) {
           penerimaRole: 'Seksi Pemasaran',
           penerimaUserId: penerimaUserId || null,
           penerimaName: penerimaName || receiverName || 'Seksi Pemasaran',
-          penyerahRole: 'Seksi YANTEK',
+          penyerahRole: authUser.role === 'ADMIN_PENGEMASAN' ? 'Seksi Pengemasan & Olahan' : 'Seksi YANTEK',
           penyerahUserId: validUserId,
-          penyerahName: penyerahName || giverName || authUser.name || 'Admin Farm Produksi',
-          giverName: giverName || penyerahName || authUser.name || 'Admin Farm Produksi',
+          penyerahName: penyerahName || giverName || authUser.name || 'Admin Pengemasan',
+          giverName: giverName || penyerahName || authUser.name || 'Admin Pengemasan',
           giverTitle: giverTitle || null,
-          giverDept: giverDept || 'Tim Kerja Layanan Pemasaran',
+          giverDept: giverDept || (authUser.role === 'ADMIN_PENGEMASAN' ? 'Tim Pengemasan & Olahan' : 'Tim Kerja Layanan Pemasaran'),
           receiverName: receiverName || penerimaName || 'Seksi Pemasaran',
           receiverTitle: receiverTitle || null,
           receiverDept: receiverDept || null,
@@ -321,9 +321,9 @@ export async function POST(request) {
           createdById: validUserId,
           logs: {
             create: {
-              action: initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED',
-              actorName: authUser.name || 'Admin Farm',
-              actorRole: authUser.role || 'ADMIN_FARM',
+              action: initialStatus === 'MENUNGGU_KONFIRMASI_PEMASARAN' ? 'SENT' : (initialStatus === 'TERKIRIM_KE_PEMASARAN' ? 'SENT' : 'DRAFT_CREATED'),
+              actorName: authUser.name || 'Admin',
+              actorRole: authUser.role || 'ADMIN',
               notes: `Berita Acara ${nomorBa} dibuat.`,
             },
           },

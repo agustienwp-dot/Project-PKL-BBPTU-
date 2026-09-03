@@ -33,6 +33,7 @@ model User {
   outflows     MilkOutflow[]
   sales        MilkSale[]
   beritaAcaras BeritaAcara[]
+  milkRequests MilkRequest[]
 
   @@map("users")
 }
@@ -243,6 +244,12 @@ model BeritaAcara {
   productionId     String?
   production       MilkProduction? @relation(fields: [productionId], references: [id], onDelete: SetNull)
 
+  // Relation to MilkPackaging (for BA Susu Olahan)
+  packagingId      String?
+  confirmedBy      String?
+  confirmedByName  String?
+  confirmedAt      DateTime?
+
   createdById      String?
   createdBy        User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt        DateTime    @default(now())
@@ -265,3 +272,66 @@ model BeritaAcaraLog {
 
   @@map("berita_acara_logs")
 }
+
+model MilkRequest {
+  id                   String    @id @default(uuid())
+  requestNo            String    @unique
+  date                 DateTime  @default(now())
+  volumeLiters         Float     @default(0)
+  processingNeeds      String    // "Susu Pasteurisasi", "Yogurt", "Lainnya"
+  priority             String    @default("Normal") // "Normal", "Mendesak"
+  notes                String?   @db.Text
+  status               String    @default("MENUNGGU_PERSETUJUAN") // "MENUNGGU_PERSETUJUAN", "DISETUJUI", "DITOLAK", "DIPROSES", "SIAP_DITERIMA", "DITERIMA"
+  rejectionReason      String?   @db.Text
+  approvedAt           DateTime?
+  approvedById         String?
+  approvedByName       String?
+  dispatchedAt         DateTime?
+  readyForReceiptAt    DateTime?
+  receivedVolumeLiters Float?
+  receivedAt           DateTime?
+  receivedById         String?
+  receivedByName       String?
+
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("milk_requests")
+}
+
+model PackagingMaterial {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  category      String   @default("Kemasan") // "Kemasan", "Tutup", "Label", "Bahan Tambahan"
+  unit          String   @default("pcs") // "pcs", "roll", "pack"
+  currentStock  Float    @default(0)
+  minimumStock  Float    @default(500) // Threshold Menipis
+  criticalStock Float    @default(200) // Threshold Kritis
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  movements     MaterialStockMovement[]
+
+  @@map("packaging_materials")
+}
+
+model MaterialStockMovement {
+  id            String            @id @default(uuid())
+  materialId    String
+  material      PackagingMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  type          String            // "ADDITION", "DEDUCTION", "ADJUSTMENT", "PRODUCTION"
+  quantity      Float             // Absolute quantity changed
+  previousStock Float             @default(0)
+  newStock      Float             @default(0)
+  source        String            @default("PENYESUAIAN") // "PENGOLAHAN", "PENYESUAIAN", "INITIAL_STOCK"
+  referenceId   String?
+  notes         String?           @db.Text
+  createdById   String?
+  createdAt     DateTime          @default(now())
+
+  @@map("material_stock_movements")
+}
+

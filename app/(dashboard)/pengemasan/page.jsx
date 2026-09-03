@@ -37,14 +37,19 @@ export default function PengemasanPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
+  // Bulk Delete State
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   // Form Modal State
   const [showModal, setShowModal] = useState(false);
   const [modalStep, setModalStep] = useState(1); // 1 = Category Selection, 2 = Form Input
   const [editingPkg, setEditingPkg] = useState(null);
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formProductCategory, setFormProductCategory] = useState('Susu'); // "Susu", "Yogurt", "Keju"
-  const [formProductSubtype, setFormProductSubtype] = useState('Susu Pasteurisasi'); // "Susu Pasteurisasi", "Susu Rasa"
-  const [formOrigin, setFormOrigin] = useState('Sapi'); // "Sapi", "Kambing"
+  const [formProductCategory, setFormProductCategory] = useState('Susu Olahan Rasa'); // "Susu Olahan Rasa", "Yogurt", "Keju"
+  const [formProductSubtype, setFormProductSubtype] = useState('Susu Rasa');
+  const [formOrigin, setFormOrigin] = useState('Sapi');
   const [formVariant, setFormVariant] = useState('Original');
   const [formProcessedAmount, setFormProcessedAmount] = useState('');
   const [formPackagingItems, setFormPackagingItems] = useState([
@@ -52,16 +57,30 @@ export default function PengemasanPage() {
   ]);
   const [formNotes, setFormNotes] = useState('');
 
+  // UHT Product Specific Form State
+  const [uhtProductCategory, setUhtProductCategory] = useState('Susu Olahan Rasa'); // 'Susu Olahan Rasa', 'Yogurt', 'Keju'
+  const [uhtVariant, setUhtVariant] = useState('Original');
+  const [uhtPackagingType, setUhtPackagingType] = useState('Botol');
+  const [uhtPackageSize, setUhtPackageSize] = useState('250 ml');
+  const [uhtProcessedAmount, setUhtProcessedAmount] = useState('');
+  const [uhtTotalProdQty, setUhtTotalProdQty] = useState('');
+  const [uhtAfkirQty, setUhtAfkirQty] = useState('');
+
   // Excel Structure Category Selection ("HASIL_PENGOLAHAN", "DISTRIBUSI")
   const [selectedMainCategory, setSelectedMainCategory] = useState('HASIL_PENGOLAHAN');
 
   // Form 2: Hasil Pengolahan
+  const [susuFlavor, setSusuFlavor] = useState('Original');
   const [susuPasteurisasiPackaging, setSusuPasteurisasiPackaging] = useState('Botol');
   const [susu115, setSusu115] = useState('');
   const [susu130, setSusu130] = useState('');
   const [susu200, setSusu200] = useState('');
   const [susu250, setSusu250] = useState('');
+  const [yogurtFlavor, setYogurtFlavor] = useState('Original');
   const [yogurt200, setYogurt200] = useState('');
+  const [kejuPackagingType, setKejuPackagingType] = useState('Kemasan Keju');
+  const [keju100, setKeju100] = useState('');
+  const [keju250, setKeju250] = useState('');
 
   // Distribusi Sub-Category State ('MENU', 'PENJUALAN', 'HIBAH', 'AFKIR')
   const [distribusiSubCategory, setDistribusiSubCategory] = useState('MENU');
@@ -245,6 +264,9 @@ export default function PengemasanPage() {
       { id: Date.now(), packagingType: 'Botol', size: '250 ml', quantity: '' }
     ]);
     setFormNotes('');
+    setUhtProcessedAmount('');
+    setUhtTotalProdQty('');
+    setUhtAfkirQty('');
 
     // Reset Excel Structure fields
     setSelectedMainCategory(initialCategory || 'HASIL_PENGOLAHAN');
@@ -254,6 +276,8 @@ export default function PengemasanPage() {
     setSusu200('');
     setSusu250('');
     setYogurt200('');
+    setKeju100('');
+    setKeju250('');
     // Reset Distribusi fields & item lists
     setDistribusiSubCategory('MENU');
     setDistSalesItems([
@@ -517,6 +541,53 @@ export default function PengemasanPage() {
     return cat.includes(q) || sub.includes(q) || originStr.includes(q) || varStr.includes(q) || notes.includes(q) || creator.includes(q);
   });
 
+  const isAllSelected = filteredPackagings.length > 0 && selectedIds.length === filteredPackagings.length;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredPackagings.map(p => p.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteSubmit = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const id of selectedIds) {
+      try {
+        const res = await api.delete(`/farm/packaging/${id}`);
+        if (res.data?.success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }
+
+    setIsBulkDeleting(false);
+    setShowBulkDeleteModal(false);
+    setSelectedIds([]);
+    fetchData();
+
+    if (failCount === 0) {
+      setToast({ type: 'success', message: `Berhasil menghapus ${successCount} data terpilih!` });
+    } else {
+      setToast({ type: 'warning', message: `Berhasil menghapus ${successCount} data, ${failCount} gagal.` });
+    }
+  };
+
   return (
     <div className="space-y-8 pb-12">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
@@ -524,13 +595,13 @@ export default function PengemasanPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold mb-2">
-            <Package className="w-4 h-4" />
-            <span>{canManage ? 'POV Admin Farm Produksi' : 'Informasi Hasil Pengemasan (Read Only)'}</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1E3F20] text-white rounded-full text-xs font-bold mb-2">
+            <Package className="w-4 h-4 text-emerald-200" />
+            <span>Divisi UHT / Pengolahan</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Pengemasan Produk</h1>
+          <h1 className="text-2xl font-black text-slate-900">Input Hasil Pengolahan Produk</h1>
           <p className="text-xs text-slate-500 font-medium">
-            {canManage ? 'Input hasil pengemasan, simpan DRAFT, dan kirim ke Admin Pemasaran untuk konfirmasi penerimaan.' : 'Lihat riwayat hasil pengemasan produk.'}
+            Pengolahan susu mentah menjadi Susu Olahan Rasa, Yogurt, dan Keju. Stok produk dan bahan terpotong otomatis secara real-time.
           </p>
         </div>
 
@@ -554,139 +625,7 @@ export default function PengemasanPage() {
         )}
       </div>
 
-      {/* SECTION: PENERIMAAN SUSU MASUK DARI FARM (1-CLICK ACCEPTANCE) */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-900 rounded-full text-xs font-extrabold mb-1">
-              <span>🥛 Penerimaan Susu Mentah dari Seksi Farm</span>
-            </div>
-            <h2 className="text-lg font-black text-slate-900">Daftar Kiriman Susu Siap Olah</h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Verifikasi serah-terima fisik susu dari Seksi Farm ke Seksi Pengemasan (1-Click Verification)
-            </p>
-          </div>
-        </div>
 
-        {incomingProductions.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
-                  <th className="py-3 px-4">Tanggal Kirim</th>
-                  <th className="py-3 px-4">Asal Farm</th>
-                  <th className="py-3 px-4">Jenis Susu</th>
-                  <th className="py-3 px-4">Volume (Liter)</th>
-                  <th className="py-3 px-4">Foto Timbangan / Wadah</th>
-                  <th className="py-3 px-4">Nomor Segel</th>
-                  <th className="py-3 px-4 text-center">Aksi Verifikasi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {incomingProductions.map((p) => {
-                  const status = p.handoverStatus || 'MENUNGGU_VERIFIKASI';
-                  return (
-                    <tr key={p.id} className="hover:bg-slate-50/80">
-                      <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
-                        {new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        <span className="text-[10px] text-slate-400 font-semibold block">{p.shift === 'Sore' ? '🌇 Sore' : '🌅 Pagi'}</span>
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-bold text-xs">
-                          📍 {p.farmOrigin || 'Manggala'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {p.animalType === 'KAMBING' ? (
-                          <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 font-extrabold text-[10px]">
-                            🐐 Susu Kambing
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px]">
-                            🐄 Susu Sapi
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="font-black text-emerald-800 text-sm bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono">
-                          +{p.rawVolumeLiters} Liter
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {p.fotoTimbangan ? (
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={p.fotoTimbangan}
-                              alt="Thumbnail Timbangan"
-                              className="w-9 h-9 rounded-lg object-cover border border-slate-300 cursor-pointer shadow-sm hover:scale-105 transition-transform"
-                              onClick={() => setPreviewFoto(p.fotoTimbangan)}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setPreviewFoto(p.fotoTimbangan)}
-                              className="text-[11px] font-bold text-emerald-700 hover:underline"
-                            >
-                              📷 Lihat Foto
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-mono text-[11px] italic">Tidak ada foto</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 font-mono text-xs">
-                        {p.nomorSegel ? (
-                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">{p.nomorSegel}</span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        {status === 'MENUNGGU_VERIFIKASI' ? (
-                          <div className="flex items-center justify-center gap-2">
-                            {/* 1 TOMBOL UTAMA: TERIMA ([X] LITER) */}
-                            <button
-                              type="button"
-                              onClick={() => handleAcceptMilk(p)}
-                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow transition-all flex items-center gap-1.5 active:scale-95"
-                            >
-                              <span>✓ Terima ({p.rawVolumeLiters} Liter)</span>
-                            </button>
-
-                            {/* 1 TOMBOL SEKUNDER / LINK: LAPORKAN SELISIH */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDiscrepancyModalItem(p);
-                                setDiscrepancyRecLiters(p.rawVolumeLiters.toString());
-                                setDiscrepancyNotes('');
-                              }}
-                              className="text-xs font-bold text-amber-700 hover:text-amber-900 underline px-2 py-1"
-                            >
-                              Laporkan Selisih
-                            </button>
-                          </div>
-                        ) : status === 'DITERIMA' ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 font-black text-xs inline-flex items-center gap-1">
-                            🟢 Diterima {p.receivedVolumeLiters || p.rawVolumeLiters} L
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs inline-flex items-center gap-1">
-                            🟠 Ada Selisih (Kirim {p.rawVolumeLiters} L, Diterima {p.receivedVolumeLiters} L)
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-6 text-center text-slate-400 text-xs font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            Belum ada kiriman susu mentah yang perlu diverifikasi dari Farm.
-          </div>
-        )}
-      </div>
 
       {/* Filter & Search Bar */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
@@ -711,18 +650,6 @@ export default function PengemasanPage() {
             <option value="Susu">🥛 Susu</option>
             <option value="Yogurt">🍦 Yogurt</option>
             <option value="Keju">🧀 Keju</option>
-          </select>
-
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none"
-          >
-            <option value="">Semua Status Pengiriman</option>
-            <option value="DRAFT">📋 DRAFT</option>
-            <option value="MENUNGGU_PENERIMAAN">🟡 Menunggu Penerimaan</option>
-            <option value="DITERIMA">🟢 Diterima Pemasaran</option>
-            <option value="PERLU_KOREKSI">⚠️ Perlu Koreksi</option>
           </select>
 
           <input
@@ -750,11 +677,45 @@ export default function PengemasanPage() {
 
       {/* Packaging Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-amber-600" />
-            <span>Tabel Hasil Pengemasan ({filteredPackagings.length} Entry)</span>
-          </h2>
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-amber-600" />
+              <span>Tabel Hasil Pengemasan ({filteredPackagings.length} Entry)</span>
+            </h2>
+            {selectedIds.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs animate-in fade-in">
+                {selectedIds.length} Data Dipilih
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* SELECT ALL ACTION */}
+            {filteredPackagings.length > 0 && (
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span>{isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
+              </label>
+            )}
+
+            {/* BULK DELETE BUTTON */}
+            {selectedIds.length > 0 && canManage && (
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95 animate-in fade-in"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus ({selectedIds.length}) Data Terpilih</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -764,27 +725,27 @@ export default function PengemasanPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                      title="Pilih Semua"
+                    />
+                  </th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Tanggal</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Produk</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Kategori</th>
                   <th className="py-3.5 px-4 min-w-[160px]">Kemasan & Ukuran</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Jumlah</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
                   <th className="py-3.5 px-4 text-center whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredPackagings.length > 0 ? (
                   filteredPackagings.map((p) => {
+                    const isSelected = selectedIds.includes(p.id);
                     const pCat = p.productCategory || 'Susu';
-                    const pSub = p.productSubtype || pCat;
-                    const pOri = p.origin || (p.animalType === 'KAMBING' ? 'Kambing' : 'Sapi');
-                    const pVar = p.variant || 'Original';
-
-                    let pStatus = p.status;
-                    if (!pStatus || pStatus === 'SELESAI') {
-                      pStatus = 'DRAFT';
-                    }
 
                     let items = [];
                     if (p.packagingDetails) {
@@ -794,30 +755,71 @@ export default function PengemasanPage() {
                       } catch (e) { }
                     }
 
+                    // Extract all unique categories contained in this record
+                    let categoriesInRecord = [];
+                    if (items.length > 0) {
+                      const catSet = new Set();
+                      items.forEach(it => {
+                        if (it.productCategory) catSet.add(it.productCategory);
+                      });
+                      categoriesInRecord = Array.from(catSet);
+                    }
+                    if (categoriesInRecord.length === 0) {
+                      categoriesInRecord = [pCat];
+                    }
+
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50">
+                      <tr key={p.id} className={isSelected ? 'bg-amber-50/70 hover:bg-amber-100/70' : 'hover:bg-slate-50'}>
+                        <td className="py-3.5 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectOne(p.id)}
+                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                          />
+                        </td>
                         <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
                           {new Date(p.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </td>
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="font-extrabold text-slate-900 block">{pSub}</span>
-                          <span className="text-[10px] text-slate-500 font-semibold">{pOri === 'Kambing' || !pVar ? pOri : `${pOri} — ${pVar}`}</span>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-0.5 rounded-full border font-bold text-[10px] ${pCat === 'Yogurt' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                            pCat === 'Keju' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                              'bg-emerald-100 text-emerald-800 border-emerald-200'
-                            }`}>
-                            {pCat}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {categoriesInRecord.map((c, idx) => {
+                              const cLower = c.toLowerCase();
+                              const isYog = cLower.includes('yogurt');
+                              const isKj = cLower.includes('keju');
+                              return (
+                                <span key={idx} className={`px-3 py-1 rounded-full border font-black text-xs shadow-xs ${
+                                  isYog ? 'bg-purple-100 text-purple-900 border-purple-200' :
+                                  isKj ? 'bg-amber-100 text-amber-900 border-amber-200' :
+                                  'bg-emerald-100 text-emerald-900 border-emerald-200'
+                                }`}>
+                                  {isYog ? 'Yogurt' : isKj ? 'Keju' : (c.includes('Pasteurisasi') || c.includes('Rasa') ? c : 'Susu Pasteurisasi')}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </td>
                         <td className="py-3.5 px-4 font-mono text-[11px]">
                           {items.length > 0 ? (
-                            items.map((it, idx) => (
-                              <span key={idx} className="block text-slate-700 whitespace-nowrap">
-                                {it.packagingType} ({it.size || '-'}) - {it.quantity} pcs
-                              </span>
-                            ))
+                            items.map((it, idx) => {
+                              let typeLabel = it.packagingType || 'Botol';
+                              const cat = (it.productCategory || '').toLowerCase();
+                              const pkgLower = typeLabel.toLowerCase();
+
+                              if (cat.includes('yogurt') && !pkgLower.includes('yogurt')) {
+                                typeLabel = `Yogurt ${typeLabel}`;
+                              } else if ((cat.includes('susu') || !it.productCategory) && !pkgLower.includes('susu') && !pkgLower.includes('yogurt') && !pkgLower.includes('keju')) {
+                                typeLabel = `Susu ${typeLabel}`;
+                              } else if (cat.includes('keju') && !pkgLower.includes('keju')) {
+                                typeLabel = `Keju ${typeLabel}`;
+                              }
+
+                              return (
+                                <span key={idx} className="block text-slate-700 whitespace-nowrap">
+                                  {typeLabel} ({it.size || '-'}){it.variant ? ` (${it.variant})` : ''} - <strong className="font-bold text-slate-900">{it.quantity} pcs</strong>
+                                </span>
+                              );
+                            })
                           ) : (
                             <span className="whitespace-nowrap">{p.packagingType || 'Botol'} ({p.totalPackagedQty} pcs)</span>
                           )}
@@ -827,81 +829,49 @@ export default function PengemasanPage() {
                             {p.totalPackagedQty} pcs
                           </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          {pStatus === 'DRAFT' && (
-                            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[10px] inline-flex items-center gap-1">
-                              📋 DRAFT
-                            </span>
-                          )}
-                          {pStatus === 'MENUNGGU_PENERIMAAN' && (
-                            <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-amber-600" />
-                              Menunggu
-                            </span>
-                          )}
-                          {pStatus === 'DITERIMA' && (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Diterima Pemasaran
-                            </span>
-                          )}
-                          {pStatus === 'PERLU_KOREKSI' && (
-                            <div className="space-y-1">
-                              <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                Perlu Koreksi
-                              </span>
-                              {p.receptionNotes && (
-                                <div className="text-[10px] font-medium text-rose-900 bg-rose-50 border border-rose-200 p-2 rounded-xl max-w-[200px] leading-snug">
-                                  <strong className="block font-black text-rose-700 text-[10px]">Catatan Pemasaran:</strong>
-                                  "{p.receptionNotes}"
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-center space-x-1.5 whitespace-nowrap">
-                          <button
-                            onClick={() => setSelectedPkg(p)}
-                            className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Lihat Detail"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* 👁️ LIHAT DETAIL */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPkg(p)}
+                              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Lihat Detail"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
 
-                          {canManage && (pStatus === 'DRAFT' || pStatus === 'PERLU_KOREKSI') && (
-                            <>
+                            {/* ✏️ EDIT DATA (CRUD) */}
+                            {canManage && (
                               <button
-                                onClick={() => setSendingPkg(p)}
-                                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1 shadow-sm"
-                                title="Kirim ke Pemasaran"
-                              >
-                                <Send className="w-3 h-3" />
-                                <span>Kirim ke Pemasaran</span>
-                              </button>
-                              <button
+                                type="button"
                                 onClick={() => openEditModal(p)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit Pengemasan"
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit Data"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
+                            )}
+
+                            {/* 🗑️ HAPUS DATA (CRUD) */}
+                            {canManage && (
                               <button
+                                type="button"
                                 onClick={() => setDeletingPkg(p)}
-                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                title="Hapus Pengemasan"
+                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Hapus Data"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                            </>
-                          )}
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400">Belum ada data hasil pengemasan yang diinput.</td>
+                    <td colSpan={6} className="py-6 text-center text-slate-400">Belum ada data hasil pengemasan yang diinput.</td>
                   </tr>
                 )}
               </tbody>
@@ -910,9 +880,9 @@ export default function PengemasanPage() {
         )}
       </div>
 
-      {/* FORM MODAL INPUT / EDIT PENGEMASAN */}
+      {/* FORM MODAL INPUT / EDIT PENGOLAHAN */}
       {showModal && (() => {
-        // STEP 1: Main Category Selection Following Excel Structure
+        // STEP 1: Product Category Selection
         if (modalStep === 1) {
           return (
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -921,42 +891,100 @@ export default function PengemasanPage() {
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div>
                     <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                      <Package className="w-5 h-5 text-amber-600" />
-                      <span>INPUT DATA</span>
+                      <Package className="w-5 h-5 text-emerald-700" />
+                      <span>INPUT HASIL PENGOLAHAN</span>
                     </h3>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">
-                      Pilih jenis data yang ingin diinput.
+                      Pilih jenis produk hasil pengolahan divisi UHT:
                     </p>
                   </div>
                   <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg">✕</button>
                 </div>
 
-                {/* Category Card: HASIL PENGOLAHAN */}
-                <div className="space-y-3 py-2">
+                {/* 3 Product Category Options */}
+                <div className="space-y-3 py-1">
+                  {/* Option 1: SUSU OLAHAN RASA */}
                   <div
                     onClick={() => {
+                      setUhtProductCategory('Susu Olahan Rasa');
+                      setUhtVariant('Original');
+                      setUhtPackagingType('Botol');
+                      setUhtPackageSize('250 ml');
                       setSelectedMainCategory('HASIL_PENGOLAHAN');
                       setModalStep(2);
                     }}
-                    className="group p-4 bg-emerald-50/60 hover:bg-emerald-100/70 border-2 border-emerald-200 hover:border-emerald-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between gap-4"
+                    className="group p-4 bg-emerald-50/70 hover:bg-emerald-100/90 border-2 border-emerald-200 hover:border-emerald-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow flex items-center justify-between gap-4"
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
-                        📦
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shadow-sm group-hover:scale-105 transition-transform">
+                        🥛
                       </div>
                       <div>
                         <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-emerald-900 flex items-center gap-2">
-                          <span>HASIL PENGOLAHAN</span>
+                          <span>1. SUSU OLAHAN RASA</span>
                         </h4>
                         <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Input hasil produk susu pasteurisasi & yogurt yang dikemas.
+                          Original, Cokelat, Melon, Strawberry (Botol/Cup/Bantal)
                         </p>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
-                          Satuan: Botol / Cup
-                        </span>
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                  </div>
+
+                  {/* Option 2: YOGURT */}
+                  <div
+                    onClick={() => {
+                      setUhtProductCategory('Yogurt');
+                      setUhtVariant('Original');
+                      setUhtPackagingType('Cup');
+                      setUhtPackageSize('200 ml');
+                      setSelectedMainCategory('HASIL_PENGOLAHAN');
+                      setModalStep(2);
+                    }}
+                    className="group p-4 bg-purple-50/70 hover:bg-purple-100/90 border-2 border-purple-200 hover:border-purple-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-2xl shadow-sm group-hover:scale-105 transition-transform">
+                        🍧
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-purple-900 flex items-center gap-2">
+                          <span>2. YOGURT</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Yogurt Original & Varian Rasa (Cup 200ml / Pack)
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                  </div>
+
+                  {/* Option 3: KEJU */}
+                  <div
+                    onClick={() => {
+                      setUhtProductCategory('Keju');
+                      setUhtVariant('Keju Fresh');
+                      setUhtPackagingType('Kemasan Keju');
+                      setUhtPackageSize('100 gram');
+                      setSelectedMainCategory('HASIL_PENGOLAHAN');
+                      setModalStep(2);
+                    }}
+                    className="group p-4 bg-amber-50/70 hover:bg-amber-100/90 border-2 border-amber-200 hover:border-amber-500 rounded-2xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center font-black text-2xl shadow-sm group-hover:scale-105 transition-transform">
+                        🧀
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-amber-900 flex items-center gap-2">
+                          <span>3. KEJU</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Keju Fresh & Keju Olahan (100 gram, 250 gram, dll)
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform shrink-0" />
                   </div>
                 </div>
 
@@ -975,11 +1003,219 @@ export default function PengemasanPage() {
           );
         }
 
-        // STEP 2: Sub-forms based on selected category
-
-        // --- SUB-FORM 1: HASIL PENGOLAHAN ---
+        // STEP 2: Sub-form for UHT Processing Input
         if (selectedMainCategory === 'HASIL_PENGOLAHAN' && !editingPkg) {
-          const totalHasilPengolahan = (parseInt(susu115) || 0) + (parseInt(susu130) || 0) + (parseInt(susu200) || 0) + (parseInt(susu250) || 0) + (parseInt(yogurt200) || 0);
+          // If Keju is specifically selected:
+          if (uhtProductCategory === 'Keju') {
+            const totalProdNum = parseInt(uhtTotalProdQty, 10) || 0;
+            const afkirNum = parseInt(uhtAfkirQty || '0', 10) || 0;
+            const netHasilNum = Math.max(0, totalProdNum - afkirNum);
+
+            const handleSaveKejuSubmit = async (e) => {
+              if (e && e.preventDefault) e.preventDefault();
+
+              if (totalProdNum <= 0) {
+                setToast({ type: 'error', message: 'Jumlah produksi keju harus lebih besar dari 0 pcs' });
+                return;
+              }
+
+              const procAmt = parseFloat(uhtProcessedAmount) || 0;
+              if (procAmt <= 0) {
+                setToast({ type: 'error', message: 'Jumlah susu/bahan diproses (Kg) harus lebih besar dari 0' });
+                return;
+              }
+
+              setSubmitting(true);
+              try {
+                const payload = {
+                  date: formDate,
+                  productionId: (selectedProductionId && selectedProductionId !== 'SUSU_SEGAR' && selectedProductionId !== 'SUSU_OLAHAN') ? selectedProductionId : null,
+                  productCategory: 'Keju',
+                  productSubtype: 'Keju',
+                  origin: formOrigin || 'Sapi',
+                  variant: uhtVariant,
+                  animalType: 'SAPI',
+                  processedAmount: procAmt,
+                  processedUnit: 'Kg',
+                  packagingItems: [
+                    {
+                      packagingType: uhtPackagingType,
+                      size: uhtPackageSize,
+                      quantity: totalProdNum
+                    }
+                  ],
+                  totalProductionQty: totalProdNum,
+                  afkirQty: afkirNum,
+                  netQty: netHasilNum,
+                  notes: formNotes,
+                  status: 'DITERIMA',
+                };
+
+                const res = await api.post('/farm/packaging', payload);
+                if (res.data?.success) {
+                  setToast({
+                    type: 'success',
+                    message: `Hasil Pengolahan Keju (${uhtVariant}) berhasil disimpan! Total net: +${netHasilNum} pcs.`
+                  });
+                  setShowModal(false);
+                  fetchData();
+                }
+              } catch (err) {
+                const msg = err.response?.data?.message || 'Gagal menyimpan hasil pengolahan keju.';
+                setToast({ type: 'error', message: msg });
+              } finally {
+                setSubmitting(false);
+              }
+            };
+
+            return (
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setModalStep(1)}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Ganti Produk</span>
+                      </button>
+                      <div>
+                        <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <span>🧀 INPUT PENGOLAHAN KEJU</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">Form pengolahan keju divisi UHT</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg">✕</button>
+                  </div>
+
+                  <form onSubmit={handleSaveKejuSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Pengolahan</label>
+                        <input
+                          type="date"
+                          value={formDate}
+                          onChange={(e) => setFormDate(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Jenis / Varian Keju</label>
+                        <select
+                          value={uhtVariant}
+                          onChange={(e) => setUhtVariant(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 bg-white"
+                        >
+                          <option value="Keju Fresh">Keju Fresh</option>
+                          <option value="Keju Olahan">Keju Olahan</option>
+                          <option value="Mozzarella">Mozzarella</option>
+                          <option value="Cheddar">Cheddar</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran / Berat</label>
+                        <select
+                          value={uhtPackageSize}
+                          onChange={(e) => setUhtPackageSize(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 bg-white"
+                        >
+                          <option value="100 gram">100 gram</option>
+                          <option value="250 gram">250 gram</option>
+                          <option value="500 gram">500 gram</option>
+                          <option value="1 kg">1 kg</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Bahan Diproses (Kg)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          placeholder="e.g. 50"
+                          value={uhtProcessedAmount}
+                          onChange={(e) => setUhtProcessedAmount(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-black text-slate-800 mb-1">Jumlah Produksi (Pcs)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="0"
+                            value={uhtTotalProdQty}
+                            onChange={(e) => setUhtTotalProdQty(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-black font-mono"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-black text-rose-700 mb-1">Rusak / Afkir (Pcs)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={uhtAfkirQty}
+                            onChange={(e) => setUhtAfkirQty(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-rose-200 text-xs font-black font-mono bg-rose-50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-amber-900 text-white rounded-xl flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase">Hasil Bersih Siap Edar:</span>
+                        <span className="text-base font-black text-amber-300 font-mono">{netHasilNum} pcs</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Pengolahan (Opsional)</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Catatan..."
+                        value={formNotes}
+                        onChange={(e) => setFormNotes(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold"
+                      ></textarea>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveKejuSubmit}
+                        disabled={submitting}
+                        className="px-5 py-2 bg-[#1E3F20] text-white rounded-xl text-xs font-bold shadow"
+                      >
+                        {submitting ? 'Menyimpan...' : 'Simpan Hasil Pengolahan'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            );
+          }
+
+          // Matrix Layout (Matching Image 2 exactly for Susu, Yogurt, & Keju)
+          const totalHasilPengolahan = (parseInt(susu115) || 0) + (parseInt(susu130) || 0) + (parseInt(susu200) || 0) + (parseInt(susu250) || 0) + (parseInt(yogurt200) || 0) + (parseInt(keju100) || 0) + (parseInt(keju250) || 0);
 
           const handleSaveHasilPengolahanExcel = async (e) => {
             if (e && e.preventDefault) e.preventDefault();
@@ -988,6 +1224,8 @@ export default function PengemasanPage() {
             const q200 = parseInt(susu200, 10) || 0;
             const q250 = parseInt(susu250, 10) || 0;
             const qYogurt = parseInt(yogurt200, 10) || 0;
+            const qKeju100 = parseInt(keju100, 10) || 0;
+            const qKeju250 = parseInt(keju250, 10) || 0;
 
             if (totalHasilPengolahan <= 0) {
               setToast({ type: 'error', message: 'Harap masukkan minimal 1 produk hasil pengolahan (> 0 pcs).' });
@@ -995,40 +1233,52 @@ export default function PengemasanPage() {
             }
 
             const items = [];
-            if (q115 > 0) items.push({ productCategory: 'Susu', packagingType: susuPasteurisasiPackaging, size: '115 ml', quantity: q115 });
-            if (q130 > 0) items.push({ productCategory: 'Susu', packagingType: susuPasteurisasiPackaging, size: '130 ml', quantity: q130 });
-            if (q200 > 0) items.push({ productCategory: 'Susu', packagingType: susuPasteurisasiPackaging, size: '200 ml', quantity: q200 });
-            if (q250 > 0) items.push({ productCategory: 'Susu', packagingType: susuPasteurisasiPackaging, size: '250 ml', quantity: q250 });
-            if (qYogurt > 0) items.push({ productCategory: 'Yogurt', packagingType: 'Botol', size: '200 ml', quantity: qYogurt });
+            if (q115 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '115 ml', quantity: q115 });
+            if (q130 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '130 ml', quantity: q130 });
+            if (q200 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '200 ml', quantity: q200 });
+            if (q250 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '250 ml', quantity: q250 });
+            if (qYogurt > 0) items.push({ productCategory: 'Yogurt', variant: yogurtFlavor, packagingType: 'Botol', size: '200 ml', quantity: qYogurt });
+            if (qKeju100 > 0) items.push({ productCategory: 'Keju', variant: 'Original', packagingType: kejuPackagingType, size: '100 gram', quantity: qKeju100 });
+            if (qKeju250 > 0) items.push({ productCategory: 'Keju', variant: 'Original', packagingType: kejuPackagingType, size: '250 gram', quantity: qKeju250 });
 
-            const approxLiters = ((q115 * 0.115) + (q130 * 0.13) + (q200 * 0.2) + (q250 * 0.25) + (qYogurt * 0.2));
+            const catList = [];
+            if (q115 > 0 || q130 > 0 || q200 > 0 || q250 > 0) catList.push('Susu Pasteurisasi');
+            if (qYogurt > 0) catList.push('Yogurt');
+            if (qKeju100 > 0 || qKeju250 > 0) catList.push('Keju');
+
+            const primaryCat = catList.length > 0 ? catList[0] : 'Susu Pasteurisasi';
+
+            const approxLiters = ((q115 * 0.115) + (q130 * 0.13) + (q200 * 0.2) + (q250 * 0.25) + (qYogurt * 0.2) + (qKeju100 * 1.0) + (qKeju250 * 2.5));
 
             setSubmitting(true);
             try {
               const payload = {
                 date: formDate,
-                productCategory: 'Susu',
-                productSubtype: 'Susu Pasteurisasi',
+                productCategory: primaryCat,
+                productSubtype: primaryCat,
                 origin: 'Sapi',
-                variant: 'Original',
+                variant: uhtVariant || 'Original',
                 processedAmount: approxLiters > 0 ? parseFloat(approxLiters.toFixed(2)) : 1,
                 processedUnit: 'Liter',
                 packagingItems: items,
+                totalProductionQty: totalHasilPengolahan,
+                afkirQty: 0,
+                netQty: totalHasilPengolahan,
                 notes: formNotes,
-                status: 'MENUNGGU_PENERIMAAN',
+                status: 'DITERIMA',
               };
 
               const res = await api.post('/farm/packaging', payload);
-              if (res.data.success) {
+              if (res.data?.success) {
                 setToast({
                   type: 'success',
-                  message: `Hasil Pengolahan (${totalHasilPengolahan} pcs) berhasil disimpan & dikirim ke Admin Pemasaran!`
+                  message: `Hasil Pengolahan (${totalHasilPengolahan} pcs) berhasil disimpan! Stok produk & bahan otomatis terpotong.`
                 });
                 setShowModal(false);
                 fetchData();
               }
             } catch (err) {
-              const msg = err.response?.data?.message || 'Gagal menyimpan hasil pengolahan.';
+              const msg = err.response?.data?.message || err.response?.data?.detail || 'Gagal menyimpan hasil pengolahan.';
               setToast({ type: 'error', message: msg });
             } finally {
               setSubmitting(false);
@@ -1036,9 +1286,10 @@ export default function PengemasanPage() {
           };
 
           return (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 my-8">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in duration-200 my-auto max-h-[88vh] flex flex-col">
+                {/* Header (Fixed) */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
@@ -1055,139 +1306,227 @@ export default function PengemasanPage() {
                       <p className="text-xs text-slate-500 font-medium">Input hasil pengemasan produk sesuai ukuran</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg">✕</button>
                 </div>
 
-                <form onSubmit={handleSaveHasilPengolahanExcel} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
-                    <input
-                      type="date"
-                      value={formDate}
-                      onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  {/* SUSU PASTEURISASI SECTION */}
-                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3">
-                    <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-                      <label className="text-xs font-black text-emerald-900 uppercase">SUSU PASTEURISASI</label>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-bold text-slate-600">Jenis Kemasan:</span>
-                        <select
-                          value={susuPasteurisasiPackaging}
-                          onChange={(e) => setSusuPasteurisasiPackaging(e.target.value)}
-                          className="px-2.5 py-1 rounded-lg border border-emerald-300 text-xs font-bold text-slate-900 bg-white"
-                        >
-                          <option value="Botol">Botol</option>
-                          <option value="Cup">Cup</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 115 ml</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={susu115}
-                            onChange={(e) => setSusu115(e.target.value)}
-                            className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 130 ml</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={susu130}
-                            onChange={(e) => setSusu130(e.target.value)}
-                            className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 200 ml</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={susu200}
-                            onChange={(e) => setSusu200(e.target.value)}
-                            className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 250 ml</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={susu250}
-                            onChange={(e) => setSusu250(e.target.value)}
-                            className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* YOGURT SECTION */}
-                  <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-black text-purple-900 uppercase">YOGURT UKURAN 200 ML (Botol)</label>
-                    </div>
-
-                    <div className="relative">
+                <form onSubmit={handleSaveHasilPengolahanExcel} className="flex flex-col flex-1 overflow-hidden pt-3">
+                  {/* Scrollable Form Body */}
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-1.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
                       <input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={yogurt200}
-                        onChange={(e) => setYogurt200(e.target.value)}
-                        className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-purple-500 outline-none"
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                        required
                       />
-                      <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                    </div>
+
+                    {/* SUSU PASTEURISASI SECTION */}
+                    <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2 border-b border-emerald-200 pb-2">
+                        <label className="text-xs font-black text-emerald-900 uppercase">SUSU PASTEURISASI</label>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-slate-600">Varian Rasa:</span>
+                            <select
+                              value={susuFlavor}
+                              onChange={(e) => setSusuFlavor(e.target.value)}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 text-xs font-bold text-slate-900 bg-white cursor-pointer"
+                            >
+                              <option value="Original">Original</option>
+                              <option value="Cokelat">Cokelat</option>
+                              <option value="Melon">Melon</option>
+                              <option value="Strawberry">Strawberry</option>
+                              <option value="Moka">Moka</option>
+                              <option value="Taro">Taro</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-slate-600">Kemasan:</span>
+                            <select
+                              value={susuPasteurisasiPackaging}
+                              onChange={(e) => setSusuPasteurisasiPackaging(e.target.value)}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 text-xs font-bold text-slate-900 bg-white cursor-pointer"
+                            >
+                              <option value="Botol">Botol</option>
+                              <option value="Cup">Cup</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 115 ml</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={susu115}
+                              onChange={(e) => setSusu115(e.target.value)}
+                              className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 130 ml</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={susu130}
+                              onChange={(e) => setSusu130(e.target.value)}
+                              className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 200 ml</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={susu200}
+                              onChange={(e) => setSusu200(e.target.value)}
+                              className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 250 ml</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={susu250}
+                              onChange={(e) => setSusu250(e.target.value)}
+                              className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* YOGURT SECTION */}
+                    <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2 border-b border-purple-200 pb-2">
+                        <label className="text-xs font-black text-purple-900 uppercase">YOGURT UKURAN 200 ML (BOTOL)</label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-slate-600">Varian Rasa:</span>
+                          <select
+                            value={yogurtFlavor}
+                            onChange={(e) => setYogurtFlavor(e.target.value)}
+                            className="px-2.5 py-1 rounded-lg border border-purple-300 text-xs font-bold text-slate-900 bg-white cursor-pointer"
+                          >
+                            <option value="Original">Original</option>
+                            <option value="Strawberry">Strawberry</option>
+                            <option value="Mangga">Mangga</option>
+                            <option value="Anggur">Anggur</option>
+                            <option value="Blueberry">Blueberry</option>
+                            <option value="Lychee">Lychee</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={yogurt200}
+                          onChange={(e) => setYogurt200(e.target.value)}
+                          className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-purple-500 outline-none"
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                      </div>
+                    </div>
+
+                    {/* KEJU SECTION */}
+                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3">
+                      <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                        <label className="text-xs font-black text-amber-900 uppercase">KEJU</label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-slate-600">Jenis Kemasan:</span>
+                          <select
+                            value={kejuPackagingType}
+                            onChange={(e) => setKejuPackagingType(e.target.value)}
+                            className="px-2.5 py-1 rounded-lg border border-amber-300 text-xs font-bold text-slate-900 bg-white"
+                          >
+                            <option value="Kemasan Keju">Kemasan Keju</option>
+                            <option value="Pack">Pack</option>
+                            <option value="Plastik">Plastik</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 100 gram</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={keju100}
+                              onChange={(e) => setKeju100(e.target.value)}
+                              className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-amber-500 outline-none"
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 250 gram</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={keju250}
+                              onChange={(e) => setKeju250(e.target.value)}
+                              className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-amber-500 outline-none"
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TOTAL HASIL PENGOLAHAN BANNER */}
+                    <div className="p-3.5 bg-slate-900 text-white rounded-2xl flex items-center justify-between shadow-md">
+                      <span className="text-xs font-bold uppercase tracking-wider">TOTAL HASIL PENGOLAHAN (BOTOL / PCS):</span>
+                      <span className="text-base font-black text-amber-400 font-mono">
+                        {totalHasilPengolahan} pcs
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Pengolahan (Opsional)</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Catatan..."
+                        value={formNotes}
+                        onChange={(e) => setFormNotes(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      ></textarea>
                     </div>
                   </div>
 
-                  <div className="p-3.5 bg-slate-900 text-white rounded-2xl flex items-center justify-between shadow-md">
-                    <span className="text-xs font-bold uppercase tracking-wider">TOTAL HASIL PENGOLAHAN (Botol / pcs):</span>
-                    <span className="text-base font-black text-amber-400 font-mono">
-                      {totalHasilPengolahan} pcs
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Pengolahan (Opsional)</label>
-                    <textarea
-                      rows="2"
-                      placeholder="Catatan..."
-                      value={formNotes}
-                      onChange={(e) => setFormNotes(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-                    ></textarea>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  {/* Footer (Fixed) */}
+                  <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-100 shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowModal(false)}
@@ -2367,6 +2706,41 @@ export default function PengemasanPage() {
             </div>
             <div className="w-full h-80 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center">
               <img src={previewFoto} alt="Foto Timbangan" className="max-w-full max-h-full object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS MULTIPLE (BULK DELETE) */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xl mx-auto">
+              🗑️
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-black text-slate-900">Hapus Multiple Data ({selectedIds.length} Entry)</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Apakah Anda yakin ingin menghapus <strong className="text-slate-800">{selectedIds.length} data pengemasan/pengolahan</strong> yang terpilih? Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={isBulkDeleting}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDeleteSubmit}
+                disabled={isBulkDeleting}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {isBulkDeleting ? 'Menghapus...' : `Ya, Hapus ${selectedIds.length} Data`}
+              </button>
             </div>
           </div>
         </div>

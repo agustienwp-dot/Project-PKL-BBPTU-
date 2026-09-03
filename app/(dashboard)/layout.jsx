@@ -31,7 +31,8 @@ import {
   ShoppingCart,
   BarChart3,
   Bell,
-  FileCheck
+  FileCheck,
+  Truck
 } from 'lucide-react';
 import api from '@/services/api';
 
@@ -55,12 +56,12 @@ function isRouteAllowed(role, pathname) {
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/dashboard', '/pemasaran', '/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/request-susu', '/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_PENGEMASAN') {
-    const allowed = ['/dashboard', '/pengemasan', '/riwayat-pengemasan', '/reports/pengemasan', '/profil', '/berita-acara'];
+    const allowed = ['/dashboard', '/pengemasan', '/pengemasan/request-susu', '/pengemasan/stok-bahan', '/pengemasan/produk-siap-edar', '/riwayat-pengemasan', '/reports/pengolahan', '/reports/pengemasan', '/profil', '/berita-acara'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -73,6 +74,7 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -81,12 +83,18 @@ export default function DashboardLayout({ children }) {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user && (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN')) {
+    if (user && (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN' || user.role === 'ADMIN_PENGEMASAN')) {
       const fetchPending = async () => {
         try {
-          const res = await api.get('/farm/packaging?status=MENUNGGU_PENERIMAAN');
-          if (res.data.success) {
-            setPendingCount(res.data.data.length);
+          if (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN') {
+            const res = await api.get('/farm/packaging?status=MENUNGGU_PENERIMAAN');
+            if (res.data.success) {
+              setPendingCount(res.data.data.length);
+            }
+          }
+          const reqRes = await api.get('/susu/request?status=MENUNGGU_PERSETUJUAN');
+          if (reqRes.data.success) {
+            setPendingRequestCount(reqRes.data.data.length);
           }
         } catch (e) {}
       };
@@ -114,7 +122,7 @@ export default function DashboardLayout({ children }) {
       case 'ADMIN_PEMASARAN':
         return { label: 'ADMIN PEMASARAN', bg: 'bg-blue-500/20 text-blue-200 border-blue-400/30' };
       case 'ADMIN_PENGEMASAN':
-        return { label: 'ADMIN PENGEMASAN', bg: 'bg-amber-500/20 text-amber-200 border-amber-400/30' };
+        return { label: 'DIVISI UHT / PENGOLAHAN', bg: 'bg-amber-500/20 text-amber-200 border-amber-400/30' };
       default:
         return { label: role || 'USER', bg: 'bg-slate-500/20 text-slate-200 border-slate-400/30' };
     }
@@ -130,6 +138,7 @@ export default function DashboardLayout({ children }) {
       return [
         { label: 'Dashboard Main', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
+        { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
         { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
         { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
         { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
@@ -155,6 +164,7 @@ export default function DashboardLayout({ children }) {
     if (role === 'ADMIN_PEMASARAN') {
       return [
         { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: LayoutDashboard },
+        { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
         { label: 'Berita Acara Masuk', path: '/berita-acara', icon: ClipboardList },
         { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
         { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
@@ -166,12 +176,13 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PENGEMASAN') {
       return [
-        { section: 'DASHBOARD', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { section: 'PENGEMASAN', label: 'Pengemasan', path: '/pengemasan', icon: Package },
-        { section: 'PENGEMASAN', label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
-        { section: 'DOKUMEN', label: 'Berita Acara', path: '/berita-acara', icon: FileCheck },
-        { section: 'LAPORAN', label: 'Laporan Pengemasan', path: '/reports/pengemasan', icon: FileText },
-        { section: 'LAINNYA', label: 'Profil', path: '/profil', icon: User }
+        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'DASHBOARD' },
+        { label: 'Request Susu', path: '/pengemasan/request-susu', icon: Truck, section: 'PENGOLAHAN' },
+        { label: 'Input Hasil Pengolahan', path: '/pengemasan', icon: Package, section: 'PENGOLAHAN' },
+        { label: 'Sisa Stok Bahan', path: '/pengemasan/stok-bahan', icon: Boxes, section: 'PENGOLAHAN' },
+        { label: 'Berita Acara Olahan', path: '/berita-acara', icon: FileCheck, section: 'PENGOLAHAN' },
+        { label: 'Laporan Pengolahan', path: '/reports/pengolahan', icon: FileText, section: 'PENGOLAHAN' },
+        { label: 'Profil', path: '/profil', icon: User, section: 'LAINNYA' }
       ];
     }
 
@@ -191,7 +202,7 @@ export default function DashboardLayout({ children }) {
     <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex flex-col md:flex-row font-sans">
       
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#1E3F20] text-white border-b border-[#2b592e] sticky top-0 z-40">
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#1E3F20] text-white border-b border-[#2b592e] sticky top-0 z-40 print:hidden">
         <div className="flex items-center gap-2.5">
           <BBPTUHPTLogo className="w-9 h-9" />
           <span className="font-bold text-xs text-white tracking-wide">BBPTUHPT BATURRADEN</span>
@@ -209,7 +220,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Sidebar Navigation */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#1E3F20] text-white border-r border-[#2b592e] flex flex-col justify-between transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#1E3F20] text-white border-r border-[#2b592e] flex flex-col justify-between transition-transform duration-300 ease-in-out md:static md:translate-x-0 print:hidden ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -228,7 +239,14 @@ export default function DashboardLayout({ children }) {
             {navItems.map((item, index) => {
               const Icon = item.icon;
               const basePath = item.path.split('?')[0];
-              const isActive = pathname === basePath || (basePath !== '/dashboard' && pathname.startsWith(basePath));
+              const isExactMatch = pathname === basePath;
+              const hasMoreSpecificMatch = navItems.some(
+                (other) =>
+                  other.path !== item.path &&
+                  pathname.startsWith(other.path.split('?')[0]) &&
+                  other.path.split('?')[0].length > basePath.length
+              );
+              const isActive = isExactMatch || (basePath !== '/dashboard' && pathname.startsWith(basePath + '/') && !hasMoreSpecificMatch);
               const prevSection = index > 0 ? navItems[index - 1].section : null;
               const showSectionHeader = item.section && item.section !== prevSection;
 
@@ -287,9 +305,9 @@ export default function DashboardLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#F5F5F0]">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#F5F5F0] print:block print:overflow-visible print:bg-white print:p-0 print:m-0">
         {/* Desktop Header */}
-        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
           <div className="flex items-center gap-3">
             <span className="h-3 w-3 rounded-full bg-[#1E3F20] animate-ping"></span>
             <h1 className="text-sm font-black text-[#1E3F20] tracking-wide">
@@ -307,7 +325,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Content Viewport / Protected Access View */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 print:m-0 print:overflow-visible print:block">
           {isAllowed ? (
             children
           ) : (

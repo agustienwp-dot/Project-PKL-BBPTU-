@@ -193,9 +193,8 @@ export default function AlatPage() {
                   </td>
                   <td className="px-4 py-3.5 font-bold text-slate-900">{tx.equipment?.name}</td>
                   <td className="px-4 py-3.5">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono ${
-                      tx.type === 'PEMBELIAN' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
-                    }`}>
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono ${tx.type === 'PEMBELIAN' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                      }`}>
                       {tx.type === 'PEMBELIAN' ? '+ PEMBELIAN (MASUK)' : '- DISTRIBUSI (PAKAI)'}
                     </span>
                   </td>
