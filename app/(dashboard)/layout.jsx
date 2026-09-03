@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }) {
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
@@ -152,21 +152,18 @@ export default function DashboardLayout({ children }) {
       return [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Produksi Susu', path: '/produksi', icon: Milk },
-        { label: 'Pengemasan', path: '/pengemasan', icon: Package },
-        { label: 'Riwayat Produksi', path: '/riwayat-produksi', icon: History },
-        { label: 'Riwayat Pengemasan', path: '/riwayat-pengemasan', icon: ClipboardList },
-        { label: 'Berita Acara', path: '/berita-acara', icon: FileCheck },
-        { label: 'Laporan Produksi', path: '/reports', icon: FileText },
+        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
+        { label: 'Laporan', path: '/reports', icon: FileText },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: LayoutDashboard },
+        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
-        { label: 'Berita Acara Masuk', path: '/berita-acara', icon: ClipboardList },
-        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
+        { label: 'Terima Hasil Olahan', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
+        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
         { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
         { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
@@ -199,44 +196,74 @@ export default function DashboardLayout({ children }) {
   const isAllowed = isRouteAllowed(user?.role, pathname);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex flex-col font-sans relative">
       
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#1E3F20] text-white border-b border-[#2b592e] sticky top-0 z-40 print:hidden">
-        <div className="flex items-center gap-2.5">
-          <BBPTUHPTLogo className="w-9 h-9" />
-          <span className="font-bold text-xs text-white tracking-wide">BBPTUHPT BATURRADEN</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <NotificationBell user={user} />
+      {/* TOP NAVBAR HEADER MATCHING DESIGN */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200/70 shadow-2xs px-4 md:px-8 py-3.5 flex items-center justify-between print:hidden">
+        <div className="flex items-center">
+          {/* Menu Button Toggle */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-white hover:bg-white/10 rounded-lg"
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs shadow-2xs transition-all cursor-pointer"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            <Menu className="w-4 h-4 text-slate-800" />
+            <span>Menu</span>
           </button>
         </div>
-      </div>
 
-      {/* Sidebar Navigation */}
+        <div className="flex items-center gap-3">
+          {/* Notification Icon */}
+          <NotificationBell user={user} />
+          
+          {/* User Profile Pill */}
+          <Link
+            href="/profil"
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200/80 px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-800 transition-colors cursor-pointer"
+          >
+            <User className="w-4 h-4 text-slate-700" />
+            <span className="truncate max-w-[140px] sm:max-w-none">{user?.name || user?.email?.split('@')[0] || 'User'}</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* OVERLAY BACKDROP */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200 print:hidden"
+        />
+      )}
+
+      {/* SLIDE-OVER SIDEBAR DRAWER WITH ROUNDED CORNERS */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#1E3F20] text-white border-r border-[#2b592e] flex flex-col justify-between transition-transform duration-300 ease-in-out md:static md:translate-x-0 print:hidden ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1E3F20] text-white border-r border-[#2b592e] rounded-r-[32px] sm:rounded-r-[36px] flex flex-col justify-between transition-transform duration-300 ease-in-out shadow-2xl print:hidden overflow-hidden ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo Area */}
-          <div className="p-4 sm:p-5 flex items-center gap-3 border-b border-white/10">
-            <BBPTUHPTLogo className="w-12 h-12 shrink-0" />
-            <div>
-              <h2 className="font-extrabold text-xs sm:text-sm text-white leading-tight tracking-wide">BBPTUHPT BATURRADEN</h2>
-              <span className="text-[10px] text-emerald-200 font-semibold tracking-wide block uppercase mt-0.5">Sistem Management Stok</span>
+          {/* Drawer Header */}
+          <div className="p-4 sm:p-5 flex items-center justify-between border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <BBPTUHPTLogo className="w-10 h-10 shrink-0" />
+              <div>
+                <h2 className="font-extrabold text-xs text-white leading-tight tracking-wide">BBPTUHPT BATURRADEN</h2>
+                <span className="text-[9px] text-emerald-200 font-semibold tracking-wide block uppercase mt-0.5">Sistem Management Stok</span>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              title="Tutup Menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Navigation Links */}
           <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
-            {navItems.map((item, index) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const basePath = item.path.split('?')[0];
               const isExactMatch = pathname === basePath;
@@ -247,45 +274,37 @@ export default function DashboardLayout({ children }) {
                   other.path.split('?')[0].length > basePath.length
               );
               const isActive = isExactMatch || (basePath !== '/dashboard' && pathname.startsWith(basePath + '/') && !hasMoreSpecificMatch);
-              const prevSection = index > 0 ? navItems[index - 1].section : null;
-              const showSectionHeader = item.section && item.section !== prevSection;
 
               return (
-                <React.Fragment key={item.path}>
-                  {showSectionHeader && (
-                    <div className="pt-3 pb-1 px-3 text-[10px] font-black text-emerald-300/70 tracking-widest uppercase">
-                      {item.section}
-                    </div>
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center justify-between px-4 py-3 rounded-full text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
+                      : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-white/20 text-white font-bold tracking-wider uppercase shrink-0">
+                      {item.badge}
+                    </span>
                   )}
-                  <Link
-                    href={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                      isActive
-                        ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
-                        : 'text-emerald-100 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5 shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-white/20 text-white font-bold tracking-wider uppercase shrink-0">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                </React.Fragment>
+                </Link>
               );
             })}
           </nav>
 
           {/* User Profile Box & Logout */}
-          <div className="p-4 border-t border-white/10 space-y-2">
-            <div className="flex items-center gap-3 px-2 py-1.5">
-              <div className="w-8 h-8 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-white shrink-0">
-                <User className="w-4 h-4" />
+          <div className="p-4 border-t border-white/10 space-y-2.5">
+            <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/10 border border-white/15">
+              <div className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white shrink-0 font-black text-xs shadow-xs">
+                {(user?.name || user?.email || 'U').charAt(0)}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-white truncate">{user?.name || 'Pengguna'}</span>
@@ -295,9 +314,9 @@ export default function DashboardLayout({ children }) {
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl text-xs font-bold bg-red-500/20 text-red-100 hover:bg-red-500/30 border border-red-500/30 transition-colors cursor-pointer"
             >
-              <LogOut className="w-4 h-4 text-emerald-200" />
+              <LogOut className="w-4 h-4 text-red-200" />
               <span>Keluar</span>
             </button>
           </div>
@@ -306,25 +325,6 @@ export default function DashboardLayout({ children }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#F5F5F0] print:block print:overflow-visible print:bg-white print:p-0 print:m-0">
-        {/* Desktop Header */}
-        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
-          <div className="flex items-center gap-3">
-            <span className="h-3 w-3 rounded-full bg-[#1E3F20] animate-ping"></span>
-            <h1 className="text-sm font-black text-[#1E3F20] tracking-wide">
-              SISTEM MANAGEMENT STOK SUSU — Susu Segar & Susu Olahan
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <NotificationBell user={user} />
-            <div className="flex items-center gap-2 bg-[#F5F5F0] px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-[#1E3F20]">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>{user?.email}</span>
-            </div>
-          </div>
-        </header>
-
-        {/* Content Viewport / Protected Access View */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 print:m-0 print:overflow-visible print:block">
           {isAllowed ? (
             children

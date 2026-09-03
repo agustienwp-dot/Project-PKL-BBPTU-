@@ -614,13 +614,6 @@ export default function PengemasanPage() {
               <Plus className="w-4 h-4" />
               <span>+ Input Hasil Pengolahan</span>
             </button>
-            <button
-              onClick={() => openAddModal('DISTRIBUSI')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
-            >
-              <Truck className="w-4 h-4" />
-              <span>+ Input Distribusi</span>
-            </button>
           </div>
         )}
       </div>
@@ -782,18 +775,15 @@ export default function PengemasanPage() {
                           {new Date(p.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </td>
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1 font-semibold text-slate-900 text-xs">
                             {categoriesInRecord.map((c, idx) => {
                               const cLower = c.toLowerCase();
                               const isYog = cLower.includes('yogurt');
                               const isKj = cLower.includes('keju');
+                              const label = isYog ? 'Yogurt' : isKj ? 'Keju' : (c.includes('Pasteurisasi') || c.includes('Rasa') ? c : 'Susu Pasteurisasi');
                               return (
-                                <span key={idx} className={`px-3 py-1 rounded-full border font-black text-xs shadow-xs ${
-                                  isYog ? 'bg-purple-100 text-purple-900 border-purple-200' :
-                                  isKj ? 'bg-amber-100 text-amber-900 border-amber-200' :
-                                  'bg-emerald-100 text-emerald-900 border-emerald-200'
-                                }`}>
-                                  {isYog ? 'Yogurt' : isKj ? 'Keju' : (c.includes('Pasteurisasi') || c.includes('Rasa') ? c : 'Susu Pasteurisasi')}
+                                <span key={idx} className="text-slate-900">
+                                  {label}{idx < categoriesInRecord.length - 1 ? ',' : ''}
                                 </span>
                               );
                             })}
@@ -824,10 +814,8 @@ export default function PengemasanPage() {
                             <span className="whitespace-nowrap">{p.packagingType || 'Botol'} ({p.totalPackagedQty} pcs)</span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="px-2.5 py-1 bg-slate-900 text-white rounded-xl font-bold text-xs inline-block whitespace-nowrap">
-                            {p.totalPackagedQty} pcs
-                          </span>
+                        <td className="py-3.5 px-4 whitespace-nowrap font-bold text-slate-900 text-xs">
+                          {p.totalPackagedQty} pcs
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1.5">

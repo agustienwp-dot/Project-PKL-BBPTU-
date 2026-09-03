@@ -29,7 +29,7 @@ export default function LaporanPengolahanPage() {
   const [year, setYear] = useState(now.getFullYear());
   
   const [reportData, setReportData] = useState(null);
-  const [activeView, setActiveView] = useState('MATRIX'); // 'MATRIX', 'RECORDS', 'MATERIALS'
+  const [activeView, setActiveView] = useState('PRODUKSI'); // 'PRODUKSI' or 'STOK_BAHAN'
   const [toast, setToast] = useState(null);
 
   const monthNames = [
@@ -60,11 +60,20 @@ export default function LaporanPengolahanPage() {
     window.print();
   };
 
+  const dailyLogs = reportData?.dailyLogs || [];
+  const monthlyTotals = reportData?.monthlyTotals || {};
+  const summary = reportData?.summary || {};
+  const materialUsage = reportData?.materialUsage || [];
+
+  const fmtNum = (n) => (n > 0 ? n.toLocaleString('id-ID') : '0');
+
   const handleExportExcel = () => {
     if (!reportData) return;
 
-    const { dailyLogs = [], monthlyTotals = {} } = reportData;
-    const titleText = `REKAPITULASI PENGOLAHAN & PRODUKSI SUSU OLAHAN SIAP JUAL`;
+    const isStok = activeView === 'STOK_BAHAN';
+    const titleText = isStok 
+      ? `LAPORAN PERSEDIAAN SISA STOK BAHAN BAKU & KEMASAN`
+      : `REKAPITULASI PENGOLAHAN & PRODUKSI SUSU OLAHAN SIAP JUAL`;
     const periodText = `BULAN: ${monthNames[month - 1].toUpperCase()} ${year}`;
 
     let tableHTML = `
@@ -72,89 +81,155 @@ export default function LaporanPengolahanPage() {
       <head><meta charset="UTF-8"></head>
       <body>
         <h2 style="text-align:center;">${titleText}</h2>
-        <h3 style="text-align:center;">SEKSI PENGEMASAN & OLAHAN KE SEKSI PEMASARAN - TAHUN ${year}</h3>
+        <h3 style="text-align:center;">DIVISI UHT / PENGOLAHAN BBPTU HPT BATURRADEN - TAHUN ${year}</h3>
         <h4 style="text-align:center;">${periodText}</h4>
-        <table border="1" style="border-collapse:collapse; text-align:center;">
-          <thead>
-            <tr style="background-color:#1E3F20; color:white; font-weight:bold;">
-              <th rowspan="2">No</th>
-              <th rowspan="2">Tanggal</th>
-              <th colspan="2" style="background-color:#16331a;">BAHAN BAKU SUSU</th>
-              <th colspan="6" style="background-color:#0D5C3A;">HASIL PRODUKSI (PCS)</th>
-              <th rowspan="2" style="background-color:#084229;">TOTAL PRODUK JADI</th>
-            </tr>
-            <tr style="background-color:#e2e8f0; font-weight:bold; color:black;">
-              <th>DITERIMA (LTR)</th>
-              <th>DIOLEH (LTR)</th>
-              <th>SUSU 115 ML</th>
-              <th>SUSU 130 ML</th>
-              <th>SUSU 200 ML</th>
-              <th>SUSU 250 ML</th>
-              <th>YOGURT 200 ML</th>
-              <th>KEJU</th>
-            </tr>
-          </thead>
-          <tbody>
+        <table border="1" style="border-collapse:collapse; text-align:center; font-size:11px;">
     `;
 
-    dailyLogs.forEach((log) => {
+    if (isStok) {
       tableHTML += `
-        <tr>
-          <td>${log.day}</td>
-          <td>${log.dateStr}</td>
-          <td>${log.susuDiterima || 0}</td>
-          <td>${log.susuDiolah || 0}</td>
-          <td>${log.susu115 || 0}</td>
-          <td>${log.susu130 || 0}</td>
-          <td>${log.susu200 || 0}</td>
-          <td>${log.susu250 || 0}</td>
-          <td>${log.yogurt200 || 0}</td>
-          <td>${log.keju || 0}</td>
-          <td style="font-weight:bold; background-color:#dcfce7;">${log.totalProduk || 0}</td>
+        <thead>
+          <tr style="background-color:#1E3F20; color:white; font-weight:bold;">
+            <th rowspan="2">No</th>
+            <th rowspan="2">Tanggal</th>
+            <th colspan="${materialUsage.length + 1}" style="background-color:#064e3b;">SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)</th>
+          </tr>
+          <tr style="background-color:#e2e8f0; font-weight:bold; color:black;">
+            <th>SUSU SEGAR (LTR)</th>
+            ${materialUsage.map(m => `<th>${m.name.toUpperCase()} (${(m.unit || 'PCS').toUpperCase()})</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      dailyLogs.forEach((log) => {
+        tableHTML += `
+          <tr>
+            <td>${log.day}</td>
+            <td>${log.dateStr}</td>
+            <td style="font-weight:bold; background-color:#eff6ff;">${summary.sisaStokSusuSegar || 0}</td>
+            ${materialUsage.map(m => `<td>${m.finalStock || 0}</td>`).join('')}
+          </tr>
+        `;
+      });
+
+      tableHTML += `
+        <tr style="font-weight:bold; background-color:#e2e8f0;">
+          <td colspan="2">SISA STOK SAAT INI (REAL-TIME)</td>
+          <td style="background-color:#bfdbfe;">${summary.sisaStokSusuSegar || 0}</td>
+          ${materialUsage.map(m => `<td style="background-color:#fef3c7;">${m.finalStock || 0}</td>`).join('')}
         </tr>
       `;
-    });
+    } else {
+      tableHTML += `
+        <thead>
+          <tr style="background-color:#1E3F20; color:white; font-weight:bold;">
+            <th rowspan="2">No</th>
+            <th rowspan="2">Tanggal</th>
+            <th colspan="2" style="background-color:#16331a;">BAHAN BAKU SUSU</th>
+            <th colspan="6" style="background-color:#0D5C3A;">HASIL PRODUKSI (PCS)</th>
+            <th rowspan="2" style="background-color:#084229;">JUMLAH PRODUK (PCS)</th>
+          </tr>
+          <tr style="background-color:#e2e8f0; font-weight:bold; color:black;">
+            <th>SUSU DITERIMA (LTR)</th>
+            <th>SUSU DIOLAH (LTR)</th>
+            <th>SUSU 115 ML</th>
+            <th>SUSU 130 ML</th>
+            <th>SUSU 200 ML</th>
+            <th>SUSU 250 ML</th>
+            <th>YOGURT 200 ML</th>
+            <th>KEJU</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      dailyLogs.forEach((log) => {
+        tableHTML += `
+          <tr>
+            <td>${log.day}</td>
+            <td>${log.dateStr}</td>
+            <td>${log.susuDiterima || 0}</td>
+            <td>${log.susuDiolah || 0}</td>
+            <td>${log.susu115 || 0}</td>
+            <td>${log.susu130 || 0}</td>
+            <td>${log.susu200 || 0}</td>
+            <td>${log.susu250 || 0}</td>
+            <td>${log.yogurt200 || 0}</td>
+            <td>${log.keju || 0}</td>
+            <td style="font-weight:bold; background-color:#dcfce7;">${log.totalProduk || 0}</td>
+          </tr>
+        `;
+      });
+
+      tableHTML += `
+        <tr style="font-weight:bold; background-color:#e2e8f0;">
+          <td colspan="2">JUMLAH TOTAL BULAN INI</td>
+          <td>${monthlyTotals.susuDiterima || 0}</td>
+          <td>${monthlyTotals.susuDiolah || 0}</td>
+          <td>${monthlyTotals.susu115 || 0}</td>
+          <td>${monthlyTotals.susu130 || 0}</td>
+          <td>${monthlyTotals.susu200 || 0}</td>
+          <td>${monthlyTotals.susu250 || 0}</td>
+          <td>${monthlyTotals.yogurt200 || 0}</td>
+          <td>${monthlyTotals.keju || 0}</td>
+          <td style="background-color:#86efac;">${monthlyTotals.totalProduk || 0}</td>
+        </tr>
+      `;
+    }
 
     tableHTML += `
-          <tr style="font-weight:bold; background-color:#e2e8f0;">
-            <td colspan="2">JUMLAH TOTAL BULAN INI</td>
-            <td>${monthlyTotals.susuDiterima || 0}</td>
-            <td>${monthlyTotals.susuDiolah || 0}</td>
-            <td>${monthlyTotals.susu115 || 0}</td>
-            <td>${monthlyTotals.susu130 || 0}</td>
-            <td>${monthlyTotals.susu200 || 0}</td>
-            <td>${monthlyTotals.susu250 || 0}</td>
-            <td>${monthlyTotals.yogurt200 || 0}</td>
-            <td>${monthlyTotals.keju || 0}</td>
-            <td style="background-color:#86efac;">${monthlyTotals.totalProduk || 0}</td>
-          </tr>
-          </tbody>
-        </table>
-      </body>
-      </html>
+        </tbody>
+      </table>
+    </body>
+    </html>
     `;
 
     const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel;choice=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Rekapitulasi_Pengolahan_${monthNames[month - 1]}_${year}.xls`;
+    link.download = isStok 
+      ? `Laporan_Sisa_Stok_Bahan_${monthNames[month - 1]}_${year}.xls`
+      : `Laporan_Produksi_${monthNames[month - 1]}_${year}.xls`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const dailyLogs = reportData?.dailyLogs || [];
-  const monthlyTotals = reportData?.monthlyTotals || {};
-  const monthlyVariantBreakdown = reportData?.monthlyVariantBreakdown || {};
-  const summary = reportData?.summary || {};
-  const records = reportData?.records || [];
-  const materialUsage = reportData?.materialUsage || [];
-
-  const fmtNum = (n) => (n > 0 ? n.toLocaleString('id-ID') : '0');
-
   return (
     <div className="space-y-6 pb-12 print:p-0 print:space-y-4">
+      {/* LANDSCAPE PRINT STYLING INJECTION */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 landscape !important;
+            margin: 5mm 8mm !important;
+          }
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background-color: #ffffff !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          table {
+            font-size: 8.5px !important;
+            width: 100% !important;
+            table-layout: auto !important;
+          }
+          th, td {
+            padding: 3px 2px !important;
+            word-break: normal !important;
+            font-size: 8.5px !important;
+          }
+          .overflow-x-auto {
+            overflow: visible !important;
+          }
+        }
+      `}</style>
+
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* TOP BAR / HEADER PAGE */}
@@ -193,37 +268,27 @@ export default function LaporanPengolahanPage() {
       <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setActiveView('MATRIX')}
+            onClick={() => setActiveView('PRODUKSI')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeView === 'MATRIX'
+              activeView === 'PRODUKSI' || activeView === 'MATRIX'
                 ? 'bg-[#1E3F20] text-white shadow-sm'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             <TableIcon className="w-4 h-4" />
-            <span>Matriks Rekapitulasi (1-31)</span>
+            <span>Laporan Produksi</span>
           </button>
+
           <button
-            onClick={() => setActiveView('RECORDS')}
+            onClick={() => setActiveView('STOK_BAHAN')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeView === 'RECORDS'
-                ? 'bg-[#1E3F20] text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Rincian Pengolahan ({records.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveView('MATERIALS')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeView === 'MATERIALS'
+              activeView === 'STOK_BAHAN'
                 ? 'bg-[#1E3F20] text-white shadow-sm'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             <Boxes className="w-4 h-4" />
-            <span>Sisa Stok Bahan ({materialUsage.length})</span>
+            <span>Laporan Sisa Stok Bahan Baku & Kemasan</span>
           </button>
         </div>
 
@@ -257,10 +322,14 @@ export default function LaporanPengolahanPage() {
         {/* DOCUMENT TITLE HEADER */}
         <div className="text-center space-y-1.5 border-b border-slate-200 pb-4 print:border-black">
           <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-wide print:text-black">
-            SERAH TERIMA SUSU OLAHAN & PRODUK SIAP JUAL BBPTU HPT BATURRADEN
+            {activeView === 'STOK_BAHAN'
+              ? 'LAPORAN PERSEDIAAN SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)'
+              : 'SERAH TERIMA SUSU OLAHAN & PRODUK SIAP JUAL BBPTU HPT BATURRADEN'}
           </h2>
           <h3 className="text-sm md:text-base font-bold text-slate-700 uppercase tracking-wide print:text-black">
-            DARI SEKSI PENGEMASAN & OLAHAN KE SEKSI PEMASARAN
+            {activeView === 'STOK_BAHAN'
+              ? 'SEKSI PENGEMASAN & OLAHAN - BBPTU HPT BATURRADEN'
+              : 'DARI SEKSI PENGEMASAN & OLAHAN KE SEKSI PEMASARAN'}
           </h3>
           <p className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-widest pt-1 print:text-black">
             TAHUN {year}
@@ -273,34 +342,34 @@ export default function LaporanPengolahanPage() {
           </div>
         </div>
 
-        {/* VIEW 1: OFFICIAL REKAPITULASI MATRIX TABLE */}
-        {activeView === 'MATRIX' && (
+        {/* TAB 1: LAPORAN PRODUKSI TABLE */}
+        {(activeView === 'PRODUKSI' || activeView === 'MATRIX') && (
           loading ? (
-            <div className="p-12 text-center"><LoadingSpinner text="Memuat Matriks Rekapitulasi Pengolahan..." /></div>
+            <div className="p-12 text-center"><LoadingSpinner text="Memuat Laporan Produksi..." /></div>
           ) : (
             <div className="space-y-6">
               <div className="overflow-x-auto">
-                <table className="w-full text-center text-[11px] border-collapse border border-slate-300 print:border-black font-mono">
+                <table className="w-full text-center text-[10px] md:text-[11px] border-collapse border border-slate-300 print:border-black font-mono">
                   <thead>
                     {/* Row 1 Header */}
                     <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
                       <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
                       <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
-                      <th colSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-50/60">BAHAN BAKU SUSU</th>
-                      <th colSpan={6} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-50/60">HASIL PRODUKSI (PCS)</th>
-                      <th rowSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-100">JUMLAH PRODUK</th>
+                      <th colSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-50/70 text-blue-950">BAHAN BAKU SUSU</th>
+                      <th colSpan={6} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-50/70 text-emerald-950">HASIL PRODUKSI (PCS)</th>
+                      <th rowSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-100 text-emerald-950">JUMLAH PRODUK</th>
                     </tr>
 
                     {/* Row 2 Header */}
-                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans">SUSU DITERIMA</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans">SUSU DIOLEH</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans">SUSU 115 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans">SUSU 130 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans">SUSU 200 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans">SUSU 250 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-purple-50">YOGURT 200 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-amber-50">KEJU</th>
+                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200 text-[10px]">
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DITERIMA</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DIOLAH</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 115 ML</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 130 ML</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 200 ML</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 250 ML</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-purple-50">YOGURT 200 ML</th>
+                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-amber-50">KEJU</th>
                     </tr>
 
                     {/* Row 3 Units Header */}
@@ -322,8 +391,8 @@ export default function LaporanPengolahanPage() {
                       const hasActivity = log.susuDiolah > 0 || log.totalProduk > 0 || log.susuDiterima > 0;
                       return (
                         <tr key={log.day} className={`hover:bg-amber-50/40 transition-colors ${hasActivity ? 'bg-emerald-50/15' : ''}`}>
-                          <td className="border border-slate-300 print:border-black px-1 py-1 font-sans font-bold">{log.day}</td>
-                          <td className="border border-slate-300 print:border-black px-1 py-1 font-sans">{log.dateStr}</td>
+                          <td className="border border-slate-300 print:border-black px-2 py-1 font-sans font-bold">{log.day}</td>
+                          <td className="border border-slate-300 print:border-black px-2 py-1 font-sans whitespace-nowrap">{log.dateStr}</td>
                           <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-blue-900 font-bold">{fmtNum(log.susuDiterima)}</td>
                           <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-purple-900 font-bold">{fmtNum(log.susuDiolah)}</td>
                           <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu115)}</td>
@@ -357,164 +426,88 @@ export default function LaporanPengolahanPage() {
                   </tfoot>
                 </table>
               </div>
-
-              {/* SECTION: RINCIAN PRODUKSI DENGAN VARIAN RASA */}
-              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-3 print:bg-white print:border-black">
-                <h4 className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5 print:text-black">
-                  <Tag className="w-4 h-4 text-emerald-700 print:hidden" />
-                  <span>Rincian Hasil Produksi Menurut Ukuran & Varian Rasa ({monthNames[month - 1]} {year})</span>
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {Object.keys(monthlyVariantBreakdown).length > 0 ? (
-                    Object.entries(monthlyVariantBreakdown).map(([name, qty], idx) => (
-                      <div key={idx} className="p-3 bg-white rounded-xl border border-emerald-100 shadow-xs flex items-center justify-between print:border-black">
-                        <span className="text-xs font-bold text-slate-800 print:text-black">{name}</span>
-                        <span className="text-xs font-black text-emerald-700 print:text-black font-mono bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                          {qty} pcs
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-3 text-xs text-slate-400 font-bold text-center py-2">
-                      Belum ada rincian varian rasa untuk bulan ini.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* SECTION: SISA STOK BAHAN BAKU & KEMASAN */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 print:bg-white print:border-black">
-                <h4 className="text-xs font-black text-slate-900 uppercase flex items-center gap-1.5 print:text-black">
-                  <Boxes className="w-4 h-4 text-slate-700 print:hidden" />
-                  <span>Sisa Stok Bahan Baku & Kemasan (Real-Time)</span>
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-white rounded-xl border border-blue-200 shadow-xs space-y-1 print:border-black">
-                    <span className="text-[11px] font-bold text-slate-500 block">Sisa Stok Susu Segar</span>
-                    <span className="text-sm font-black text-blue-900 font-mono block">
-                      {fmtNum(summary.sisaStokSusuSegar || 0)} Liter
-                    </span>
-                  </div>
-
-                  {materialUsage.map((m) => (
-                    <div key={m.id} className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs space-y-1 print:border-black">
-                      <span className="text-[11px] font-bold text-slate-600 block truncate">{m.name}</span>
-                      <span className="text-xs font-black text-slate-900 font-mono block">
-                        {fmtNum(m.finalStock)} {m.unit || 'pcs'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )
         )}
 
-        {/* VIEW 2: TRANSAKSI PENGOLAHAN LOGS */}
-        {activeView === 'RECORDS' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="p-3">No</th>
-                  <th className="p-3">Tanggal</th>
-                  <th className="p-3">Produk & Varian</th>
-                  <th className="p-3">Ukuran</th>
-                  <th className="p-3 text-right">Jumlah Produksi</th>
-                  <th className="p-3 text-right">Susu Murni (Bahan)</th>
-                  <th className="p-3 text-center">Breakdown Kemasan</th>
-                  <th className="p-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {records.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">
-                      Tidak ada data transaksi pengolahan.
-                    </td>
-                  </tr>
-                ) : (
-                  records.map((r, idx) => (
-                    <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3 text-slate-400">{idx + 1}</td>
-                      <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
-                        {new Date(r.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td className="p-3">
-                        <span className="font-bold text-slate-900 block">{r.productCategory} {r.productSubtype || ''}</span>
-                        <span className="text-[10px] text-slate-400 font-semibold">{r.variant || 'Original'} ({r.origin || 'Sapi'})</span>
-                      </td>
-                      <td className="p-3">{r.packageSize || r.packagingType || 'Botol'}</td>
-                      <td className="p-3 text-right font-black text-slate-900 text-sm">
-                        {r.totalPackagedQty} pcs
-                      </td>
-                      <td className="p-3 text-right font-bold text-purple-700">
-                        {r.processedAmount} {r.processedUnit || 'Liter'}
-                      </td>
-                      <td className="p-3 text-center">
-                        <div className="inline-flex gap-1 text-[10px]">
-                          {r.botolQty > 0 && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-bold">{r.botolQty} Botol</span>}
-                          {r.cupQty > 0 && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-bold">{r.cupQty} Cup</span>}
-                          {r.plastikBantalQty > 0 && <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-bold">{r.plastikBantalQty} Plastik</span>}
-                        </div>
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase">
-                          Selesai
-                        </span>
-                      </td>
+        {/* TAB 2: LAPORAN SISA STOK BAHAN BAKU & KEMASAN TABLE */}
+        {activeView === 'STOK_BAHAN' && (
+          loading ? (
+            <div className="p-12 text-center"><LoadingSpinner text="Memuat Laporan Sisa Stok Bahan..." /></div>
+          ) : (
+            <div className="space-y-6">
+              <div className="overflow-x-auto">
+                <table className="w-full text-center text-[10px] md:text-[11px] border-collapse border border-slate-300 print:border-black font-mono">
+                  <thead>
+                    {/* Row 1 Header */}
+                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
+                      <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
+                      <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
+                      <th colSpan={materialUsage.length + 1} className="border border-slate-300 print:border-black px-2 py-2 font-sans bg-amber-50/80 text-amber-950 text-xs tracking-wider">
+                        SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)
+                      </th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
 
-        {/* VIEW 3: MATERIAL USAGE & SISA STOK REPORT */}
-        {activeView === 'MATERIALS' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="p-3">Kode</th>
-                  <th className="p-3">Nama Bahan</th>
-                  <th className="p-3">Kategori</th>
-                  <th className="p-3 text-right">Stok Awal</th>
-                  <th className="p-3 text-right">Digunakan (Pengolahan)</th>
-                  <th className="p-3 text-right">Penyesuaian (+)</th>
-                  <th className="p-3 text-right">Sisa Stok Akhir</th>
-                  <th className="p-3 text-center">Satuan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {materialUsage.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">
-                      Tidak ada data bahan kemasan.
-                    </td>
-                  </tr>
-                ) : (
-                  materialUsage.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3 font-bold text-slate-900">{m.code}</td>
-                      <td className="p-3 font-bold text-slate-900">{m.name}</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-bold">
-                          {m.category}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right text-slate-500 font-bold">{m.initialStock}</td>
-                      <td className="p-3 text-right text-red-600 font-bold">-{m.usedQty}</td>
-                      <td className="p-3 text-right text-emerald-600 font-bold">+{m.adjustmentQty}</td>
-                      <td className="p-3 text-right font-black text-slate-900 text-sm">{m.finalStock}</td>
-                      <td className="p-3 text-center text-slate-500">{m.unit || 'pcs'}</td>
+                    {/* Row 2 Header */}
+                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200 text-[10px]">
+                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-100/60 text-blue-950">
+                        SUSU SEGAR
+                      </th>
+                      {materialUsage.map((m) => (
+                        <th key={m.id} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-amber-100/40 text-slate-900 whitespace-nowrap">
+                          {m.name.toUpperCase()}
+                        </th>
+                      ))}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+
+                    {/* Row 3 Units Header */}
+                    <tr className="bg-slate-50 text-slate-500 text-[9px] font-mono">
+                      <td className="border border-slate-300 print:border-black px-1.5 py-1 font-bold text-blue-900 bg-blue-50">( LTR )</td>
+                      {materialUsage.map((m) => (
+                        <td key={m.id} className="border border-slate-300 print:border-black px-1.5 py-1">
+                          ( {(m.unit || 'PCS').toUpperCase()} )
+                        </td>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200 print:divide-black text-slate-800">
+                    {dailyLogs.map((log) => (
+                      <tr key={log.day} className="hover:bg-amber-50/40 transition-colors">
+                        <td className="border border-slate-300 print:border-black px-2 py-1 font-sans font-bold">{log.day}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 font-sans whitespace-nowrap">{log.dateStr}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-blue-950 bg-blue-50/30">
+                          {fmtNum(summary.sisaStokSusuSegar || 0)}
+                        </td>
+                        {materialUsage.map((m) => (
+                          <td key={m.id} className="border border-slate-300 print:border-black px-2 py-1 text-right text-slate-700 bg-slate-50/30 font-medium">
+                            {fmtNum(m.finalStock)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+
+                  {/* FOOTER TOTAL SISA STOK REAL-TIME */}
+                  <tfoot>
+                    <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-400 print:border-black print:bg-slate-200">
+                      <td colSpan={2} className="border border-slate-300 print:border-black px-2 py-2 text-center font-sans">
+                        SISA STOK SAAT INI (REAL-TIME)
+                      </td>
+                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 bg-blue-100/60 font-black text-xs">
+                        {fmtNum(summary.sisaStokSusuSegar || 0)}
+                      </td>
+                      {materialUsage.map((m) => (
+                        <td key={m.id} className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-slate-900 bg-amber-100/50 text-xs">
+                          {fmtNum(m.finalStock)}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )
         )}
       </div>
     </div>

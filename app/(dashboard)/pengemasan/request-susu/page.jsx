@@ -122,19 +122,19 @@ export default function RequestSusuPengemasanPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'MENUNGGU_PERSETUJUAN':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20"><Clock className="w-3.5 h-3.5" /> Menunggu Persetujuan</span>;
+        return <span className="text-slate-900 font-semibold">Menunggu Persetujuan</span>;
       case 'DISETUJUI':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20"><CheckCircle2 className="w-3.5 h-3.5" /> Disetujui (Menunggu Diproses)</span>;
+        return <span className="text-blue-600 font-semibold">Disetujui (Menunggu Diproses)</span>;
       case 'DIPROSES':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 border border-purple-500/20"><Package className="w-3.5 h-3.5" /> Sedang Disiapkan / Diproses</span>;
+        return <span className="text-purple-600 font-semibold">Sedang Disiapkan / Diproses</span>;
       case 'SIAP_DITERIMA':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 border border-teal-500/20 animate-pulse"><Truck className="w-3.5 h-3.5" /> Siap Diterima</span>;
+        return <span className="text-teal-600 font-semibold animate-pulse">Siap Diterima</span>;
       case 'DITERIMA':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"><CheckCircle2 className="w-3.5 h-3.5" /> Diterima</span>;
+        return <span className="text-emerald-600 font-semibold">Diterima</span>;
       case 'DITOLAK':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-600 border border-red-500/20"><XCircle className="w-3.5 h-3.5" /> Ditolak</span>;
+        return <span className="text-red-600 font-semibold">Ditolak</span>;
       default:
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">{status}</span>;
+        return <span className="text-slate-600 font-semibold">{status}</span>;
     }
   };
 
@@ -267,18 +267,14 @@ export default function RequestSusuPengemasanPage() {
                     <td className="py-3.5 px-4 text-slate-700 font-medium">
                       {req.createdBy?.name || 'Admin Pengemasan'}
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-amber-700">
+                    <td className="py-3.5 px-4 font-semibold text-slate-900">
                       {req.volumeLiters} Liter
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
                       {req.processingNeeds}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        req.priority === 'Mendesak'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
+                      <span className={req.priority === 'Mendesak' ? 'font-bold text-red-600' : 'text-slate-600 font-medium'}>
                         {req.priority || 'Normal'}
                       </span>
                     </td>

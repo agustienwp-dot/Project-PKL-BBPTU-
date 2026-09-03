@@ -259,14 +259,6 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-
-          <Link
-            href="/pengemasan"
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md shadow-emerald-900/10 transition-all shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Input Hasil Pengolahan</span>
-          </Link>
         </div>
 
         {/* 2. TOP GRID: SIAP PRODUKSI (Left 7 cols) & CATATAN AKTIVITAS TERAKHIR (Right 5 cols) */}

@@ -315,27 +315,21 @@ export default function StokBahanPage() {
                         <span className="text-amber-700 font-bold">&lt;= {mat.minimumStock}</span> /{' '}
                         <span className="text-red-700 font-bold">&lt;= {mat.criticalStock}</span>
                       </td>
-                      <td className="p-3.5 text-center">
+                      <td className="p-3.5 text-center font-bold text-xs">
                         {mat.status === 'Aman' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                            <CheckCircle2 className="w-3 h-3" /> Aman
-                          </span>
+                          <span className="text-emerald-700">Aman</span>
                         )}
                         {mat.status === 'Menipis' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
-                            <AlertTriangle className="w-3 h-3" /> Menipis
-                          </span>
+                          <span className="text-amber-700">Menipis</span>
                         )}
                         {mat.status === 'Kritis' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-800 text-[10px] font-black uppercase animate-pulse">
-                            <AlertTriangle className="w-3 h-3" /> Kritis
-                          </span>
+                          <span className="text-red-700">Kritis</span>
                         )}
                       </td>
                       <td className="p-3.5 text-center">
                         <button
                           onClick={() => openAdjustModal(mat.id)}
-                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                          className="text-emerald-700 hover:text-emerald-800 font-bold text-xs transition-colors cursor-pointer"
                         >
                           + Sesuaikan
                         </button>

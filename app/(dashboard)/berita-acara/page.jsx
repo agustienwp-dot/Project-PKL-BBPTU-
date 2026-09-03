@@ -550,27 +550,15 @@ function BeritaAcaraContent() {
                     <tr key={ba.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4 font-mono font-bold text-slate-900">{ba.nomorBa}</td>
                       <td className="p-4 font-medium text-slate-700">{dateStr}{shiftStr}</td>
-                      <td className="p-4">
+                      <td className="p-4 font-bold text-[11px] text-slate-900">
                         {isOlahan ? (
-                          <span className={`px-3 py-1 rounded-full font-bold text-[11px] border inline-flex items-center gap-1 ${
-                            ba.status === 'DITERIMA_PEMASARAN'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            📦 HASIL SUSU OLAHAN {ba.status === 'DITERIMA_PEMASARAN' ? '(DITERIMA)' : '(MENUNGGU PEMASARAN)'}
-                          </span>
+                          `HASIL SUSU OLAHAN ${ba.status === 'DITERIMA_PEMASARAN' ? '(DITERIMA)' : '(MENUNGGU PEMASARAN)'}`
                         ) : isPembelian ? (
-                          <span className="px-3 py-1 rounded-full font-bold text-[11px] bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
-                            🛒 PEMBELIAN
-                          </span>
+                          'PEMBELIAN'
                         ) : isHibah ? (
-                          <span className="px-3 py-1 rounded-full font-bold text-[11px] bg-purple-50 text-purple-700 border border-purple-200 inline-flex items-center gap-1">
-                            🎁 HIBAH
-                          </span>
+                          'HIBAH'
                         ) : (
-                          <span className="px-3 py-1 rounded-full font-bold text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
-                            🥛 SERAH TERIMA
-                          </span>
+                          'SERAH TERIMA'
                         )}
                       </td>
                       <td className="p-4 font-bold text-slate-800">{ba.penerimaName || ba.receiverName || '-'}</td>
