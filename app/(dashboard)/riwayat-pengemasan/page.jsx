@@ -307,10 +307,8 @@ export default function RiwayatPengemasanPage() {
             className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none"
           >
             <option value="">Semua Status Pengiriman</option>
+            <option value="DITERIMA">🟢 Masuk Stok Pemasaran</option>
             <option value="DRAFT">📋 DRAFT</option>
-            <option value="MENUNGGU_PENERIMAAN">🟡 Menunggu Penerimaan</option>
-            <option value="DITERIMA">🟢 Diterima Pemasaran</option>
-            <option value="PERLU_KOREKSI">⚠️ Perlu Koreksi</option>
           </select>
 
           <input

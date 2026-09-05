@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('../lib/prisma-client');
 const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
@@ -12,6 +12,7 @@ async function main() {
   const pemasaranPassword = await bcrypt.hash('pemasaran123', 10);
 
   // Clear existing transaction data
+  await prisma.notification.deleteMany({});
   await prisma.pelunasanPiutang.deleteMany({});
   await prisma.piutang.deleteMany({});
   await prisma.milkSale.deleteMany({});
@@ -226,20 +227,20 @@ async function main() {
     });
   }
 
-  // 4. Generate Dokumen BAST (Hardfile Penyerahan Susu Segar) across August
-  console.log('📜 Generating Dokumen BAST Hardfile (1 - 31 Agustus 2026)...');
+  // 4. Generate Dokumen BAST (Permintaan Susu Segar oleh Pemasaran untuk Farm) across August
+  console.log('📜 Generating Dokumen BAST Permintaan Pemasaran (1 - 31 Agustus 2026)...');
   const bastDemands = [
-    { type: 'PENJUALAN_LANGSUNG', client: 'Kedai Susu Segar Mas Budi', note: 'Permintaan pengiriman susu fresh harian (Penjualan Langsung).' },
-    { type: 'HIBAH', client: 'Program CSR Gizi Anak Sekolah Baturraden', note: 'Penyaluran Susu Hibah Program Nutrisi BBPTUHPT.' },
-    { type: 'PENJUALAN_LANGSUNG', client: 'Koperasi Susu Mulia', note: 'Order pembelian susu mentah segar ber-BAST resmi.' },
-    { type: 'HIBAH', client: 'Penyaluran Gizi Posyandu & Warga Baturraden', note: 'Penyaluran Susu Hibah Masyarakat BBPTUHPT.' },
+    { type: 'PENJUALAN_LANGSUNG', client: 'Kedai Susu Segar Mas Budi', note: 'Permintaan susu fresh untuk distribusi penjualan langsung.' },
+    { type: 'HIBAH', client: 'Posyandu Melati Baturraden', note: 'Permintaan susu fresh untuk program hibah balita & posyandu.' },
+    { type: 'PENJUALAN_LANGSUNG', client: 'Koperasi Susu Mulia', note: 'Permintaan pasokan susu fresh ber-BAST resmi.' },
+    { type: 'HIBAH', client: 'Panti Asuhan Al-Hikmah Baturraden', note: 'Permintaan susu fresh hibah santunan sosial.' },
   ];
 
   for (let day = 1; day <= 31; day += 2) {
     const d = new Date(2026, 7, day, 9, 0, 0);
     const dayStr = day < 10 ? `0${day}` : `${day}`;
     const dateCode = `202608${dayStr}`;
-    const nomorBast = `BAST/BBPTU/${dateCode}/${1000 + day}`;
+    const nomorBast = `BAST/PEMASARAN/${dateCode}/${1000 + day}`;
     const vol = 120 + ((day * 7) % 60);
     const demand = bastDemands[day % bastDemands.length];
     const isPending = day >= 20;
@@ -252,16 +253,16 @@ async function main() {
         volumeLiters: vol,
         jenisPermintaan: demand.type,
         instansiPenerima: demand.client,
-        pengirimNama: adminFarm.name,
-        pengirimRole: 'ADMIN_FARM',
-        penerimaNama: isPending ? null : adminPemasaran.name,
-        penerimaRole: isPending ? null : 'ADMIN_PEMASARAN',
+        pengirimNama: adminPemasaran.name,
+        pengirimRole: 'ADMIN_PEMASARAN',
+        penerimaNama: isPending ? 'Unit Farm Produksi BBPTUHPT' : adminFarm.name,
+        penerimaRole: 'ADMIN_FARM',
         status: isPending ? 'MENUNGGU_KONFIRMASI' : 'DITERIMA',
         confirmedAt: isPending ? null : d,
         catatan: isPending
-          ? `Permintaan: ${demand.note}. Hardfile BAST diserahkan tanggal ${day} Agustus 2026.`
-          : `Permintaan: ${demand.note}. Dokumen BAST hardfile fisik tanggal ${day} Agustus 2026 telah diterima.`,
-        createdById: adminFarm.id,
+          ? `Permintaan: ${demand.note}. Menunggu serah terima fisik dari Farm tanggal ${day} Agustus 2026.`
+          : `Permintaan: ${demand.note}. Telah diserahterimakan fisik oleh Farm tanggal ${day} Agustus 2026.`,
+        createdById: adminPemasaran.id,
       },
     });
   }
@@ -327,6 +328,35 @@ async function main() {
         details: l.details,
       },
     });
+  }
+
+  // 7. Seed Sample Notifications for Pemasaran
+  console.log('🔔 Generating Initial Inflow Notifications...');
+  const notifsData = [
+    {
+      title: 'Stok Baru Masuk: Susu Pasteurisasi Rasa Cokelat & Stroberi',
+      message: 'Admin Pengolahan telah menginput batch pengemasan Susu Pasteurisasi Rasa (Botol 250ml & Cup 115ml) sebanyak 500 pcs ke stok Pemasaran.',
+      type: 'STOCK_ADDED',
+      targetRole: 'ADMIN_PEMASARAN',
+      senderName: adminPengemasan.name,
+      senderRole: 'ADMIN_PENGEMASAN',
+      link: '/pemasaran/terima-data',
+      metadata: JSON.stringify({ category: 'Susu', subtype: 'Susu Pasteurisasi', variant: 'Cokelat & Stroberi', quantity: 500, unit: 'pcs' }),
+    },
+    {
+      title: 'Stok Baru Masuk: Yogurt Aneka Buah',
+      message: 'Admin Pengolahan telah menginput batch Yogurt Botol 200ml sebanyak 250 pcs ke stok Pemasaran.',
+      type: 'STOCK_ADDED',
+      targetRole: 'ADMIN_PEMASARAN',
+      senderName: adminPengemasan.name,
+      senderRole: 'ADMIN_PENGEMASAN',
+      link: '/pemasaran/terima-data',
+      metadata: JSON.stringify({ category: 'Yogurt', variant: 'Plain & Aneka Buah', quantity: 250, unit: 'pcs' }),
+    },
+  ];
+
+  for (const n of notifsData) {
+    await prisma.notification.create({ data: n });
   }
 
   console.log('🎉 SEEDING DATA 1 - 31 AGUSTUS 2026 BERHASIL SELESAI (100% SINKRON TERINTEGRASI)!');

@@ -98,15 +98,42 @@ export async function POST(request) {
         jenisProduk: jenisProduk.trim(),
         kemasan: kemasan.trim(),
         jumlah: numJumlah,
-        status: 'MENUNGGU_PENERIMAAN',
+        status: 'DITERIMA',
+        receivedAt: new Date(),
+        receivedByName: 'Otomatis Masuk Stok',
+        condition: 'Sesuai',
         notes: notes ? notes.trim() : null,
         createdById: authUser.userId || authUser.id || null,
       },
     });
 
+    // Create Notification for Admin Pemasaran
+    try {
+      await prisma.notification.create({
+        data: {
+          title: `Stok Produk Olahan: ${jenisProduk.trim()} (${kemasan.trim()})`,
+          message: `${authUser.name || 'Admin Pengolahan'} telah menambahkan stok ${jenisProduk.trim()} (${kemasan.trim()}) sebanyak ${numJumlah} pcs ke stok Pemasaran.`,
+          type: 'STOCK_ADDED',
+          targetRole: 'ADMIN_PEMASARAN',
+          senderId: authUser.userId || authUser.id || null,
+          senderName: authUser.name || authUser.email,
+          senderRole: authUser.role || 'ADMIN_PENGEMASAN',
+          link: '/pemasaran/terima-data',
+          metadata: JSON.stringify({
+            productId: newProduct.id,
+            jenisProduk: jenisProduk.trim(),
+            kemasan: kemasan.trim(),
+            jumlah: numJumlah,
+          }),
+        },
+      });
+    } catch (notifErr) {
+      console.error('Error creating notification in POST /api/packaged-products:', notifErr);
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Berhasil menginput hasil pengemasan produk olahan (Menunggu Konfirmasi Pemasaran)!',
+      message: 'Berhasil menginput data produk olahan dan langsung masuk ke stok pemasaran!',
       data: newProduct,
     });
   } catch (error) {

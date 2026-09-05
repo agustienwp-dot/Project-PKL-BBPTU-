@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(request, { params }) {
   try {
     const authUser = getAuthUser(request);
-    const allowed = ['ADMIN_PEMASARAN', 'SUPERADMIN'];
+    const allowed = ['ADMIN_PEMASARAN', 'ADMIN_FARM', 'SUPERADMIN'];
     if (!authUser || !requireRole(authUser, allowed)) {
       return NextResponse.json(
-        { success: false, message: 'Akses ditolak: Hanya Admin Pemasaran atau Superadmin yang dapat mengonfirmasi serah terima BAST.' },
+        { success: false, message: 'Akses ditolak: Hanya Admin Pemasaran, Admin Farm, atau Superadmin yang dapat mengonfirmasi serah terima BAST.' },
         { status: 403 }
       );
     }
@@ -34,16 +34,21 @@ export async function POST(request, { params }) {
       );
     }
 
-    const receiverName = (authUser.name || 'Admin Pemasaran & Stok').trim();
+    const verifierName = (authUser.name || (authUser.role === 'ADMIN_FARM' ? 'Admin Farm Produksi' : 'Admin Pemasaran')).trim();
+    const verifierRole = authUser.role || 'ADMIN_PEMASARAN';
+
+    // If Pemasaran created it, recipient/handover partner is Farm, or vice-versa
+    const penerimaNama = doc.penerimaNama || verifierName;
+    const penerimaRole = doc.penerimaRole || verifierRole;
 
     const updatedDoc = await prisma.bastDocument.update({
       where: { id },
       data: {
         status: 'DITERIMA',
-        penerimaNama: receiverName,
-        penerimaRole: authUser.role || 'ADMIN_PEMASARAN',
+        penerimaNama: penerimaNama,
+        penerimaRole: penerimaRole,
         confirmedAt: new Date(),
-        catatan: catatan ? `${doc.catatan || ''}\n[Pemasaran Notes]: ${catatan.trim()}` : doc.catatan,
+        catatan: catatan ? `${doc.catatan || ''}\n[Catatan Konfirmasi ${verifierName}]: ${catatan.trim()}` : doc.catatan,
       },
     });
 

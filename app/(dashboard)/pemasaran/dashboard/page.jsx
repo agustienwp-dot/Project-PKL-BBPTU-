@@ -29,7 +29,12 @@ import {
   ExternalLink,
   Activity,
   Sun,
-  Sunset
+  Sunset,
+  Bell,
+  ShoppingCart,
+  Send,
+  Plus,
+  ChevronRight
 } from 'lucide-react';
 
 export default function DashboardPemasaranPage() {
@@ -37,22 +42,26 @@ export default function DashboardPemasaranPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // Raw Datasets from the 3 integrated modules
+  // Raw Datasets from the integrated modules
   const [farmSessions, setFarmSessions] = useState([]);
   const [farmDailyList, setFarmDailyList] = useState([]);
   const [farmSummary, setFarmSummary] = useState({});
   const [basts, setBasts] = useState([]);
   const [packagings, setPackagings] = useState([]);
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [recentNotifs, setRecentNotifs] = useState([]);
 
   const [chartFilter, setChartFilter] = useState('7'); // '7' or '30'
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [farmRes, bastRes, pkgRes] = await Promise.all([
+      const [farmRes, bastRes, pkgRes, salesRes, notifRes] = await Promise.all([
         api.get('/pemasaran/farm-recap?sortOrder=desc').catch(() => ({ data: { data: [], dailyList: [], summary: {} } })),
         api.get('/bast').catch(() => ({ data: { data: [] } })),
         api.get('/packaged-products?sortOrder=desc').catch(() => ({ data: { data: [] } })),
+        api.get('/milk-sales?sumber=OLAHAN').catch(() => ({ data: { data: [] } })),
+        api.get('/notifications?limit=6').catch(() => ({ data: { data: [] } })),
       ]);
 
       if (farmRes.data?.success) {
@@ -66,6 +75,12 @@ export default function DashboardPemasaranPage() {
       if (pkgRes.data?.success) {
         setPackagings(pkgRes.data.data || []);
       }
+      if (salesRes.data?.success) {
+        setSalesHistory(salesRes.data.data || []);
+      }
+      if (notifRes.data?.success) {
+        setRecentNotifs(notifRes.data.data || []);
+      }
     } catch (err) {
       console.error('Error loading pemasaran dashboard:', err);
       setToast({ type: 'error', message: 'Gagal memuat data flow realtime pemasaran.' });
@@ -78,16 +93,81 @@ export default function DashboardPemasaranPage() {
     loadDashboardData();
   }, []);
 
+  // Map Packagings with realtime sold count & remaining stock (matching /pemasaran/terima-data)
+  const packagingsWithStock = useMemo(() => {
+    return packagings.map((pkg) => {
+      const initialStock = parseFloat(pkg.jumlah || pkg.totalPackagedQty || 0);
+      const soldQty = salesHistory
+        .filter((s) => {
+          if (s.produkRefId) return s.produkRefId === pkg.id;
+          return false;
+        })
+        .reduce((acc, s) => acc + (parseFloat(s.jumlah) || parseFloat(s.quantity) || 0), 0);
+      const remainingStock = Math.max(0, initialStock - soldQty);
+      return {
+        ...pkg,
+        initialStock,
+        soldQty,
+        remainingStock,
+      };
+    });
+  }, [packagings, salesHistory]);
+
+  // Groupings for the 4 UHT Categories
+  const susuRasaItems = useMemo(() => {
+    return packagingsWithStock.filter((p) => {
+      const name = (p.jenisProduk || '').toLowerCase();
+      return name.includes('rasa') || (name.includes('susu') && !name.includes('original') && !name.includes('yogurt') && !name.includes('keju'));
+    });
+  }, [packagingsWithStock]);
+
+  const susuOriginalItems = useMemo(() => {
+    return packagingsWithStock.filter((p) => {
+      const name = (p.jenisProduk || '').toLowerCase();
+      return name.includes('original') || name.includes('plain');
+    });
+  }, [packagingsWithStock]);
+
+  const yogurtItems = useMemo(() => {
+    return packagingsWithStock.filter((p) => {
+      const name = (p.jenisProduk || '').toLowerCase();
+      return name.includes('yogurt');
+    });
+  }, [packagingsWithStock]);
+
+  const kejuItems = useMemo(() => {
+    return packagingsWithStock.filter((p) => {
+      const name = (p.jenisProduk || '').toLowerCase();
+      return name.includes('keju');
+    });
+  }, [packagingsWithStock]);
+
+  // UHT Category Stats
+  const getCatStats = (items) => {
+    const masuk = items.reduce((acc, p) => acc + (p.initialStock || 0), 0);
+    const terjual = items.reduce((acc, p) => acc + (p.soldQty || 0), 0);
+    const sisa = Math.max(0, masuk - terjual);
+    return { masuk, terjual, sisa };
+  };
+
+  const susuRasaStats = useMemo(() => getCatStats(susuRasaItems), [susuRasaItems]);
+  const susuOriginalStats = useMemo(() => getCatStats(susuOriginalItems), [susuOriginalItems]);
+  const yogurtStats = useMemo(() => getCatStats(yogurtItems), [yogurtItems]);
+  const kejuStats = useMemo(() => getCatStats(kejuItems), [kejuItems]);
+
+  const totalUhtMasuk = useMemo(() => packagingsWithStock.reduce((acc, p) => acc + p.initialStock, 0), [packagingsWithStock]);
+  const totalUhtTerjual = useMemo(() => packagingsWithStock.reduce((acc, p) => acc + p.soldQty, 0), [packagingsWithStock]);
+  const totalUhtSisaStok = useMemo(() => Math.max(0, totalUhtMasuk - totalUhtTerjual), [totalUhtMasuk, totalUhtTerjual]);
+
   // Calculations for KPI Cards
-  const totalSusuFreshMasuk = farmSummary.totalSusuSiapOlah || 0;
+  const totalProduksiGross = farmSummary.totalProduksiGross || 0;
+  const totalPedetAfkir = (farmSummary.totalPedet || 0) + (farmSummary.totalAfkir || 0);
   const totalBastDeduction = farmSummary.totalBastDeduction || 0;
-  const netSusuFreshTersedia = farmSummary.netSusuFreshTersedia || Math.max(0, totalSusuFreshMasuk - totalBastDeduction);
-  const totalOlahanUnits = packagings.reduce((acc, p) => acc + (p.jumlah || p.totalPackagedQty || 0), 0);
+  const netSusuFreshTersedia = farmSummary.netSusuFreshTersedia || 0;
 
   const pendingFarmCount = farmSessions.filter((f) => f.status === 'MENUNGGU_VERIFIKASI').length;
-  const pendingBastCount = basts.filter((b) => b.status === 'MENUNGGU_KONFIRMASI').length;
+  const pendingBastCount = basts.filter((b) => b.status === 'MENUNGGU_KONFIRMASI' || b.status === 'DIKIRIM_KE_FARM').length;
   const pendingPkgCount = packagings.filter((p) => p.status === 'MENUNGGU_PENERIMAAN').length;
-  const totalPendingAll = pendingFarmCount + pendingBastCount + pendingPkgCount;
 
   if (loading) {
     return <LoadingSpinner text="Memuat Live Flow Data Masuk Realtime..." />;
@@ -172,14 +252,14 @@ export default function DashboardPemasaranPage() {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-extrabold text-slate-800 block">Surat BAST Permintaan</span>
+              <span className="text-sm font-extrabold text-slate-800 block">Distribusi Susu Segar</span>
               {pendingBastCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[9px] font-black bg-rose-500 text-white rounded-full">
                   {pendingBastCount}
                 </span>
               )}
             </div>
-            <span className="text-xs text-slate-500">Pengesahan surat fisik TTD basah</span>
+            <span className="text-xs text-slate-500">Permintaan & BAST serah terima susu segar</span>
           </div>
         </Link>
 
@@ -192,14 +272,14 @@ export default function DashboardPemasaranPage() {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-extrabold text-slate-800 block">UHT</span>
+              <span className="text-sm font-extrabold text-slate-800 block">UHT & Olahan</span>
               {pendingPkgCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[9px] font-black bg-purple-600 text-white rounded-full">
                   {pendingPkgCount}
                 </span>
               )}
             </div>
-            <span className="text-xs text-slate-500">Susu rasa, yogurt, & keju</span>
+            <span className="text-xs text-slate-500">Susu rasa, original, yogurt, keju</span>
           </div>
         </Link>
 
@@ -224,12 +304,12 @@ export default function DashboardPemasaranPage() {
             <Milk className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Susu Fresh Masuk</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Susu Masuk (Gross)</p>
             <h3 className="text-2xl font-black text-slate-800">
-              {totalSusuFreshMasuk.toLocaleString('id-ID')}{' '}
+              {totalProduksiGross.toLocaleString('id-ID')}{' '}
               <span className="text-xs font-semibold text-slate-500">Liter</span>
             </h3>
-            <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Total siap olah dari Farm</p>
+            <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Total perah Farm kandang</p>
           </div>
         </div>
 
@@ -238,7 +318,7 @@ export default function DashboardPemasaranPage() {
             <FileText className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Potongan BAST Fisik</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Distribusi & Hibah (BAST)</p>
             <h3 className="text-2xl font-black text-amber-800">
               {totalBastDeduction.toLocaleString('id-ID')}{' '}
               <span className="text-xs font-semibold text-slate-500">Liter</span>
@@ -247,28 +327,36 @@ export default function DashboardPemasaranPage() {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-purple-50 text-purple-700">
+        {/* UHT CARD - LIVE SISA STOK & TERJUAL */}
+        <div className="bg-white p-5 rounded-2xl border border-purple-200 shadow-sm flex items-center gap-4 bg-gradient-to-br from-purple-50/40 to-white">
+          <div className="p-3.5 rounded-2xl bg-purple-700 text-white">
             <Package className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Produk UHT</p>
-            <h3 className="text-2xl font-black text-slate-800">
-              {totalOlahanUnits.toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-semibold text-slate-500">Botol/Cup</span>
+            <p className="text-xs font-bold text-purple-900 uppercase tracking-wider">Stok Produk UHT Ready</p>
+            <h3 className="text-2xl font-black text-purple-950">
+              {totalUhtSisaStok.toLocaleString('id-ID')}{' '}
+              <span className="text-xs font-semibold text-purple-700">pcs</span>
             </h3>
-            <p className="text-[11px] text-purple-600 font-semibold mt-0.5">Dari unit Pengolahan UHT</p>
+            <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+              Masuk: <strong className="text-slate-800">{totalUhtMasuk.toLocaleString('id-ID')}</strong> | Terjual: <strong className="text-emerald-700">{totalUhtTerjual.toLocaleString('id-ID')}</strong>
+            </p>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-[#0E5A36] to-[#1E3F20] text-white p-5 rounded-2xl shadow-sm flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-white/10 text-emerald-300">
+        <div className="bg-white p-5 rounded-2xl border border-emerald-300 shadow-sm flex items-center gap-4 bg-gradient-to-br from-emerald-50/50 to-white">
+          <div className="p-3.5 rounded-2xl bg-emerald-700 text-white">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-emerald-200 uppercase tracking-wider">Integrasi Selisih</p>
-            <h3 className="text-2xl font-black text-white">0 Liter</h3>
-            <p className="text-[11px] text-emerald-300 font-semibold mt-0.5">100% Valid & Sinkron</p>
+            <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Diterima Pengolahan (Net)</p>
+            <h3 className="text-2xl font-black text-emerald-950">
+              {netSusuFreshTersedia.toLocaleString('id-ID')}{' '}
+              <span className="text-xs font-semibold text-emerald-700">Liter</span>
+            </h3>
+            <p className="text-[11px] text-emerald-700 font-bold mt-0.5 flex items-center gap-1">
+              <span>✓ 0 L Selisih (100% Pas)</span>
+            </p>
           </div>
         </div>
       </div>
@@ -418,91 +506,205 @@ export default function DashboardPemasaranPage() {
           })()}
         </div>
 
-        {/* GRAFIK 2: KOMPOSISI PRODUK JADI UHT & KEMASAN */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 flex flex-col justify-between">
+        {/* GRAFIK 2 / CARD: KOMPOSISI & STATUS STOK 4 KATEGORI PRODUK UHT */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-purple-100 text-purple-800">
-                  <Package className="w-5 h-5 text-purple-700" />
+                  <PackageCheck className="w-5 h-5 text-purple-700" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-800">Komposisi Produk UHT</h3>
-                  <p className="text-xs text-slate-500">Hasil kemasan siap jual & distribusi</p>
+                  <h3 className="text-base font-black text-slate-800">Stok Produk Olahan / UHT</h3>
+                  <p className="text-xs text-slate-500">Live breakdown 4 Kategori Utama</p>
+                </div>
+              </div>
+              <Link
+                href="/pemasaran/terima-data"
+                className="text-[11px] font-black text-purple-700 hover:text-purple-900 flex items-center gap-1"
+              >
+                <span>Buka UHT</span>
+                <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* 4 Categories Live Breakdown */}
+            <div className="space-y-3 pt-3">
+              {/* 1. Susu Pasteurisasi Rasa */}
+              <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/70 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-amber-950 flex items-center gap-1.5">
+                    <span>🍫</span>
+                    <span>Susu Rasa (Cokelat & Stroberi)</span>
+                  </span>
+                  <span className="font-mono font-black text-amber-900 text-sm">
+                    {susuRasaStats.sisa.toLocaleString('id-ID')} pcs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                  <span>Masuk: {susuRasaStats.masuk.toLocaleString('id-ID')} pcs</span>
+                  <span className="text-emerald-700 font-bold">Terjual: {susuRasaStats.terjual.toLocaleString('id-ID')} pcs</span>
+                </div>
+              </div>
+
+              {/* 2. Susu Pasteurisasi Original */}
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                    <span>🥛</span>
+                    <span>Susu Pasteurisasi Original</span>
+                  </span>
+                  <span className="font-mono font-black text-slate-900 text-sm">
+                    {susuOriginalStats.sisa.toLocaleString('id-ID')} pcs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                  <span>Masuk: {susuOriginalStats.masuk.toLocaleString('id-ID')} pcs</span>
+                  <span className="text-emerald-700 font-bold">Terjual: {susuOriginalStats.terjual.toLocaleString('id-ID')} pcs</span>
+                </div>
+              </div>
+
+              {/* 3. Yogurt */}
+              <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-200/70 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-purple-950 flex items-center gap-1.5">
+                    <span>🍦</span>
+                    <span>Yogurt (Plain & Buah)</span>
+                  </span>
+                  <span className="font-mono font-black text-purple-900 text-sm">
+                    {yogurtStats.sisa.toLocaleString('id-ID')} pcs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                  <span>Masuk: {yogurtStats.masuk.toLocaleString('id-ID')} pcs</span>
+                  <span className="text-emerald-700 font-bold">Terjual: {yogurtStats.terjual.toLocaleString('id-ID')} pcs</span>
+                </div>
+              </div>
+
+              {/* 4. Keju */}
+              <div className="p-3 rounded-2xl bg-amber-50/40 border border-amber-200/50 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-amber-900 flex items-center gap-1.5">
+                    <span>🧀</span>
+                    <span>Keju Olahan & Fresh</span>
+                  </span>
+                  <span className="font-mono font-black text-amber-800 text-sm">
+                    {kejuStats.sisa.toLocaleString('id-ID')} pcs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                  <span>Masuk: {kejuStats.masuk.toLocaleString('id-ID')} pcs</span>
+                  <span className="text-emerald-700 font-bold">Terjual: {kejuStats.terjual.toLocaleString('id-ID')} pcs</span>
                 </div>
               </div>
             </div>
-
-            {/* Packaging Breakdown List */}
-            {(() => {
-              const botolCount = packagings.filter(p => (p.kemasan || '').toLowerCase().includes('botol')).reduce((acc, p) => acc + (p.jumlah || 0), 0);
-              const cupCount = packagings.filter(p => (p.kemasan || '').toLowerCase().includes('cup')).reduce((acc, p) => acc + (p.jumlah || 0), 0);
-              const plastikCount = packagings.filter(p => (p.kemasan || '').toLowerCase().includes('plastik') || (p.kemasan || '').toLowerCase().includes('pouch')).reduce((acc, p) => acc + (p.jumlah || 0), 0);
-              const totalItems = totalOlahanUnits > 0 ? totalOlahanUnits : 1;
-
-              const botolPct = Math.round((botolCount / totalItems) * 100);
-              const cupPct = Math.round((cupCount / totalItems) * 100);
-              const plastikPct = Math.round((plastikCount / totalItems) * 100);
-
-              return (
-                <div className="space-y-4 pt-4">
-                  {/* Botol */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-amber-900">Kemasan Botol (130ml, 200ml, 250ml)</span>
-                      <span className="text-slate-800 font-mono font-black">{botolCount.toLocaleString('id-ID')} pcs ({botolPct}%)</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${botolPct}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Cup */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-blue-900">Kemasan Cup (100ml, 115ml)</span>
-                      <span className="text-slate-800 font-mono font-black">{cupCount.toLocaleString('id-ID')} pcs ({cupPct}%)</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${cupPct}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Plastik Bantal */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-emerald-900">Plastik Bantal / Pouch (200ml, 500ml)</span>
-                      <span className="text-slate-800 font-mono font-black">{plastikCount.toLocaleString('id-ID')} pcs ({plastikPct}%)</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className="bg-emerald-600 h-full rounded-full transition-all duration-500" style={{ width: `${plastikPct}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Total Summary Box */}
-                  <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-1 mt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-300">Total Unit Produk Jadi</span>
-                      <span className="text-xl font-black text-amber-400">{totalOlahanUnits.toLocaleString('id-ID')} pcs</span>
-                    </div>
-                    <p className="text-[10px] text-emerald-300 font-semibold">Tersinkronisasi dengan unit pengolahan</p>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
 
-          <div className="pt-3 border-t border-slate-100">
-            <Link
-              href="/pemasaran/terima-data"
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <span>Lihat Detail UHT</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+          {/* Total Summary Footer */}
+          <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-1.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-300">Total Sisa Stok Siap Distribusi:</span>
+              <span className="text-xl font-black text-amber-400 font-mono">
+                {totalUhtSisaStok.toLocaleString('id-ID')} pcs
+              </span>
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-400 border-t border-slate-800 pt-1">
+              <span>Total Diterima: {totalUhtMasuk.toLocaleString('id-ID')} pcs</span>
+              <span className="text-emerald-400 font-bold">Total Terjual: {totalUhtTerjual.toLocaleString('id-ID')} pcs</span>
+            </div>
           </div>
         </div>
 
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 6. AKTIVITAS & NOTIFIKASI STOK MASUK TERBARU DARI ADMIN PENGOLAHAN         */}
+      {/* ========================================================================= */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+              <Bell className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800">
+                Arus Notifikasi & Stok Masuk dari Unit Pengolahan
+              </h3>
+              <p className="text-xs text-slate-500">
+                Riwayat batch produk olahan yang baru ditambahkan ke stok pemasaran
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/pemasaran/terima-data"
+            className="px-4 py-2 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"
+          >
+            <span>Kelola di Menu UHT</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {recentNotifs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {recentNotifs.slice(0, 6).map((notif) => {
+              let meta = null;
+              if (notif.metadata) {
+                try {
+                  meta = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
+                } catch (e) {}
+              }
+
+              return (
+                <div
+                  key={notif.id}
+                  className={`p-4 rounded-2xl border transition-all space-y-2 relative flex flex-col justify-between ${
+                    !notif.isRead
+                      ? 'bg-emerald-50/50 border-emerald-300 shadow-sm'
+                      : 'bg-slate-50/50 border-slate-200'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 uppercase tracking-wider">
+                        {notif.type || 'STOK_MASUK'}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(notif.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+
+                    <h4 className="text-xs font-black text-slate-900 leading-snug">
+                      {notif.title}
+                    </h4>
+
+                    <p className="text-[11px] text-slate-600 line-clamp-2 leading-snug">
+                      {notif.message}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
+                    <span className="text-slate-500 font-semibold">
+                      Oleh: <strong>{notif.senderName || 'Admin Pengolahan'}</strong>
+                    </span>
+                    <Link
+                      href={notif.link || '/pemasaran/terima-data'}
+                      className="font-black text-emerald-800 hover:text-emerald-950 flex items-center gap-0.5"
+                    >
+                      <span>Lihat Stok</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            Belum ada notifikasi stok masuk baru.
+          </div>
+        )}
       </div>
     </div>
   );

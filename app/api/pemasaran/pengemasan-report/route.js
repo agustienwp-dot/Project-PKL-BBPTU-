@@ -77,18 +77,16 @@ function computeRowTotals(data) {
   };
 }
 
-// Generate 31 full days of monthly records for August 2026 (Dates 1 to 31)
-function generateMonthlyRecords() {
+function generate7DaysRecords() {
   const records = [];
   const baseYear = 2026;
-  const baseMonth = 8; // August
+  const baseMonth = 9; // September
 
-  for (let day = 1; day <= 31; day++) {
+  for (let day = 1; day <= 7; day++) {
     const dayStr = day < 10 ? `0${day}` : `${day}`;
-    const dateStr = `${baseYear}-08-${dayStr}`;
+    const dateStr = `${baseYear}-09-${dayStr}`;
 
-    // Realistic fluctuating values per day
-    const factor = 1 + ((day % 5) - 2) * 0.05;
+    const factor = 1 + ((day % 3) - 1) * 0.05;
     const tgs = Math.round(120 * factor);
     const lpk = Math.round(150 * factor);
     const mgl = Math.round(110 * factor);
@@ -108,10 +106,10 @@ function generateMonthlyRecords() {
     const lainYog = Math.round(70 * factor);
     const hibInt = Math.round(30 * factor);
     const hibEks = Math.round(40 * factor);
-    const rusak = day % 3 === 0 ? 15 : day % 2 === 0 ? 10 : 8;
+    const rusak = day % 2 === 0 ? 10 : 5;
 
     const row = computeRowTotals({
-      id: `rep-202608-${dayStr}`,
+      id: `rep-202609-${dayStr}`,
       tanggal: dateStr,
       farmTgs: tgs,
       farmLpk: lpk,
@@ -131,10 +129,10 @@ function generateMonthlyRecords() {
       hibahInternal115ml: hibInt,
       hibahEksternal200ml: hibEks,
       rusakAfkir: rusak,
-      status: day >= 20 ? 'MENUNGGU_PENERIMAAN' : 'DITERIMA',
-      receivedAt: day < 20 ? new Date(`${dateStr}T14:30:00Z`).toISOString() : null,
-      receivedByName: day < 20 ? 'Admin Pemasaran' : null,
-      notes: `Laporan pengolahan & distribusi harian tanggal ${day} Agustus 2026.`,
+      status: 'DITERIMA',
+      receivedAt: new Date(`${dateStr}T14:30:00Z`).toISOString(),
+      receivedByName: 'Admin Pemasaran',
+      notes: `Laporan pengolahan & distribusi harian tanggal ${day} September 2026.`,
       createdAt: new Date(`${dateStr}T08:00:00Z`).toISOString(),
     });
 
@@ -144,7 +142,7 @@ function generateMonthlyRecords() {
   return records;
 }
 
-let customReportStore = generateMonthlyRecords();
+let customReportStore = generate7DaysRecords();
 
 export async function GET(request) {
   try {

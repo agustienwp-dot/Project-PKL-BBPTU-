@@ -240,7 +240,7 @@ export default function PengemasanReportTable({
 
       // Under Hasil Pengolahan
       worksheet.mergeCells('G5', 'J6');
-      worksheet.getCell('G5').value = 'Susu Pasturisasi (Botol/Cup)';
+      worksheet.getCell('G5').value = 'Susu Pasturisasi (Botol/Cup/Bantal)';
       worksheet.mergeCells('K5', 'K7');
       worksheet.getCell('K5').value = 'Yogurt Ukuran 200 ml (Botol)';
       worksheet.mergeCells('L5', 'L7');
@@ -706,7 +706,7 @@ export default function PengemasanReportTable({
 
                 {/* Under Hasil Pengolahan */}
                 <th colSpan={4} rowSpan={2} className="border border-[#2b592e] px-2 py-1.5">
-                  Susu Pasturisasi (Botol/Cup)
+                  Susu Pasturisasi (Botol/Cup/Bantal)
                 </th>
                 <th rowSpan={3} className="border border-[#2b592e] px-2 py-1.5 w-24">
                   Yogurt Ukuran 200 ml (Botol)

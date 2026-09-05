@@ -18,7 +18,9 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Layers
+  Layers,
+  Milk,
+  Check
 } from 'lucide-react';
 
 export default function PengemasanPage() {
@@ -51,6 +53,13 @@ export default function PengemasanPage() {
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [sendingPkg, setSendingPkg] = useState(null);
   const [deletingPkg, setDeletingPkg] = useState(null);
+
+  // Request Fresh Milk Modal
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestDate, setRequestDate] = useState(new Date().toISOString().split('T')[0]);
+  const [requestVolume, setRequestVolume] = useState('');
+  const [requestNotes, setRequestNotes] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -265,6 +274,40 @@ export default function PengemasanPage() {
     }
   };
 
+  const handleRequestFreshMilk = async () => {
+    if (!requestVolume || parseFloat(requestVolume) <= 0) {
+      setToast({ type: 'error', message: 'Volume permintaan harus lebih dari 0 Liter' });
+      return;
+    }
+    setSubmittingRequest(true);
+    try {
+      const res = await api.post('/bast', {
+        tanggal: requestDate,
+        volumeLiters: parseFloat(requestVolume),
+        jenisPermintaan: 'PENGOLAHAN_UHT',
+        instansiPenerima: 'Bagian Pemasaran',
+        catatan: requestNotes || 'Permintaan susu segar untuk pengolahan UHT',
+        status: 'MENUNGGU_KONFIRMASI'
+      });
+
+      if (res.data?.success) {
+        setToast({
+          type: 'success',
+          message: `Berhasil mengajukan permintaan susu segar sebanyak ${requestVolume} L! Menunggu konfirmasi Pemasaran.`,
+        });
+        setShowRequestModal(false);
+      }
+    } catch (err) {
+      console.error('Error requesting fresh milk:', err);
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || 'Gagal mengajukan permintaan susu segar.',
+      });
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
   const filteredPackagings = packagings.filter((p) => {
     const q = searchQuery.toLowerCase();
     const cat = (p.productCategory || '').toLowerCase();
@@ -294,13 +337,27 @@ export default function PengemasanPage() {
         </div>
 
         {canManage && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Input Hasil Pengemasan</span>
-          </button>
+          <div className="flex flex-wrap gap-2.5">
+            <button
+              onClick={() => {
+                setRequestDate(new Date().toISOString().split('T')[0]);
+                setRequestVolume('');
+                setRequestNotes('');
+                setShowRequestModal(true);
+              }}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-amber-600 text-white hover:bg-amber-700 rounded-2xl text-xs font-bold shadow-md transition-all"
+            >
+              <Milk className="w-4 h-4" />
+              <span>Ajukan Permintaan Susu</span>
+            </button>
+            <button
+              onClick={openAddModal}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Input Hasil Pengemasan</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -335,10 +392,8 @@ export default function PengemasanPage() {
             className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none"
           >
             <option value="">Semua Status Pengiriman</option>
+            <option value="DITERIMA">🟢 Masuk Stok Pemasaran</option>
             <option value="DRAFT">📋 DRAFT</option>
-            <option value="MENUNGGU_PENERIMAAN">🟡 Menunggu Penerimaan</option>
-            <option value="DITERIMA">🟢 Diterima Pemasaran</option>
-            <option value="PERLU_KOREKSI">⚠️ Perlu Koreksi</option>
           </select>
 
           <input
@@ -961,6 +1016,86 @@ export default function PengemasanPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeletingPkg(null)}
       />
+
+      {/* Modal Permintaan Susu Segar UHT */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 text-amber-700 border-b border-slate-100 pb-3">
+              <div className="p-2 bg-amber-100 rounded-xl">
+                <Milk className="w-6 h-6 text-amber-800" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-800">Permintaan Susu Segar</h3>
+                <p className="text-xs text-slate-500">Form pengajuan izin olah susu ke Bagian Pemasaran</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Permintaan</label>
+                <input
+                  type="date"
+                  value={requestDate}
+                  onChange={(e) => setRequestDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Volume Susu (Liter)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={requestVolume}
+                  onChange={(e) => setRequestVolume(e.target.value)}
+                  placeholder="Misal: 100"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Keperluan (Opsional)</label>
+                <textarea
+                  value={requestNotes}
+                  onChange={(e) => setRequestNotes(e.target.value)}
+                  placeholder="Catatan tambahan (opsional)..."
+                  rows={2}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowRequestModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestFreshMilk}
+                disabled={submittingRequest}
+                className="px-5 py-2 text-xs font-extrabold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-2"
+              >
+                {submittingRequest ? (
+                  'Memproses...'
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Kirim Permintaan
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

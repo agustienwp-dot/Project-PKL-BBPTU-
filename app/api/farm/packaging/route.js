@@ -138,8 +138,12 @@ export async function POST(request) {
         plastikBantalQty: pQty,
         totalPackagedQty,
         quantitySent: totalPackagedQty,
+        quantityReceived: totalPackagedQty,
         notes: notes || '',
-        status: 'DRAFT',
+        status: 'DITERIMA',
+        receivedAt: new Date(),
+        receivedByName: 'Otomatis Masuk Stok Pemasaran',
+        condition: 'Sesuai',
         createdById: authUser.id,
       },
       include: {
@@ -150,7 +154,7 @@ export async function POST(request) {
       },
     });
 
-    // Also sync to PackagedProduct for Admin Pemasaran confirmation
+    // Also sync to PackagedProduct for Admin Pemasaran inventory
     for (const item of itemsList) {
       const sizeStr = item.size ? item.size : item.packagingType || 'Botol';
       const jProduk = `${pCategory}${pVariant && pVariant !== 'Original' ? ` Rasa ${pVariant}` : ''}`;
@@ -162,7 +166,10 @@ export async function POST(request) {
             jenisProduk: jProduk,
             kemasan: sizeStr.includes('ml') || sizeStr.includes('gram') ? `${item.packagingType || 'Botol'} ${sizeStr}` : sizeStr,
             jumlah: itemQty,
-            status: 'MENUNGGU_PENERIMAAN',
+            status: 'DITERIMA',
+            receivedAt: new Date(),
+            receivedByName: 'Otomatis Masuk Stok',
+            condition: 'Sesuai',
             notes: notes || null,
             createdById: authUser.id,
           },
@@ -170,18 +177,50 @@ export async function POST(request) {
       }
     }
 
+    // Create Notification for Admin Pemasaran
+    try {
+      const displaySub = pSubtype ? `${pSubtype} ` : '';
+      const notifTitle = `Stok Baru: ${pCategory} ${displaySub}(${pVariant})`;
+      const notifMessage = `${authUser.name || 'Admin Pengolahan'} telah memasukkan stok baru ${pCategory} ${displaySub}- ${pVariant} sebanyak ${totalPackagedQty} pcs ke stok Pemasaran.`;
+
+      await prisma.notification.create({
+        data: {
+          title: notifTitle,
+          message: notifMessage,
+          type: 'STOCK_ADDED',
+          targetRole: 'ADMIN_PEMASARAN',
+          senderId: authUser.id,
+          senderName: authUser.name || authUser.email,
+          senderRole: authUser.role || 'ADMIN_PENGEMASAN',
+          link: '/pemasaran/terima-data',
+          metadata: JSON.stringify({
+            packagingId: packaging.id,
+            category: pCategory,
+            subtype: pSubtype,
+            variant: pVariant,
+            origin: pOrigin,
+            quantity: totalPackagedQty,
+            unit: 'pcs',
+            items: itemsList,
+          }),
+        },
+      });
+    } catch (notifErr) {
+      console.error('Error creating notification in /api/farm/packaging:', notifErr);
+    }
+
     await prisma.systemLog.create({
       data: {
         userId: authUser.id,
         userEmail: authUser.email,
         action: 'CREATE_PACKAGING',
-        details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (MENUNGGU_PENERIMAAN)`,
+        details: `Pengemasan ${pCategory} ${pSubtype ? `(${pSubtype}) ` : ''}- ${pOrigin} ${pVariant}: ${pAmount} ${pUnit} diproses -> Total ${totalPackagedQty} pcs (Langsung Masuk Stok Pemasaran)`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Hasil pengemasan ${pCategory} (${totalPackagedQty} pcs) berhasil disimpan sebagai DRAFT!`,
+      message: `Hasil pengemasan ${pCategory} (${totalPackagedQty} pcs) berhasil disimpan & langsung masuk ke stok pemasaran!`,
       data: packaging,
     });
   } catch (error) {

@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthUser, requireRole } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/pemasaran/sales
 export async function GET(request) {
   try {
+    const authUser = getAuthUser(request);
+    const allowed = ['ADMIN_PEMASARAN', 'SUPERADMIN'];
+    if (!authUser || !requireRole(authUser, allowed)) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const searchQuery = searchParams.get('search') || '';
     const productCategory = searchParams.get('productCategory') || '';
@@ -67,6 +77,15 @@ export async function GET(request) {
 // POST /api/pemasaran/sales
 export async function POST(request) {
   try {
+    const authUser = getAuthUser(request);
+    const allowed = ['ADMIN_PEMASARAN', 'SUPERADMIN'];
+    if (!authUser || !requireRole(authUser, allowed)) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       date,
@@ -77,7 +96,6 @@ export async function POST(request) {
       quantity,
       unitPrice,
       notes,
-      createdById,
     } = body;
 
     const qtyNum = parseInt(quantity, 10) || 0;
@@ -192,7 +210,7 @@ export async function POST(request) {
         totalPrice,
         status: 'Berhasil',
         notes,
-        createdById: createdById || null,
+        createdById: authUser.id,
       },
     });
 
@@ -213,7 +231,7 @@ export async function POST(request) {
           packagingType: packagingType.toLowerCase(),
           quantity: qtyNum,
           notes: `[Penjualan ${transactionId}] ${notes || ''}`,
-          createdById: createdById || null,
+          createdById: authUser.id,
         },
       });
     }

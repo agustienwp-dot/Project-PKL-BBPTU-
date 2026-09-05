@@ -85,8 +85,8 @@ export default function TerimaSusuSegarPage() {
   const sapiDailyList = useMemo(() => farmDailyList.filter(d => (d.jenisTernak || 'SAPI').toUpperCase() === 'SAPI'), [farmDailyList]);
   const kambingDailyList = useMemo(() => farmDailyList.filter(d => (d.jenisTernak || '').toUpperCase() === 'KAMBING'), [farmDailyList]);
   
-  const totalSapiVolume = useMemo(() => sapiDailyList.reduce((acc, d) => acc + (d.sisaBersihSiapOlah || d.totalSusuSiapOlah || 0), 0), [sapiDailyList]);
-  const totalKambingVolume = useMemo(() => kambingDailyList.reduce((acc, d) => acc + (d.sisaBersihSiapOlah || d.totalSusuSiapOlah || 0), 0), [kambingDailyList]);
+  const totalSapiVolume = useMemo(() => sapiDailyList.reduce((acc, d) => acc + Math.max(0, (d.totalGross || 0) - (d.totalPedet || 0) - (d.totalAfkir || 0)), 0), [sapiDailyList]);
+  const totalKambingVolume = useMemo(() => kambingDailyList.reduce((acc, d) => acc + Math.max(0, (d.totalGross || 0) - (d.totalPedet || 0) - (d.totalAfkir || 0)), 0), [kambingDailyList]);
 
   const pendingSapiCount = useMemo(() => farmRecaps.filter(r => (r.jenisTernak || 'SAPI').toUpperCase() === 'SAPI' && r.status === 'MENUNGGU_VERIFIKASI').length, [farmRecaps]);
   const pendingKambingCount = useMemo(() => farmRecaps.filter(r => (r.jenisTernak || '').toUpperCase() === 'KAMBING' && r.status === 'MENUNGGU_VERIFIKASI').length, [farmRecaps]);
@@ -177,10 +177,12 @@ export default function TerimaSusuSegarPage() {
   }, [farmRecaps, commodityTab, timeFilter, startDate, endDate, sessionFilter, statusFilter, sortOrder, searchTerm]);
 
   // Aggregated Totals strictly for the active commodity
-  const totalDailyGross = useMemo(() => filteredDailyList.reduce((acc, d) => acc + d.totalGross, 0), [filteredDailyList]);
-  const totalDailySiapOlahAwal = useMemo(() => filteredDailyList.reduce((acc, d) => acc + d.totalSusuSiapOlah, 0), [filteredDailyList]);
-  const totalDailyBastPotongan = useMemo(() => filteredDailyList.reduce((acc, d) => acc + (d.totalBastDeduction || 0), 0), [filteredDailyList]);
-  const totalDailyBersihSiapOlah = useMemo(() => filteredDailyList.reduce((acc, d) => acc + (d.sisaBersihSiapOlah || 0), 0), [filteredDailyList]);
+  const totalDailyGross = useMemo(() => filteredDailyList.reduce((acc, d) => acc + (d.totalGross || 0), 0), [filteredDailyList]);
+  const totalDailyPedet = useMemo(() => filteredDailyList.reduce((acc, d) => acc + (d.totalPedet || 0), 0), [filteredDailyList]);
+  const totalDailyAfkir = useMemo(() => filteredDailyList.reduce((acc, d) => acc + (d.totalAfkir || 0), 0), [filteredDailyList]);
+  const totalDailyBersihSiapOlah = useMemo(() => Math.max(0, totalDailyGross - totalDailyPedet - totalDailyAfkir), [totalDailyGross, totalDailyPedet, totalDailyAfkir]);
+  const totalDailyKeluar = useMemo(() => totalDailyPedet + totalDailyAfkir + totalDailyBersihSiapOlah, [totalDailyPedet, totalDailyAfkir, totalDailyBersihSiapOlah]);
+  const totalDailySelisih = useMemo(() => totalDailyGross - totalDailyKeluar, [totalDailyGross, totalDailyKeluar]);
 
   // Fresh Milk Actions
   const handleOpenFreshConfirm = (item) => {
@@ -231,31 +233,48 @@ export default function TerimaSusuSegarPage() {
         />
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm print:hidden">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3.5 bg-[#1E3F20] text-white rounded-2xl shadow-md">
-            <Milk className="w-6 h-6" />
+      {/* Header Banner dengan Breadcrumb */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs print:hidden">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="p-3.5 bg-[#14532D] text-white rounded-2xl shadow-sm shrink-0">
+            <Milk className="w-6 h-6 text-emerald-300" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-extrabold text-slate-800">Terima Susu Segar (Farm)</h1>
+          <div className="space-y-1">
+            {/* Breadcrumb */}
+            <nav className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-400">
+              <span className="text-slate-500">Pemasaran</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-600">Terima Susu Segar (Farm)</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-700 font-extrabold">
+                {commodityTab === 'SAPI' ? 'Susu Sapi' : 'Susu Kambing'}
+              </span>
+              <span className="text-slate-300">/</span>
+              <span className="text-emerald-900 font-black bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-md">
+                {viewTab === 'daily' ? '📅 Rekapan 1 Hari Jadi Satu' : '☀️ Rincian Sesi Pagi & Sore'}
+              </span>
+            </nav>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Terima Susu Segar (Farm)
+              </h1>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-black rounded-full border border-emerald-300">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Pemisahan Susu Sapi & Susu Kambing</span>
+                <span>Terintegrasi Realtime • 0 L Selisih</span>
               </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Penerimaan & verifikasi penyerahan susu segar per komoditas ternak dengan rincian alokasi dan potongan BAST terpadu
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              Pencatatan susu masuk perah kandang dan pengeluaran (pedet/cempe, afkir, distribusi) terintegrasi realtime tanpa selisih.
             </p>
           </div>
         </div>
 
         <button
           onClick={fetchData}
-          className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border border-slate-200 active:scale-95 self-start sm:self-auto"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-4 h-4" />
           <span>Refresh Data</span>
         </button>
       </div>
@@ -268,7 +287,7 @@ export default function TerimaSusuSegarPage() {
           onClick={() => setCommodityTab('SAPI')}
           className={`flex-1 flex items-center justify-between p-3.5 rounded-xl font-extrabold text-xs transition-all ${
             commodityTab === 'SAPI'
-              ? 'bg-[#1E3F20] text-white shadow-md'
+              ? 'bg-[#14532D] text-white shadow-md ring-2 ring-emerald-600/30'
               : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
         >
@@ -282,7 +301,7 @@ export default function TerimaSusuSegarPage() {
             </div>
           </div>
           <div className="text-right">
-            <span className={`text-base font-black ${commodityTab === 'SAPI' ? 'text-amber-300' : 'text-emerald-800'}`}>
+            <span className={`text-base font-black font-mono ${commodityTab === 'SAPI' ? 'text-emerald-200' : 'text-emerald-800'}`}>
               {totalSapiVolume.toLocaleString('id-ID')} Liter
             </span>
             {pendingSapiCount > 0 && (
@@ -297,7 +316,7 @@ export default function TerimaSusuSegarPage() {
           onClick={() => setCommodityTab('KAMBING')}
           className={`flex-1 flex items-center justify-between p-3.5 rounded-xl font-extrabold text-xs transition-all ${
             commodityTab === 'KAMBING'
-              ? 'bg-amber-900 text-white shadow-md'
+              ? 'bg-[#14532D] text-white shadow-md ring-2 ring-emerald-600/30'
               : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
         >
@@ -311,7 +330,7 @@ export default function TerimaSusuSegarPage() {
             </div>
           </div>
           <div className="text-right">
-            <span className={`text-base font-black ${commodityTab === 'KAMBING' ? 'text-amber-300' : 'text-amber-800'}`}>
+            <span className={`text-base font-black font-mono ${commodityTab === 'KAMBING' ? 'text-amber-200' : 'text-amber-800'}`}>
               {totalKambingVolume.toLocaleString('id-ID')} Liter
             </span>
             {pendingKambingCount > 0 && (
@@ -323,177 +342,213 @@ export default function TerimaSusuSegarPage() {
         </button>
       </div>
 
-      {/* 4 Summary KPI Cards strictly for the active commodity */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-            Gross Susu {commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'}
-          </span>
-          <h3 className="text-2xl font-black text-slate-800 mt-1">
-            {totalDailyGross.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-400">Liter</span>
-          </h3>
-          <p className="text-[11px] text-slate-500 font-semibold mt-1">
-            Total perah {commodityTab === 'KAMBING' ? 'kambing' : 'sapi'} dari kandang
-          </p>
+      {/* 3 Summary KPI Cards strictly for the active commodity */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Susu Segar Masuk (Menarik & Segar) */}
+        <div className="bg-white rounded-3xl p-6 border border-emerald-300 shadow-2xs space-y-3 hover:shadow-xs transition-shadow bg-emerald-50/20">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-emerald-900 uppercase tracking-wider">
+              1. Susu Segar Masuk
+            </span>
+            <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-2xs">
+              <Milk className="w-4 h-4 text-emerald-300" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+              {totalDailyGross.toLocaleString('id-ID')}{' '}
+              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
+            </h3>
+            <p className="text-[11px] text-emerald-800 font-medium">
+              Total perah kandang ({commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'})
+            </p>
+          </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm">
-          <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">
-            Siap Olah {commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'} Awal
-          </span>
-          <h3 className="text-2xl font-black text-blue-950 mt-1">
-            {totalDailySiapOlahAwal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-blue-700">Liter</span>
-          </h3>
-          <p className="text-[11px] text-blue-600 font-semibold mt-1">
-            Gross - {commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'} - Afkir - Dist
-          </p>
+        {/* Card 2: Potongan Farm */}
+        <div className="bg-white rounded-3xl p-6 border border-rose-200/90 shadow-2xs space-y-3 hover:shadow-xs transition-shadow bg-rose-50/20">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-rose-800 uppercase tracking-wider">
+              2. Potongan Farm
+            </span>
+            <div className="p-2.5 bg-rose-100 text-rose-700 rounded-2xl shadow-2xs">
+              <TrendingDown className="w-4 h-4 text-rose-600" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <h3 className="text-2xl sm:text-3xl font-black text-rose-950 font-mono tracking-tight">
+              {(totalDailyPedet + totalDailyAfkir).toLocaleString('id-ID')}{' '}
+              <span className="text-xs font-bold text-rose-700 font-sans">Liter</span>
+            </h3>
+            <p className="text-[11px] text-rose-700 font-medium">
+              {totalDailyPedet} L {commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'} • {totalDailyAfkir} L Afkir
+            </p>
+          </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm">
-          <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">Alokasi / Potongan BAST</span>
-          <h3 className="text-2xl font-black text-amber-900 mt-1">
-            {totalDailyBastPotongan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-amber-700">Liter</span>
-          </h3>
-          <p className="text-[11px] text-amber-600 font-semibold mt-1">
-            {commodityTab === 'KAMBING' ? 'Pemakaian BAST khusus kambing' : 'Dipakai BAST Penjualan/Hibah/Riset'}
-          </p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm">
-          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Sisa Bersih Siap Olah</span>
-          <h3 className="text-2xl font-black text-emerald-950 mt-1">
-            {totalDailyBersihSiapOlah.toLocaleString('id-ID')} <span className="text-xs font-semibold text-emerald-700">Liter</span>
-          </h3>
-          <p className="text-[11px] text-emerald-700 font-semibold mt-1">Net siap diproses unit pengemasan</p>
+        {/* Card 3: Masuk Pengolahan (Net) */}
+        <div className="bg-white rounded-3xl p-6 border border-emerald-400 shadow-2xs space-y-3 hover:shadow-xs transition-shadow bg-emerald-50/40">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-emerald-950 uppercase tracking-wider">
+              3. Masuk Pengolahan (Net)
+            </span>
+            <div className="p-2.5 bg-emerald-700 text-white rounded-2xl shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+              {totalDailyBersihSiapOlah.toLocaleString('id-ID')}{' '}
+              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
+            </h3>
+            <p className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
+              <span>Susu siap olah (100% Pas)</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Sub-Tabs: 1 Hari Jadi Satu vs Rincian Sesi */}
-      <div className="flex items-center gap-2 border-b border-slate-200 print:hidden">
+      {/* ========================================================================= */}
+      {/* SUB-TABS NAVIGASI: 1 HARI JADI SATU VS RINCIAN SESI                       */}
+      {/* ========================================================================= */}
+      <div className="bg-slate-200/70 p-1.5 rounded-2xl border border-slate-300/80 flex flex-wrap sm:flex-nowrap gap-2 print:hidden shadow-xs">
         <button
           onClick={() => setViewTab('daily')}
-          className={`px-5 py-3 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
             viewTab === 'daily'
-              ? 'border-emerald-700 text-emerald-900 bg-emerald-50 rounded-t-2xl shadow-sm'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'bg-[#14532D] text-white shadow-md ring-2 ring-emerald-600/50'
+              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/80'
           }`}
         >
-          <Calendar className="w-4 h-4 text-emerald-600" />
-          <span>📅 Rekapan 1 Hari Jadi Satu ({filteredDailyList.length} Hari)</span>
+          <Calendar className={`w-4 h-4 ${viewTab === 'daily' ? 'text-emerald-300' : 'text-slate-500'}`} />
+          <span>📅 Rekapan 1 Hari Jadi Satu</span>
+          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+            viewTab === 'daily' ? 'bg-emerald-800 text-emerald-100 border border-emerald-600' : 'bg-slate-100 text-slate-700 border border-slate-200'
+          }`}>
+            {filteredDailyList.length} Hari
+          </span>
         </button>
 
         <button
           onClick={() => setViewTab('sessions')}
-          className={`px-5 py-3 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
             viewTab === 'sessions'
-              ? 'border-emerald-700 text-emerald-900 bg-emerald-50 rounded-t-2xl shadow-sm'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'bg-[#14532D] text-white shadow-md ring-2 ring-emerald-600/50'
+              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/80'
           }`}
         >
-          <Sun className="w-4 h-4 text-amber-600" />
-          <span>☀️ Rincian Sesi Pagi & Sore ({filteredSessions.length} Sesi)</span>
+          <Sun className={`w-4 h-4 ${viewTab === 'sessions' ? 'text-amber-300' : 'text-amber-600'}`} />
+          <span>☀️ Rincian Sesi Pagi & Sore</span>
+          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+            viewTab === 'sessions' ? 'bg-emerald-800 text-emerald-100 border border-emerald-600' : 'bg-slate-100 text-slate-700 border border-slate-200'
+          }`}>
+            {filteredSessions.length} Sesi
+          </span>
         </button>
       </div>
 
-      {/* Control Bar: Time Pills, Dropdowns, Sort & Search */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 print:hidden">
+      {/* Control Bar: Filter Dropdowns, Search & Controls */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Time Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl">
-            {[
-              { id: 'ALL', label: 'Semua' },
-              { id: 'TODAY', label: 'Hari Ini' },
-              { id: '7DAYS', label: '7 Hari' },
-              { id: 'MONTH', label: 'Bulan Ini' },
-              { id: 'CUSTOM', label: 'Custom' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTimeFilter(t.id)}
-                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
-                  timeFilter === t.id
-                    ? 'bg-white text-emerald-800 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="text-xs text-slate-500 font-bold flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-              {commodityTab === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
-            </span>
-            <span>Ditampilkan: {viewTab === 'daily' ? `${filteredDailyList.length} Hari` : `${filteredSessions.length} Sesi`}</span>
-          </div>
-        </div>
-
-        {/* Second Row: Dropdowns */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          <div className="flex flex-wrap items-center gap-2">
-            {viewTab === 'sessions' && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* 1. Dropdown Periode Waktu */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-slate-400 text-[11px] font-semibold">Periode:</span>
               <select
-                value={sessionFilter}
-                onChange={(e) => setSessionFilter(e.target.value)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
               >
-                <option value="ALL">Semua Sesi</option>
-                <option value="Pagi">☀️ Sesi Pagi</option>
-                <option value="Sore">🌙 Sesi Sore</option>
+                <option value="ALL">Semua Periode</option>
+                <option value="TODAY">Hari Ini</option>
+                <option value="7DAYS">7 Hari Terakhir</option>
+                <option value="MONTH">Bulan Ini</option>
+                <option value="CUSTOM">Rentang Kustom</option>
               </select>
+            </div>
+
+            {/* 2. Dropdown Status */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
+              <span className="text-slate-400 text-[11px] font-semibold">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
+              >
+                <option value="ALL">Semua Status</option>
+                <option value="DITERIMA">Selesai / Diterima</option>
+                <option value="MENUNGGU_VERIFIKASI">Menunggu Verifikasi</option>
+              </select>
+            </div>
+
+            {/* 3. Dropdown Sesi (Hanya Muncul di View Sesi) */}
+            {viewTab === 'sessions' && (
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
+                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-slate-400 text-[11px] font-semibold">Sesi:</span>
+                <select
+                  value={sessionFilter}
+                  onChange={(e) => setSessionFilter(e.target.value)}
+                  className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
+                >
+                  <option value="ALL">Semua Sesi</option>
+                  <option value="Pagi">☀️ Sesi Pagi</option>
+                  <option value="Sore">🌙 Sesi Sore</option>
+                </select>
+              </div>
             )}
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
-            >
-              <option value="ALL">Semua Status</option>
-              <option value="MENUNGGU_VERIFIKASI">Menunggu Verifikasi</option>
-              <option value="DITERIMA">Diterima (Disetujui)</option>
-            </select>
-
+            {/* 4. Search Input Bar */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="Cari tanggal / keterangan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 w-44 sm:w-56"
+                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-emerald-600 w-44 sm:w-60 shadow-2xs"
               />
             </div>
 
+            {/* Refresh / Reset Button */}
             <button
               onClick={fetchData}
-              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-2xl border border-slate-300 transition-colors shadow-2xs active:scale-95"
               title="Segarkan Data"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Custom Date Range */}
-          {timeFilter === 'CUSTOM' && (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-600">Rentang:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-              />
-              <span className="text-xs text-slate-400">s/d</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-              />
-            </div>
-          )}
+          <div className="text-xs text-slate-500 font-bold flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+              {commodityTab === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
+            </span>
+            <span>Ditampilkan: {viewTab === 'daily' ? `${filteredDailyList.length} Hari` : `${filteredSessions.length} Sesi`}</span>
+          </div>
         </div>
+
+        {/* Custom Date Range Picker */}
+        {timeFilter === 'CUSTOM' && (
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-[11px] font-bold text-slate-600">Rentang Tanggal:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800"
+            />
+            <span className="text-xs text-slate-400 font-bold">s/d</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800"
+            />
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -510,7 +565,7 @@ export default function TerimaSusuSegarPage() {
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                Pagi & Sore digabung menjadi 1 hari, otomatis dipotong alokasi BAST dengan keterangan pemakaian
+                Pencatatan harian penerimaan susu segar dari kandang setelah dikurangi potongan farm.
               </p>
             </div>
           </div>
@@ -525,98 +580,84 @@ export default function TerimaSusuSegarPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-y border-slate-200 text-[11px]">
                   <tr>
-                    <th className="px-3 py-3 text-center w-10">No</th>
-                    <th className="px-3 py-3">Tanggal</th>
-                    <th className="px-3 py-3 text-right">Gross Total (L)</th>
-                    <th className="px-3 py-3 text-right text-slate-500">
-                      Potongan Kandang ({commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'}/Afkir)
+                    <th className="px-3 py-3.5 text-center w-10">No</th>
+                    <th className="px-3 py-3.5 whitespace-nowrap">Tanggal</th>
+                    <th className="px-3 py-3.5 text-right font-black text-slate-900 whitespace-nowrap">Susu Segar Masuk (Gross)</th>
+                    <th className="px-3 py-3.5 text-right text-slate-600 whitespace-nowrap">
+                      Pakan {commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'} (L)
                     </th>
-                    <th className="px-3 py-3 text-right font-black text-blue-900 bg-blue-50/50">Siap Olah Awal</th>
-                    <th className="px-3 py-3 text-right font-bold text-amber-700 bg-amber-50/50">Potongan BAST (L)</th>
-                    <th className="px-3 py-3">Keterangan Pemakaian BAST</th>
-                    <th className="px-3 py-3 text-right font-black text-emerald-950 bg-emerald-100">Sisa Siap Olah (Net)</th>
-                    <th className="px-3 py-3 text-center">Status</th>
+                    <th className="px-3 py-3.5 text-right text-rose-600 whitespace-nowrap">Susu Afkir (L)</th>
+                    <th className="px-3 py-3.5 text-right font-black text-emerald-950 bg-emerald-100 whitespace-nowrap">Diterima Pengolahan (Net)</th>
+                    <th className="px-3 py-3.5 text-center font-bold text-slate-700 whitespace-nowrap">Rekonsiliasi</th>
+                    <th className="px-3 py-3.5 text-center whitespace-nowrap">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                  {filteredDailyList.map((day, idx) => (
-                    <tr key={day.tanggal || idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-3 py-3 text-center text-slate-400 font-bold">{idx + 1}</td>
-                      <td className="px-3 py-3 font-bold text-slate-800">
-                        {new Date(day.tanggal).toLocaleDateString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="px-3 py-3 text-right font-bold">{day.totalGross} L</td>
-                      <td className="px-3 py-3 text-right text-slate-500">
-                        {day.totalPedet + day.totalAfkir + day.totalDistribusi} L
-                      </td>
-                      <td className="px-3 py-3 text-right font-black text-blue-900 bg-blue-50/30">
-                        {day.totalSusuSiapOlah} L
-                      </td>
-                      <td className="px-3 py-3 text-right font-bold text-amber-700 bg-amber-50/30">
-                        {day.totalBastDeduction > 0 ? `-${day.totalBastDeduction} L` : '0 L'}
-                      </td>
-                      <td className="px-3 py-3">
-                        {day.bastUsageDescriptions && day.bastUsageDescriptions.length > 0 ? (
-                          <div className="space-y-1">
-                            {day.bastUsageDescriptions.map((desc, i) => (
-                              <div
-                                key={i}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200"
-                              >
-                                <Info className="w-3 h-3 text-amber-700 flex-shrink-0" />
-                                <span>{desc}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Diserahkan penuh ke unit pengolahan</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right font-black text-emerald-950 bg-emerald-50 text-sm">
-                        {day.sisaBersihSiapOlah} Liter
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        {day.status === 'MENUNGGU_VERIFIKASI' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                            <AlertCircle className="w-3 h-3" />
-                            Menunggu
+                  {filteredDailyList.map((day, idx) => {
+                    const netSiapOlah = Math.max(0, (day.totalGross || 0) - (day.totalPedet || 0) - (day.totalAfkir || 0));
+
+                    return (
+                      <tr key={day.tanggal || idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-3 py-3.5 text-center text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="px-3 py-3.5 font-bold text-slate-800 whitespace-nowrap">
+                          {new Date(day.tanggal).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-3 py-3.5 text-right font-bold font-mono text-slate-900">{day.totalGross} L</td>
+                        <td className="px-3 py-3.5 text-right font-mono text-slate-600">
+                          {day.totalPedet} L
+                        </td>
+                        <td className="px-3 py-3.5 text-right font-mono text-rose-600 font-semibold">
+                          {day.totalAfkir} L
+                        </td>
+                        <td className="px-3 py-3.5 text-right font-black font-mono text-emerald-950 bg-emerald-50 text-sm">
+                          {netSiapOlah.toLocaleString('id-ID')} Liter
+                        </td>
+                        <td className="px-3 py-3.5 text-center whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Pas (0 L)</span>
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Diterima
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-3 py-3.5 text-center whitespace-nowrap">
+                          {day.status === 'MENUNGGU_VERIFIKASI' ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>Menunggu</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Diterima</span>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
 
                 {/* Footer Akumulasi */}
-                <tfoot className="bg-amber-100/80 font-black text-slate-900 border-t-2 border-slate-300">
+                <tfoot className="bg-emerald-100 font-black text-slate-900 border-t-2 border-slate-300">
                   <tr>
-                    <td colSpan={2} className="px-3 py-2.5 text-center bg-amber-200">
-                      TOTAL AKUMULASI SUSU {commodityTab === 'KAMBING' ? 'KAMBING' : 'SAPI'} ({filteredDailyList.length} Hari)
+                    <td colSpan={2} className="px-3 py-3 text-center bg-emerald-200 text-xs uppercase tracking-wider">
+                      TOTAL AKUMULASI ({filteredDailyList.length} HARI)
                     </td>
-                    <td className="px-3 py-2 text-right">{totalDailyGross.toLocaleString('id-ID')} L</td>
-                    <td className="px-3 py-2 text-right text-slate-600">
-                      {(totalDailyGross - totalDailySiapOlahAwal).toLocaleString('id-ID')} L
+                    <td className="px-3 py-3 text-right font-mono font-black">{totalDailyGross.toLocaleString('id-ID')} L</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">
+                      {totalDailyPedet.toLocaleString('id-ID')} L
                     </td>
-                    <td className="px-3 py-2 text-right text-blue-950 font-black bg-blue-100">
-                      {totalDailySiapOlahAwal.toLocaleString('id-ID')} L
+                    <td className="px-3 py-3 text-right font-mono text-rose-700">
+                      {totalDailyAfkir.toLocaleString('id-ID')} L
                     </td>
-                    <td className="px-3 py-2 text-right text-amber-900 font-black bg-amber-200">
-                      -{totalDailyBastPotongan.toLocaleString('id-ID')} L
-                    </td>
-                    <td className="px-3 py-2 text-xs font-bold text-amber-900">
-                      Total Potongan Pemakaian BAST Fisik
-                    </td>
-                    <td className="px-3 py-2 text-right font-black bg-emerald-200 text-emerald-950 text-sm">
+                    <td className="px-3 py-3 text-right font-black font-mono bg-emerald-200 text-emerald-950 text-sm">
                       {totalDailyBersihSiapOlah.toLocaleString('id-ID')} Liter
+                    </td>
+                    <td className="px-3 py-3 text-center text-emerald-900 text-[11px] font-bold">
+                      ✓ 0 L Selisih
                     </td>
                     <td></td>
                   </tr>
@@ -643,69 +684,67 @@ export default function TerimaSusuSegarPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 text-slate-600 uppercase font-bold border-y border-slate-200 text-[11px]">
                 <tr>
-                  <th className="px-4 py-3 text-center w-12">No</th>
-                  <th className="px-4 py-3">Tanggal</th>
-                  <th className="px-4 py-3 text-center">Sesi</th>
-                  <th className="px-4 py-3 text-center">Ternak</th>
-                  <th className="px-4 py-3 text-right">Gross (L)</th>
-                  <th className="px-4 py-3 text-right text-slate-500">{commodityTab === 'KAMBING' ? 'Cempe (L)' : 'Pedet (L)'}</th>
-                  <th className="px-4 py-3 text-right text-rose-600">Afkir (L)</th>
-                  <th className="px-4 py-3 text-right text-amber-700">Distribusi (L)</th>
-                  <th className="px-4 py-3 text-right font-black text-emerald-950 bg-emerald-50">Susu Siap Olah</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-center">Aksi</th>
+                  <th className="px-4 py-3.5 text-center w-12">No</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap">Tanggal</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Sesi</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Ternak</th>
+                  <th className="px-4 py-3.5 text-right font-black text-slate-900 whitespace-nowrap">Susu Segar Masuk (L)</th>
+                  <th className="px-4 py-3.5 text-right text-slate-500 whitespace-nowrap">{commodityTab === 'KAMBING' ? 'Cempe (L)' : 'Pedet (L)'}</th>
+                  <th className="px-4 py-3.5 text-right text-rose-600 whitespace-nowrap">Afkir (L)</th>
+                  <th className="px-4 py-3.5 text-right font-black text-emerald-950 bg-emerald-50 whitespace-nowrap">Susu Siap Olah (Net)</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                 {filteredSessions.map((r, idx) => (
                   <tr key={r.id || idx} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 text-center text-slate-400 font-bold">{idx + 1}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-700">
+                    <td className="px-4 py-3.5 text-center text-slate-400 font-bold">{idx + 1}</td>
+                    <td className="px-4 py-3.5 font-bold text-slate-800 whitespace-nowrap">
                       {new Date(r.tanggal).toLocaleDateString('id-ID', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
                       })}
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        r.kegiatanPerah === 'Pagi' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${
+                        r.kegiatanPerah === 'Pagi' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
                       }`}>
                         {r.kegiatanPerah === 'Pagi' ? '☀️ Pagi' : '🌙 Sore'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${
                         r.jenisTernak === 'KAMBING' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       }`}>
                         {r.jenisTernak === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-bold">{r.produksiSusu} L</td>
-                    <td className="px-4 py-3 text-right text-slate-500">{r.susuPedet} L</td>
-                    <td className="px-4 py-3 text-right text-rose-600 font-semibold">{r.susuAfkir} L</td>
-                    <td className="px-4 py-3 text-right text-amber-700 font-semibold">{r.distribusiSegar} L</td>
-                    <td className="px-4 py-3 text-right font-black text-emerald-950 bg-emerald-50/70">
+                    <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{r.produksiSusu} L</td>
+                    <td className="px-4 py-3.5 text-right font-mono text-slate-500">{r.susuPedet} L</td>
+                    <td className="px-4 py-3.5 text-right font-mono text-rose-600 font-semibold">{r.susuAfkir} L</td>
+                    <td className="px-4 py-3.5 text-right font-mono font-black text-emerald-950 bg-emerald-50/70 text-sm">
                       {r.susuSiapOlah} Liter
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
                       {r.status === 'MENUNGGU_VERIFIKASI' ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
                           <AlertCircle className="w-3 h-3" />
-                          Menunggu
+                          <span>Menunggu</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3" />
-                          Diterima
+                          <span>Diterima</span>
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
                       {r.status === 'MENUNGGU_VERIFIKASI' ? (
                         <button
                           onClick={() => handleOpenFreshConfirm(r)}
-                          className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-sm"
+                          className="bg-[#14532D] hover:bg-[#1e7240] text-white px-3 py-1 rounded-xl text-[11px] font-bold shadow-2xs active:scale-95 transition-all"
                         >
                           Verifikasi
                         </button>

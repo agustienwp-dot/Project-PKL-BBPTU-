@@ -45,6 +45,30 @@ export async function PUT(request, { params }) {
         },
       });
 
+      // Create Notification for Admin Pemasaran
+      try {
+        await prisma.notification.create({
+          data: {
+            title: `Pengiriman Produk: ${existing.productCategory} (${existing.variant || 'Original'})`,
+            message: `${authUser.name || 'Admin Pengolahan'} telah mengirim ${existing.totalPackagedQty} pcs produk ${existing.productCategory} (${existing.variant || 'Original'}) dan menunggu konfirmasi penerimaan.`,
+            type: 'STOCK_SENT',
+            targetRole: 'ADMIN_PEMASARAN',
+            senderId: authUser.id,
+            senderName: authUser.name || authUser.email,
+            senderRole: authUser.role || 'ADMIN_FARM',
+            link: '/pemasaran/terima-data',
+            metadata: JSON.stringify({
+              packagingId: id,
+              category: existing.productCategory,
+              variant: existing.variant,
+              totalQty: existing.totalPackagedQty,
+            }),
+          },
+        });
+      } catch (notifErr) {
+        console.error('Error creating notification in PUT /api/farm/packaging/[id]:', notifErr);
+      }
+
       await prisma.systemLog.create({
         data: {
           userId: authUser.id,
