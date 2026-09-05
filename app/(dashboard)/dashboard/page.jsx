@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -16,6 +17,7 @@ import {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState(null);
   const [chartFilter, setChartFilter] = useState('7'); // '7' or '30'
@@ -37,8 +39,12 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (user?.role === 'ADMIN_PEMASARAN') {
+      router.replace('/pemasaran/dashboard');
+      return;
+    }
     fetchDashboardData();
-  }, [user]);
+  }, [user, router]);
 
   if (loading) {
     return <LoadingSpinner text="Memuat Dashboard Statistik Susu..." />;

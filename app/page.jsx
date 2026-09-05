@@ -12,7 +12,11 @@ export default function RootPage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/dashboard');
+        if (user.role === 'ADMIN_PEMASARAN') {
+          router.replace('/pemasaran/dashboard');
+        } else {
+          router.replace('/dashboard');
+        }
       } else {
         router.replace('/login');
       }

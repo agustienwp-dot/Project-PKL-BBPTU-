@@ -51,6 +51,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const getDashboardUrl = (userObj) => {
+    const role = userObj?.role || (typeof userObj === 'string' ? userObj : '');
+    if (role === 'ADMIN_PEMASARAN') {
+      return '/pemasaran/dashboard';
+    }
+    return '/dashboard';
+  };
+
   // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -59,8 +67,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      window.location.href = '/dashboard';
+      const res = await login(email, password);
+      window.location.href = getDashboardUrl(res?.user || res);
     } catch (err) {
       console.error('Login error:', err);
       const msg = err.response?.data?.message || err.message || 'Email/Username atau password tidak sesuai.';
@@ -125,10 +133,10 @@ export default function LoginPage() {
       }
 
       setShowConfirmModal(false);
-      window.location.href = '/dashboard';
+      window.location.href = getDashboardUrl(registeredData?.user);
     } catch (err) {
       console.error('Auto-login redirect error:', err);
-      window.location.href = '/dashboard';
+      window.location.href = getDashboardUrl(registeredData?.user);
     } finally {
       setLoading(false);
     }
@@ -157,8 +165,8 @@ export default function LoginPage() {
     setSuccess('');
     setLoading(true);
     try {
-      await login(quickEmail, quickPassword);
-      window.location.href = '/dashboard';
+      const res = await login(quickEmail, quickPassword);
+      window.location.href = getDashboardUrl(res?.user || res);
     } catch (err) {
       console.error('Quick login error:', err);
       const msg = err.response?.data?.message || err.message || 'Gagal login dengan akun quick login.';

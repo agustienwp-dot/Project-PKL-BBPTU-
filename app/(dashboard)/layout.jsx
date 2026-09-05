@@ -45,7 +45,6 @@ function isRouteAllowed(role, pathname) {
     const allowed = [
       '/dashboard',
       '/superadmin',
-      '/kategori',
       '/reports',
       '/profil',
       '/produksi',
@@ -53,17 +52,11 @@ function isRouteAllowed(role, pathname) {
       '/riwayat-produksi',
       '/riwayat-pengemasan',
       '/pemasaran',
-      '/pemasaran/rekapan-farm',
-      '/pemasaran/penerimaan',
-      '/pemasaran/penjualan',
-      '/pemasaran/laporan',
-      '/pemasaran/bast',
       '/pemasaran/dashboard',
       '/pemasaran/terima-susu-segar',
+      '/pemasaran/bast',
       '/pemasaran/terima-data',
-      '/pemasaran/jual-fresh',
-      '/pemasaran/jual-olahan',
-      '/pemasaran/piutang'
+      '/pemasaran/laporan'
     ];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
@@ -89,10 +82,6 @@ function isRouteAllowed(role, pathname) {
       '/pemasaran/terima-susu-segar',
       '/pemasaran/bast',
       '/pemasaran/terima-data',
-      '/pemasaran/rekapan-farm',
-      '/pemasaran/jual-fresh',
-      '/pemasaran/jual-olahan',
-      '/pemasaran/piutang',
       '/pemasaran/laporan',
       '/profil'
     ];
