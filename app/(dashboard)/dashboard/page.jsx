@@ -619,20 +619,15 @@ export default function DashboardPage() {
       {/* 1. TOP HORIZONTAL WIDGET CARDS ROW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Produksi Susu */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-36 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Produksi Susu</span>
-            <Sparkline color="#10B981" bg="rgba(16, 185, 129, 0.12)" />
+            <span className="text-xs md:text-sm font-black text-[#1E3F20] uppercase tracking-wider">Produksi Susu</span>
           </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-black text-slate-900 font-mono">
-                {todayTotalGross.toLocaleString()} <span className="text-xs font-semibold text-slate-400">Liter</span>
-              </p>
-              <span className="text-[10px] text-slate-500 font-medium block mt-1">Total produksi hari ini</span>
-            </div>
-            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[10px] font-black">100%</span>
+          <div>
+            <p className="text-2xl md:text-3xl font-black text-[#1E3F20]">
+              {todayTotalGross.toLocaleString()} <span className="text-xs md:text-sm font-bold text-[#1E3F20]/80">Liter</span>
+            </p>
+            <span className="text-[11px] text-[#1E3F20]/90 font-extrabold block mt-1">100% dari total produksi</span>
           </div>
         </div>
 
@@ -640,17 +635,14 @@ export default function DashboardPage() {
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500"></div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Susu Sapi</span>
-            <span className="text-lg">🐄</span>
+            <span className="text-xs md:text-sm font-black text-[#1E3F20] uppercase tracking-wider">Susu Sapi</span>
+            <span className="text-xl">🐄</span>
           </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-black text-emerald-700 font-mono">
-                {todaySapiGross.toLocaleString()} <span className="text-xs font-semibold text-slate-400">Liter</span>
-              </p>
-              <span className="text-[10px] text-slate-500 font-medium block mt-1">{sapiPercentage}% dari total</span>
-            </div>
-            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-[10px] font-black">{sapiPercentage}%</span>
+          <div>
+            <p className="text-2xl md:text-3xl font-black text-[#1E3F20]">
+              {todaySapiGross.toLocaleString()} <span className="text-xs md:text-sm font-bold text-[#1E3F20]/80">Liter</span>
+            </p>
+            <span className="text-[11px] text-[#1E3F20]/90 font-extrabold block mt-1">{sapiPercentage}% dari total produksi</span>
           </div>
         </div>
 
@@ -658,35 +650,27 @@ export default function DashboardPage() {
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="absolute top-0 left-0 right-0 h-1 bg-purple-500"></div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Susu Kambing</span>
-            <span className="text-lg">🐐</span>
+            <span className="text-xs md:text-sm font-black text-[#1E3F20] uppercase tracking-wider">Susu Kambing</span>
+            <span className="text-xl">🐐</span>
           </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-black text-purple-700 font-mono">
-                {todayKambingGross.toLocaleString()} <span className="text-xs font-semibold text-slate-400">Liter</span>
-              </p>
-              <span className="text-[10px] text-slate-500 font-medium block mt-1">{kambingPercentage}% dari total</span>
-            </div>
-            <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md text-[10px] font-black">{kambingPercentage}%</span>
+          <div>
+            <p className="text-2xl md:text-3xl font-black text-[#1E3F20]">
+              {todayKambingGross.toLocaleString()} <span className="text-xs md:text-sm font-bold text-[#1E3F20]/80">Liter</span>
+            </p>
+            <span className="text-[11px] text-[#1E3F20]/90 font-extrabold block mt-1">{kambingPercentage}% dari total produksi</span>
           </div>
         </div>
 
         {/* Card 4: Diserah terimakan */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-teal-500"></div>
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-36 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Diserah terimakan</span>
-            <Sparkline color="#14B8A6" bg="rgba(20, 184, 166, 0.12)" />
+            <span className="text-xs md:text-sm font-black text-[#1E3F20] uppercase tracking-wider">Diserah terimakan</span>
           </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-black text-slate-900 font-mono">
-                {todayRawLiters.toLocaleString()} <span className="text-xs font-semibold text-slate-400">Liter</span>
-              </p>
-              <span className="text-[10px] text-slate-500 font-medium block mt-1">{rawPercentage}% dari total</span>
-            </div>
-            <span className="px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-[10px] font-black">{rawPercentage}%</span>
+          <div>
+            <p className="text-2xl md:text-3xl font-black text-[#1E3F20]">
+              {todayRawLiters.toLocaleString()} <span className="text-xs md:text-sm font-bold text-[#1E3F20]/80">Liter</span>
+            </p>
+            <span className="text-[11px] text-[#1E3F20]/90 font-extrabold block mt-1">{rawPercentage}% dari total produksi</span>
           </div>
         </div>
       </div>
@@ -770,23 +754,18 @@ export default function DashboardPage() {
 
           {/* WIDGET 2: PEROLEHAN SUSU PER FARM HARI INI */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-base font-black text-slate-900">
-                  Perolehan Susu per Farm Hari Ini
-                </h2>
-                <p className="text-xs text-slate-400 font-semibold mt-0.5">Tegalsari, Limpakuwus, Manggala, Eduwisata</p>
-              </div>
-              <Link href="/reports" className="text-xs font-black text-emerald-800 hover:underline">
-                Laporan Resmi
-              </Link>
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-black text-slate-900">
+                Perolehan Susu per Farm Hari Ini
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Tegalsari, Limpakuwus, Manggala, Eduwisata</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Farm Tegalsari */}
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider">FARM TEGALSARI</span>
+                  <span className="text-xs font-black text-[#1E3F20] uppercase tracking-wider">FARM TEGALSARI</span>
                   <p className="text-2xl font-black text-slate-900">
                     {(farmStats.farmOriginToday?.tegalsari || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span>
                   </p>
@@ -795,9 +774,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Farm Limpakuwus */}
-              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-blue-900 uppercase tracking-wider">FARM LIMPAKUWUS</span>
+                  <span className="text-xs font-black text-[#1E3F20] uppercase tracking-wider">FARM LIMPAKUWUS</span>
                   <p className="text-2xl font-black text-slate-900">
                     {(farmStats.farmOriginToday?.limpakuwus || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span>
                   </p>
@@ -806,9 +785,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Farm Manggala */}
-              <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-purple-900 uppercase tracking-wider">FARM MANGGALA</span>
+                  <span className="text-xs font-black text-[#1E3F20] uppercase tracking-wider">FARM MANGGALA</span>
                   <p className="text-2xl font-black text-slate-900">
                     {(farmStats.farmOriginToday?.manggala || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span>
                   </p>
@@ -817,9 +796,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Eduwisata */}
-              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between hover:shadow-sm transition-shadow">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-emerald-900 uppercase tracking-wider">EDUWISATA</span>
+                  <span className="text-xs font-black text-[#1E3F20] uppercase tracking-wider">EDUWISATA</span>
                   <p className="text-2xl font-black text-slate-900">
                     {(farmStats.farmOriginToday?.eduwisata || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">Liter</span>
                   </p>

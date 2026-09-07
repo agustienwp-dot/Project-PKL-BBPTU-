@@ -23,7 +23,7 @@ export default function ReportsPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [productType, setProductType] = useState('SEGAR'); // SEGAR or OLAHAN
-  const [animalType, setAnimalType] = useState('ALL'); // ALL, SAPI, or KAMBING
+  const [animalType, setAnimalType] = useState('SAPI'); // SAPI or KAMBING
   const [reportData, setReportData] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -274,7 +274,6 @@ export default function ReportsPage() {
           onChange={(e) => setAnimalType(e.target.value)}
           className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
         >
-          <option value="ALL">Semua Ternak (Sapi & Kambing)</option>
           <option value="SAPI">Susu Sapi</option>
           <option value="KAMBING">Susu Kambing</option>
         </select>
