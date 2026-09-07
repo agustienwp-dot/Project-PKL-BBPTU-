@@ -71,12 +71,13 @@ export async function POST(request) {
     const {
       date,
       productCategory = 'Susu',
-      productSubtype = 'Susu UHT',
+      productSubtype = 'Susu Pasteurisasi',
       variant = 'Original',
       packagingType = 'Botol',
+      size,
       quantity,
       unitPrice,
-      notes,
+      notes = '',
       createdById,
     } = body;
 
@@ -97,17 +98,36 @@ export async function POST(request) {
       );
     }
 
-    // 1. CALCULATE READY STOCK FOR THIS SPECIFIC PRODUCT
-    // Query all accepted packagings for this category/variant/packagingType
-    const acceptedPackagings = await prisma.milkPackaging.findMany({
-      where: { status: 'DITERIMA' },
+    // Determine target size e.g. "250 ml", "115 ml", "130 ml", "200 ml"
+    let targetSize = (size || '').trim();
+    if (!targetSize && notes) {
+      const match = notes.match(/Ukuran:\s*([0-9]+\s*(?:ml|liter|g|gram|kg))/i);
+      if (match) targetSize = match[1].trim();
+    }
+
+    const normCat = productCategory.toLowerCase();
+    const normSub = (productSubtype || '').toLowerCase();
+    const normPkg = (packagingType || 'Botol').toLowerCase();
+    const normSize = targetSize.toLowerCase();
+
+    // 1. CALCULATE RECEIVED STOCK FROM MilkPackaging (includes MENUNGGU_PENERIMAAN, SELESAI, DITERIMA)
+    const packagings = await prisma.milkPackaging.findMany({
+      where: {
+        status: { in: ['DITERIMA', 'SELESAI', 'MENUNGGU_PENERIMAAN'] }
+      }
     });
 
     let totalReceivedForProduct = 0;
 
-    acceptedPackagings.forEach((pkg) => {
-      const matchCat = (pkg.productCategory || 'Susu').toLowerCase() === productCategory.toLowerCase();
-      if (matchCat) {
+    packagings.forEach((pkg) => {
+      const pkgCat = (pkg.productCategory || 'Susu').toLowerCase();
+      const pkgSub = (pkg.productSubtype || '').toLowerCase();
+
+      // Product match check
+      const catMatch = pkgCat.includes(normCat) || normCat.includes(pkgCat) ||
+                       (normSub && pkgSub.includes(normSub));
+
+      if (catMatch) {
         let items = [];
         if (pkg.packagingDetails) {
           try {
@@ -118,66 +138,93 @@ export async function POST(request) {
 
         if (items.length > 0) {
           items.forEach((it) => {
-            const pkgMatch = (it.packagingType || 'Botol').toLowerCase() === packagingType.toLowerCase();
-            if (pkgMatch) {
+            const itPkg = (it.packagingType || 'Botol').toLowerCase();
+            const itSz = (it.size || '').toLowerCase().trim();
+
+            const pkgMatch = itPkg === normPkg || normPkg.includes(itPkg) || itPkg.includes(normPkg);
+            const sizeMatch = !normSize || itSz === normSize || itSz.includes(normSize) || normSize.includes(itSz);
+
+            if (pkgMatch && sizeMatch) {
               totalReceivedForProduct += parseInt(it.quantity, 10) || 0;
             }
           });
         } else {
-          // Fallback legacy packaging
           const pkgTypeLow = (pkg.packagingType || 'Botol').toLowerCase();
-          if (pkgTypeLow === packagingType.toLowerCase()) {
+          const pkgSizeLow = (pkg.packageSize || '').toLowerCase().trim();
+          const pkgMatch = pkgTypeLow === normPkg;
+          const sizeMatch = !normSize || !pkgSizeLow || pkgSizeLow === normSize;
+
+          if (pkgMatch && sizeMatch) {
             totalReceivedForProduct += pkg.quantityReceived || pkg.totalPackagedQty || 0;
           }
         }
       }
     });
 
-    // Query existing outflows & sales for this product
+    // 2. CALCULATE OUTFLOWS & SALES FOR THIS PRODUCT & SIZE
     const existingOutflows = await prisma.milkOutflow.findMany();
     const existingSales = await prisma.milkSale.findMany({
-      where: { status: 'Berhasil' },
+      where: { status: { not: 'Dibatalkan' } },
     });
 
     let totalOutflowForProduct = 0;
 
-    existingOutflows.forEach((out) => {
-      if ((out.packagingType || 'botol').toLowerCase() === packagingType.toLowerCase()) {
-        totalOutflowForProduct += out.quantity || 0;
+    existingSales.forEach((sale) => {
+      const saleCat = (sale.productCategory || 'Susu').toLowerCase();
+      const saleSub = (sale.productSubtype || '').toLowerCase();
+      const salePkg = (sale.packagingType || 'Botol').toLowerCase();
+      const saleNotes = (sale.notes || '').toLowerCase();
+
+      const catMatch = saleCat.includes(normCat) || normCat.includes(saleCat) ||
+                       (normSub && saleSub.includes(normSub));
+      const pkgMatch = salePkg === normPkg;
+      const sizeMatch = !normSize || saleNotes.includes(normSize);
+
+      if (catMatch && pkgMatch && sizeMatch) {
+        totalOutflowForProduct += sale.quantity || 0;
       }
     });
 
-    existingSales.forEach((sale) => {
-      const catMatch = (sale.productCategory || 'Susu').toLowerCase() === productCategory.toLowerCase();
-      const pkgMatch = (sale.packagingType || 'Botol').toLowerCase() === packagingType.toLowerCase();
-      if (catMatch && pkgMatch) {
-        totalOutflowForProduct += sale.quantity || 0;
+    existingOutflows.forEach((out) => {
+      const outPkg = (out.packagingType || 'botol').toLowerCase();
+      const outNotes = (out.notes || '').toLowerCase();
+
+      const pkgMatch = outPkg === normPkg || outPkg === 'botol';
+      const sizeMatch = !normSize || outNotes.includes(normSize);
+
+      let prodMatch = true;
+      if (normCat.includes('yogurt') && !outNotes.includes('yogurt') && (out.productType || '').toLowerCase() === 'segar') {
+        prodMatch = false;
+      }
+
+      if (pkgMatch && sizeMatch && prodMatch) {
+        totalOutflowForProduct += out.quantity || 0;
       }
     });
 
     const readyStock = Math.max(0, totalReceivedForProduct - totalOutflowForProduct);
 
-    // 2. CHECK STOCK AVAILABILITY
+    // 3. STOCK WARNING (DO NOT HARD BLOCK TRANSACTION FOR REPORT INTAKE)
+    let stockWarning = null;
     if (qtyNum > readyStock) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Stok tidak mencukupi untuk melakukan penjualan.`,
-          readyStock,
-          requestedQty: qtyNum,
-          productInfo: `${productSubtype || productCategory} (${variant}) - ${packagingType}`,
-        },
-        { status: 400 }
-      );
+      const displayProd = productSubtype || productCategory;
+      const displaySize = targetSize ? ` ${targetSize}` : '';
+      stockWarning = `⚠ Stok ${displayProd}${displaySize} saat ini terbaca ${readyStock} botol. Transaksi tetap dicatat ke laporan.`;
     }
 
-    // 3. CREATE TRANSACTION & SAVE
+    // 4. CREATE TRANSACTION & SAVE
     const dateObj = date ? new Date(date) : new Date();
     const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
     const randSuffix = Math.floor(1000 + Math.random() * 9000);
     const transactionId = `TRX-${dateStr}-${randSuffix}`;
 
     const totalPrice = qtyNum * priceNum;
+
+    // Combine size in notes if size provided
+    let finalNotes = notes;
+    if (targetSize && !finalNotes.includes(targetSize)) {
+      finalNotes = `Ukuran: ${targetSize}. ${finalNotes}`.trim();
+    }
 
     const sale = await prisma.milkSale.create({
       data: {
@@ -191,15 +238,15 @@ export async function POST(request) {
         unitPrice: priceNum,
         totalPrice,
         status: 'Berhasil',
-        notes,
+        notes: finalNotes,
         createdById: createdById || null,
       },
     });
 
-    // Also record in MilkOutflow for backward compatibility with stock APIs
+    // Also record in MilkOutflow for backward compatibility
     const category = await prisma.milkCategory.findFirst({
       where: {
-        productType: productCategory === 'Susu' ? 'SEGAR' : 'OLAHAN',
+        productType: productCategory === 'Yogurt' ? 'OLAHAN' : 'SEGAR',
       },
     });
 
@@ -212,15 +259,20 @@ export async function POST(request) {
           animalType: category.animalType,
           packagingType: packagingType.toLowerCase(),
           quantity: qtyNum,
-          notes: `[Penjualan ${transactionId}] ${notes || ''}`,
+          notes: `[Penjualan ${transactionId}] ${finalNotes}`,
           createdById: createdById || null,
         },
       });
     }
 
+    const successMsg = stockWarning
+      ? `Penjualan berhasil disimpan! ${stockWarning}`
+      : 'Penjualan berhasil disimpan dan stok telah diperbarui.';
+
     return NextResponse.json({
       success: true,
-      message: 'Penjualan berhasil disimpan dan stok telah diperbarui.',
+      message: successMsg,
+      warning: stockWarning,
       data: sale,
     });
   } catch (error) {

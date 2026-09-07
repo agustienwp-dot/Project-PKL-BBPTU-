@@ -24,8 +24,8 @@ export async function PUT(request, { params }) {
 
     // ACTION: SEND TO PEMASARAN
     if (action === 'SEND') {
-      if (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN') {
-        return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm yang dapat mengirim ke Pemasaran' }, { status: 403 });
+      if (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'ADMIN_PENGEMASAN' && authUser.role !== 'SUPERADMIN') {
+        return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Farm/Pengemasan yang dapat mengirim ke Pemasaran' }, { status: 403 });
       }
 
       if (existing.status === 'DITERIMA') {
@@ -36,25 +36,27 @@ export async function PUT(request, { params }) {
         where: { id },
         data: {
           status: 'MENUNGGU_PENERIMAAN',
-          sent_at: new Date(),
-          sent_by_id: validUserId,
-          sent_by_name: authUser.name || authUser.email,
-          quantity_sent: existing.total_packaged_qty,
+          sentAt: new Date(),
+          sentById: validUserId,
+          sentByName: authUser.name || authUser.email,
+          quantitySent: existing.totalPackagedQty,
         },
         include: {
           category: true,
-          created_by: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
         },
       });
 
-      await prisma.systemLog.create({
-        data: {
-          user_id: validUserId,
-          user_email: authUser.email,
-          action: 'SEND_PACKAGING',
-          details: `Mengirim pengemasan ID ${id} (${existing.total_packaged_qty} pcs) ke Admin Pemasaran`,
-        },
-      });
+      try {
+        await prisma.systemLog.create({
+          data: {
+            userId: validUserId,
+            userEmail: authUser.email || '',
+            action: 'SEND_PACKAGING',
+            details: `Mengirim pengemasan ID ${id} (${existing.totalPackagedQty} pcs) ke Admin Pemasaran`,
+          },
+        });
+      } catch (logErr) {}
 
       return NextResponse.json({
         success: true,
@@ -74,7 +76,7 @@ export async function PUT(request, { params }) {
       }
 
       const { quantityReceived, condition, receptionNotes } = body;
-      const qRec = quantityReceived !== undefined ? parseInt(quantityReceived, 10) || 0 : existing.total_packaged_qty;
+      const qRec = quantityReceived !== undefined ? parseInt(quantityReceived, 10) || 0 : existing.totalPackagedQty;
 
       if (qRec < 0) {
         return NextResponse.json({ success: false, message: 'Jumlah diterima tidak boleh bernilai negatif' }, { status: 400 });
@@ -84,27 +86,29 @@ export async function PUT(request, { params }) {
         where: { id },
         data: {
           status: 'DITERIMA',
-          received_at: new Date(),
-          received_by_id: validUserId,
-          received_by_name: authUser.name || authUser.email,
-          quantity_received: qRec,
+          receivedAt: new Date(),
+          receivedById: validUserId,
+          receivedByName: authUser.name || authUser.email,
+          quantityReceived: qRec,
           condition: condition || 'Sesuai',
-          reception_notes: receptionNotes || '',
+          receptionNotes: receptionNotes || '',
         },
         include: {
           category: true,
-          created_by: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
         },
       });
 
-      await prisma.systemLog.create({
-        data: {
-          userId: validUserId,
-          userEmail: authUser.email,
-          action: 'RECEIVE_PACKAGING',
-          details: `Admin Pemasaran mengonfirmasi penerimaan ID ${id}: Diterima ${qRec} pcs (Kondisi: ${condition || 'Sesuai'})`,
-        },
-      });
+      try {
+        await prisma.systemLog.create({
+          data: {
+            userId: validUserId,
+            userEmail: authUser.email || '',
+            action: 'RECEIVE_PACKAGING',
+            details: `Admin Pemasaran mengonfirmasi penerimaan ID ${id}: Diterima ${qRec} pcs (Kondisi: ${condition || 'Sesuai'})`,
+          },
+        });
+      } catch (logErr) {}
 
       return NextResponse.json({
         success: true,
@@ -125,132 +129,149 @@ export async function PUT(request, { params }) {
         where: { id },
         data: {
           status: 'PERLU_KOREKSI',
-          reception_notes: receptionNotes || 'Permintaan koreksi data pengemasan dari Admin Pemasaran',
+          receptionNotes: receptionNotes || 'Permintaan koreksi data pengemasan dari Admin Pemasaran',
         },
         include: {
           category: true,
-          created_by: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
         },
       });
 
-      await prisma.systemLog.create({
-        data: {
-          user_id: validUserId,
-          user_email: authUser.email,
-          action: 'REJECT_PACKAGING',
-          details: `Admin Pemasaran meminta koreksi data pengemasan ID ${id}: ${receptionNotes || '-'}`,
-        },
-      });
+      try {
+        await prisma.systemLog.create({
+          data: {
+            userId: validUserId,
+            userEmail: authUser.email || '',
+            action: 'REJECT_PACKAGING',
+            details: `Admin Pemasaran meminta koreksi data pengemasan ID ${id}: ${receptionNotes || '-'}`,
+          },
+        });
+      } catch (logErr) {}
 
       return NextResponse.json({
         success: true,
-        message: 'Permintaan koreksi telah dikirim kembali ke Admin Farm',
+        message: 'Permintaan koreksi berhasil dikirim ke Admin Pengemasan/Farm!',
         data: updated,
       });
     }
 
-    // STANDARD EDIT / UPDATE FORM BY FARM ADMIN
-    if (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN') {
+    // DEFAULT ACTION: FULL UPDATE PACKAGING ITEM
+    if (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'ADMIN_PENGEMASAN' && authUser.role !== 'SUPERADMIN') {
       return NextResponse.json({ success: false, message: 'Akses ditolak' }, { status: 403 });
     }
 
-    // Lock check for editing
-    if ((existing.status === 'MENUNGGU_PENERIMAAN' || existing.status === 'DITERIMA') && authUser.role !== 'SUPERADMIN') {
-      return NextResponse.json({ success: false, message: 'Data yang sedang menunggu penerimaan atau sudah diterima tidak dapat diubah.' }, { status: 400 });
-    }
-
     const {
-      date,
-      productCategory,
-      productSubtype,
-      origin,
-      variant,
-      animalType,
-      categoryId,
-      processedAmount,
-      processedUnit,
-      processedLiters,
-      packagingItems,
-      botolQty,
-      cupQty,
-      plastikBantalQty,
-      notes,
+      date, productionId, productCategory, productSubtype, origin, variant, animalType,
+      categoryId, processedAmount, processedUnit, packagingItems, notes
     } = body;
 
-    const pCategory = productCategory !== undefined ? productCategory : (existing.product_category || 'Susu');
-    const pSubtype = productSubtype !== undefined ? productSubtype : existing.product_subtype;
-    const pOrigin = origin !== undefined ? origin : (existing.origin || (existing.animal_type === 'KAMBING' ? 'Kambing' : 'Sapi'));
-    const aType = pOrigin.toUpperCase() === 'KAMBING' ? 'KAMBING' : 'SAPI';
-    const pVariant = variant !== undefined ? variant : (existing.variant || 'Original');
-
-    const pAmount = processedAmount !== undefined ? parseFloat(processedAmount) || 0 : (processedLiters !== undefined ? parseFloat(processedLiters) || 0 : existing.processed_amount || existing.processed_liters || 0);
-    const pUnit = processedUnit !== undefined ? processedUnit : (existing.processed_unit || (pCategory === 'Keju' ? 'Kg' : 'Liter'));
-
-    if (pAmount < 0) {
-      return NextResponse.json({ success: false, message: 'Jumlah bahan diproses tidak boleh bernilai negatif' }, { status: 400 });
+    if (date) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const inputDateStr = typeof date === 'string' ? date.split('T')[0] : '';
+      if (inputDateStr && inputDateStr > todayStr) {
+        return NextResponse.json({ success: false, message: 'Tanggal pengemasan tidak boleh lebih dari tanggal sekarang' }, { status: 400 });
+      }
     }
 
-    let itemsList = Array.isArray(packagingItems) ? packagingItems : null;
-    let totalPackagedQty = 0;
-    let bQty = botolQty !== undefined ? parseInt(botolQty, 10) || 0 : existing.botol_qty;
-    let cQty = cupQty !== undefined ? parseInt(cupQty, 10) || 0 : existing.cup_qty;
-    let pQty = plastikBantalQty !== undefined ? parseInt(plastikBantalQty, 10) || 0 : existing.plastik_bantal_qty;
-    let primaryPkgType = existing.packaging_type;
-    let primaryPkgSize = existing.package_size;
+    const targetProductionId = (productionId === 'SUSU_SEGAR' || productionId === 'SUSU_OLAHAN') ? null : (productionId || existing.productionId || null);
 
-    if (itemsList) {
-      totalPackagedQty = itemsList.reduce((sum, i) => sum + (parseInt(i.quantity, 10) || 0), 0);
-      primaryPkgType = itemsList[0]?.packagingType || 'Botol';
-      primaryPkgSize = itemsList[0]?.size || '';
-      
-      bQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('botol')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
-      cQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('cup')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
-      pQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('bantal')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
+    const pCategory = productCategory || existing.productCategory || 'Susu';
+    const pSubtype = productSubtype || existing.productSubtype;
+    const pOrigin = origin || existing.origin || 'Sapi';
+    const pVariant = pOrigin === 'Sapi' ? (variant || existing.variant || 'Original') : null;
+    const aType = animalType || (pOrigin === 'Kambing' ? 'KAMBING' : 'SAPI');
+    const pAmount = processedAmount !== undefined ? parseFloat(processedAmount) || 0 : existing.processedAmount;
+    const pUnit = processedUnit || existing.processedUnit || 'Liter';
+
+    let itemsList = [];
+    if (Array.isArray(packagingItems) && packagingItems.length > 0) {
+      itemsList = packagingItems.map(i => ({
+        packagingType: i.packagingType || 'Botol',
+        size: i.size || '',
+        quantity: parseInt(i.quantity, 10) || 0
+      })).filter(i => i.quantity > 0);
+    }
+
+    let bQty = 0, cQty = 0, pQty = 0, totalPackagedQty = 0;
+    let primaryPkgType = null;
+    let primaryPkgSize = null;
+
+    if (itemsList.length > 0) {
+      primaryPkgType = itemsList[0].packagingType;
+      primaryPkgSize = itemsList[0].size;
+      itemsList.forEach(item => {
+        totalPackagedQty += item.quantity;
+        const typeLower = (item.packagingType || '').toLowerCase();
+        if (typeLower.includes('botol')) bQty += item.quantity;
+        else if (typeLower.includes('cup')) cQty += item.quantity;
+        else if (typeLower.includes('plastik') || typeLower.includes('bantal')) pQty += item.quantity;
+        else bQty += item.quantity;
+      });
     } else {
-      totalPackagedQty = bQty + cQty + pQty;
-      itemsList = existing.packaging_details ? JSON.parse(existing.packaging_details) : [];
+      totalPackagedQty = existing.totalPackagedQty || 0;
+      bQty = existing.botolQty || 0;
+      cQty = existing.cupQty || 0;
+      pQty = existing.plastikBantalQty || 0;
+      primaryPkgType = existing.packagingType;
+      primaryPkgSize = existing.packageSize;
     }
 
     const updated = await prisma.milkPackaging.update({
       where: { id },
       data: {
         date: date ? new Date(date) : existing.date,
-        product_category: pCategory,
-        product_subtype: pSubtype,
+        productCategory: pCategory,
+        productSubtype: pSubtype,
         origin: pOrigin,
         variant: pVariant,
-        animal_type: aType,
-        category_id: categoryId !== undefined ? categoryId : existing.category_id,
-        processed_amount: pAmount,
-        processed_unit: pUnit,
-        processed_liters: pUnit === 'Liter' ? pAmount : existing.processed_liters,
-        packaging_details: JSON.stringify(itemsList),
-        packaging_type: primaryPkgType,
-        package_size: primaryPkgSize,
-        botol_qty: bQty,
-        cup_qty: cQty,
-        plastik_bantal_qty: pQty,
-        total_packaged_qty: totalPackagedQty,
-        quantity_sent: totalPackagedQty,
-        status: existing.status === 'PERLU_KOREKSI' ? 'DRAFT' : existing.status,
+        animalType: aType,
+        categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
+        processedAmount: pAmount,
+        processedUnit: pUnit,
+        processedLiters: pUnit === 'Liter' ? pAmount : existing.processedLiters,
+        packagingDetails: JSON.stringify(itemsList),
+        packagingType: primaryPkgType,
+        packageSize: primaryPkgSize,
+        botolQty: bQty,
+        cupQty: cQty,
+        plastikBantalQty: pQty,
+        totalPackagedQty,
+        quantitySent: totalPackagedQty,
+        quantityReceived: totalPackagedQty,
+        status: existing.status === 'PERLU_KOREKSI' ? 'DITERIMA' : existing.status,
         notes: notes !== undefined ? notes : existing.notes,
       },
       include: {
         category: true,
-        created_by: {
+        createdBy: {
           select: { id: true, name: true, email: true },
         },
       },
     });
 
-    await prisma.systemLog.create({
-      data: {
-        user_id: validUserId,
-        user_email: authUser.email,
-        action: 'UPDATE_PACKAGING',
-        details: `Memperbarui data pengemasan ID ${id}: Total ${totalPackagedQty} pcs`,
-      },
-    });
+    if (targetProductionId) {
+      try {
+        await prisma.$executeRawUnsafe(
+          'UPDATE milk_packagings SET productionId = ? WHERE id = ?',
+          targetProductionId,
+          id
+        );
+      } catch (rawErr) {
+        console.error('Raw SQL productionId update error:', rawErr);
+      }
+    }
+
+    try {
+      await prisma.systemLog.create({
+        data: {
+          userId: validUserId,
+          userEmail: authUser.email || '',
+          action: 'UPDATE_PACKAGING',
+          details: `Memperbarui data pengemasan ID ${id}: Total ${totalPackagedQty} pcs`,
+        },
+      });
+    } catch (logErr) {}
 
     return NextResponse.json({
       success: true,
@@ -266,40 +287,54 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const authUser = getAuthUser(request);
-    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN')) {
+    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'ADMIN_PENGEMASAN' && authUser.role !== 'SUPERADMIN')) {
       return NextResponse.json({ success: false, message: 'Akses ditolak' }, { status: 403 });
     }
 
     const { id } = params;
-
     const existing = await prisma.milkPackaging.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ success: false, message: 'Data pengemasan tidak ditemukan' }, { status: 404 });
     }
 
-    if ((existing.status === 'MENUNGGU_PENERIMAAN' || existing.status === 'DITERIMA') && authUser.role !== 'SUPERADMIN') {
-      return NextResponse.json({ success: false, message: 'Data yang sedang dalam proses pengiriman atau sudah diterima tidak dapat dihapus.' }, { status: 400 });
+    if (existing.status === 'MENUNGGU_PENERIMAAN' && authUser.role !== 'SUPERADMIN' && authUser.role !== 'ADMIN_PENGEMASAN') {
+      return NextResponse.json({ success: false, message: 'Data yang sedang dalam proses pengiriman tidak dapat dihapus.' }, { status: 400 });
+    }
+
+    if (existing.productionId) {
+      const pAmount = existing.processedAmount || existing.processedLiters || 0;
+      if (pAmount > 0) {
+        await prisma.milkProduction.update({
+          where: { id: existing.productionId },
+          data: {
+            processedLiters: {
+              decrement: pAmount
+            }
+          }
+        }).catch(err => console.error('Error reverting production processedLiters:', err));
+      }
     }
 
     await prisma.milkPackaging.delete({ where: { id } });
 
     const validUserId = await resolveValidUserId(authUser);
-    await prisma.systemLog.create({
-      data: {
-        user_id: validUserId,
-        user_email: authUser.email,
-        action: 'DELETE_PACKAGING',
-        details: `Menghapus data pengemasan ID ${id}`,
-      },
-    });
+    try {
+      await prisma.systemLog.create({
+        data: {
+          userId: validUserId,
+          userEmail: authUser.email || '',
+          action: 'DELETE_PACKAGING',
+          details: `Menghapus data pengemasan ID ${id}`,
+        },
+      });
+    } catch (logErr) {}
 
     return NextResponse.json({
       success: true,
-      message: 'Data pengemasan berhasil dihapus',
+      message: 'Data pengemasan berhasil dihapus & stok susu dikembalikan.',
     });
   } catch (error) {
     console.error('DELETE /api/farm/packaging/[id] error:', error);
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
   }
 }
-

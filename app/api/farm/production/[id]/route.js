@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAuthUser, resolveValidUserId } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,53 +12,52 @@ export async function GET(request, { params }) {
     }
 
     const { id } = params;
-    const item = await prisma.milkProduction.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        created_by: { select: { id: true, name: true, email: true } },
-      },
-    });
+    let production = null;
+    try {
+      production = await prisma.milkProduction.findUnique({
+        where: { id },
+        include: {
+          category: true,
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+    } catch (e) {
+      console.error('prisma.milkProduction.findUnique error:', e);
+      production = null;
+    }
 
-    const normalizedItem = {
-      ...item,
-      farmOrigin: item.farmOrigin || item.farm_origin,
-      categoryId: item.categoryId || item.category_id,
-      productType: item.productType || item.product_type,
-      animalType: item.animalType || item.animal_type,
-      packagingType: item.packagingType || item.packaging_type,
-      grossVolumeLiters: item.grossVolumeLiters ?? item.gross_volume_liters,
-      pedetVolumeLiters: item.pedetVolumeLiters ?? item.pedet_volume_liters,
-      afkirVolumeLiters: item.afkirVolumeLiters ?? item.afkir_volume_liters,
-      soldFreshVolumeLiters: item.soldFreshVolumeLiters ?? item.sold_fresh_volume_liters,
-      rawVolumeLiters: item.rawVolumeLiters ?? item.raw_volume_liters,
-      processedLiters: item.processedLiters ?? item.processed_liters,
-      packagedQty: item.packagedQty ?? item.packaged_qty,
-      createdBy: item.createdBy || item.created_by,
-      fotoTimbangan: item.fotoTimbangan || item.foto_timbangan || null,
-      foto_timbangan: item.foto_timbangan || item.fotoTimbangan || null,
-    };
+    if (!production && global.__inMemoryProductionList) {
+      production = global.__inMemoryProductionList.find((p) => p.id === id);
+    }
 
-    return NextResponse.json({ success: true, data: normalizedItem });
+    if (!production) {
+      return NextResponse.json({ success: false, message: 'Data produksi tidak ditemukan' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: production });
   } catch (error) {
     console.error('GET /api/farm/production/[id] error:', error);
-    const memMatch = (global.__inMemoryProductionList || []).find((i) => i.id === id);
-    if (memMatch) {
-      return NextResponse.json({ success: true, data: memMatch });
-    }
-    return NextResponse.json({ success: false, message: 'Gagal mengambil data produksi' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 export async function PUT(request, { params }) {
   try {
     const authUser = getAuthUser(request);
-    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'SUPERADMIN')) {
+    if (!authUser || (authUser.role !== 'ADMIN_FARM' && authUser.role !== 'ADMIN_PENGEMASAN' && authUser.role !== 'SUPERADMIN')) {
       return NextResponse.json({ success: false, message: 'Akses ditolak' }, { status: 403 });
     }
 
     const { id } = params;
-    const { date, shift, farmOrigin, categoryId, productType, animalType, packagingType, grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, processedLiters, packagedQty, notes, fotoTimbangan } = await request.json();
+    const body = await request.json();
+    const { 
+      date, shift, farmOrigin, categoryId, productType, animalType, packagingType, 
+      grossVolumeLiters, pedetVolumeLiters, afkirVolumeLiters, soldFreshVolumeLiters, 
+      keteranganPenjualan, usageType, usageVolumeLiters, rawVolumeLiters, 
+      processedLiters, packagedQty, notes, status, fotoTimbangan 
+    } = body;
 
     if (date) {
       const now = new Date();
@@ -90,9 +89,9 @@ export async function PUT(request, { params }) {
     const soldFreshVal = soldFreshVolumeLiters !== undefined ? parseFloat(soldFreshVolumeLiters) || 0 : (existing.soldFreshVolumeLiters || 0);
     const totalUsage = pedetVal + afkirVal + soldFreshVal;
 
-    const aType = animalType || existing.animal_type || 'SAPI';
+    const aType = animalType || existing.animalType || 'SAPI';
     const feedLabel = aType === 'KAMBING' ? 'Cempe' : 'Pedet';
-    let summaryUsage = usageType !== undefined ? usageType : existing.usage_type;
+    let summaryUsage = usageType !== undefined ? usageType : existing.usageType;
     if (!summaryUsage || usageType === undefined) {
       const parts = [];
       if (pedetVal > 0) parts.push(`${feedLabel}: ${pedetVal}L`);
@@ -102,6 +101,7 @@ export async function PUT(request, { params }) {
 
     const netVolume = Math.max(0, grossVal - totalUsage);
     const finalProcessed = processedLiters !== undefined ? parseFloat(processedLiters) || netVolume : netVolume;
+    const newStatus = status !== undefined ? status : existing.status;
 
     let updated = null;
     try {
@@ -110,27 +110,28 @@ export async function PUT(request, { params }) {
         data: {
           date: date ? new Date(date) : existing.date,
           shift: shift !== undefined ? shift : existing.shift,
-          farm_origin: farmOrigin !== undefined ? farmOrigin : (existing.farm_origin || existing.farmOrigin),
-          category_id: categoryId !== undefined ? categoryId : (existing.category_id || existing.categoryId),
-          product_type: productType !== undefined ? productType : (existing.product_type || existing.productType),
-          animal_type: animalType !== undefined ? animalType : (existing.animal_type || existing.animalType),
-          packaging_type: packagingType !== undefined ? packagingType : (existing.packaging_type || existing.packagingType),
-          gross_volume_liters: grossVal,
-          pedet_volume_liters: pedetVal,
-          afkir_volume_liters: afkirVal,
-          sold_fresh_volume_liters: soldFreshVal,
-          keterangan_penjualan: keteranganPenjualan !== undefined ? keteranganPenjualan : (existing.keterangan_penjualan || existing.keteranganPenjualan),
-          usage_type: summaryUsage || null,
-          usage_volume_liters: totalUsage,
-          raw_volume_liters: netVolume,
-          processed_liters: finalProcessed,
-          packaged_qty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
+          farmOrigin: farmOrigin !== undefined ? farmOrigin : (existing.farmOrigin || 'Manggala'),
+          categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
+          productType: productType !== undefined ? productType : existing.productType,
+          animalType: animalType !== undefined ? animalType : existing.animalType,
+          packagingType: packagingType !== undefined ? packagingType : existing.packagingType,
+          grossVolumeLiters: grossVal,
+          pedetVolumeLiters: pedetVal,
+          afkirVolumeLiters: afkirVal,
+          soldFreshVolumeLiters: soldFreshVal,
+          keteranganPenjualan: keteranganPenjualan !== undefined ? keteranganPenjualan : existing.keteranganPenjualan,
+          usageType: summaryUsage || null,
+          usageVolumeLiters: totalUsage,
+          rawVolumeLiters: netVolume,
+          processedLiters: finalProcessed,
+          packagedQty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
+          status: newStatus,
           notes: notes !== undefined ? notes : existing.notes,
-          foto_timbangan: fotoTimbangan !== undefined ? fotoTimbangan : (existing.foto_timbangan || existing.fotoTimbangan),
+          fotoTimbangan: fotoTimbangan !== undefined ? fotoTimbangan : existing.fotoTimbangan,
         },
         include: {
           category: true,
-          created_by: {
+          createdBy: {
             select: { id: true, name: true, email: true },
           },
         },
@@ -141,83 +142,30 @@ export async function PUT(request, { params }) {
         ...existing,
         date: date || existing.date,
         shift: shift !== undefined ? shift : existing.shift,
-        farm_origin: farmOrigin !== undefined ? farmOrigin : (existing.farm_origin || existing.farmOrigin),
-        category_id: categoryId !== undefined ? categoryId : (existing.category_id || existing.categoryId),
-        product_type: productType !== undefined ? productType : (existing.product_type || existing.productType),
-        animal_type: animalType !== undefined ? animalType : (existing.animal_type || existing.animalType),
-        packaging_type: packagingType !== undefined ? packagingType : (existing.packaging_type || existing.packagingType),
-        gross_volume_liters: grossVal,
-        pedet_volume_liters: pedetVal,
-        afkir_volume_liters: afkirVal,
-        sold_fresh_volume_liters: soldFreshVal,
-        keterangan_penjualan: keteranganPenjualan !== undefined ? keteranganPenjualan : (existing.keterangan_penjualan || existing.keteranganPenjualan),
-        usage_type: summaryUsage || null,
-        usage_volume_liters: totalUsage,
-        raw_volume_liters: netVolume,
-        processed_liters: finalProcessed,
-        packaged_qty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
-        notes: notes !== undefined ? notes : existing.notes,
-        foto_timbangan: fotoTimbangan !== undefined ? fotoTimbangan : (existing.foto_timbangan || existing.fotoTimbangan),
-        fotoTimbangan: fotoTimbangan !== undefined ? fotoTimbangan : (existing.fotoTimbangan || existing.foto_timbangan),
-        // Camelcase compatibility for UI
-        farmOrigin: farmOrigin !== undefined ? farmOrigin : (existing.farmOrigin || existing.farm_origin),
-        categoryId: categoryId !== undefined ? categoryId : (existing.categoryId || existing.category_id),
-        productType: productType !== undefined ? productType : (existing.productType || existing.product_type),
-        animalType: animalType !== undefined ? animalType : (existing.animalType || existing.animal_type),
-        packagingType: packagingType !== undefined ? packagingType : (existing.packagingType || existing.packaging_type),
+        farmOrigin: farmOrigin !== undefined ? farmOrigin : (existing.farmOrigin || 'Manggala'),
+        categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
+        productType: productType !== undefined ? productType : existing.productType,
+        animalType: animalType !== undefined ? animalType : existing.animalType,
+        packagingType: packagingType !== undefined ? packagingType : existing.packagingType,
         grossVolumeLiters: grossVal,
         pedetVolumeLiters: pedetVal,
         afkirVolumeLiters: afkirVal,
         soldFreshVolumeLiters: soldFreshVal,
+        keteranganPenjualan: keteranganPenjualan !== undefined ? keteranganPenjualan : existing.keteranganPenjualan,
+        usageType: summaryUsage || null,
+        usageVolumeLiters: totalUsage,
         rawVolumeLiters: netVolume,
         processedLiters: finalProcessed,
         packagedQty: packagedQty !== undefined ? parseInt(packagedQty, 10) : Math.round(netVolume),
+        status: newStatus,
+        notes: notes !== undefined ? notes : existing.notes,
+        fotoTimbangan: fotoTimbangan !== undefined ? fotoTimbangan : existing.fotoTimbangan,
       };
     }
 
-    if (updated) {
-      updated.farmOrigin = updated.farmOrigin || updated.farm_origin;
-      updated.categoryId = updated.categoryId || updated.category_id;
-      updated.productType = updated.productType || updated.product_type;
-      updated.animalType = updated.animalType || updated.animal_type;
-      updated.packagingType = updated.packagingType || updated.packaging_type;
-      updated.grossVolumeLiters = updated.grossVolumeLiters ?? updated.gross_volume_liters;
-      updated.pedetVolumeLiters = updated.pedetVolumeLiters ?? updated.pedet_volume_liters;
-      updated.afkirVolumeLiters = updated.afkirVolumeLiters ?? updated.afkir_volume_liters;
-      updated.soldFreshVolumeLiters = updated.soldFreshVolumeLiters ?? updated.sold_fresh_volume_liters;
-      updated.rawVolumeLiters = updated.rawVolumeLiters ?? updated.raw_volume_liters;
-      updated.processedLiters = updated.processedLiters ?? updated.processed_liters;
-      updated.packagedQty = updated.packagedQty ?? updated.packaged_qty;
-      updated.createdBy = updated.createdBy || updated.created_by;
-      updated.fotoTimbangan = updated.fotoTimbangan || updated.foto_timbangan;
-      updated.foto_timbangan = updated.foto_timbangan || updated.fotoTimbangan;
-    }
-
-    if (global.__inMemoryProductionList) {
-      const idx = global.__inMemoryProductionList.findIndex((p) => p.id === id);
-      if (idx !== -1) {
-        global.__inMemoryProductionList[idx] = {
-          ...global.__inMemoryProductionList[idx],
-          ...updated,
-        };
-      }
-    }
-
-    try {
-      const validUserId = await resolveValidUserId(authUser);
-      await prisma.systemLog.create({
-        data: {
-          userId: validUserId,
-          userEmail: authUser.email,
-          action: 'UPDATE_PRODUCTION',
-          details: `Memperbarui data produksi (ID: ${id})`,
-        },
-      });
-    } catch (e) {}
-
     return NextResponse.json({
       success: true,
-      message: 'Data produksi berhasil diperbarui',
+      message: 'Data produksi berhasil diperbarui!',
       data: updated,
     });
   } catch (error) {
@@ -234,46 +182,15 @@ export async function DELETE(request, { params }) {
     }
 
     const { id } = params;
-
-    let existing = null;
-    try {
-      existing = await prisma.milkProduction.findUnique({ where: { id } });
-    } catch (e) {
-      existing = null;
-    }
-
-    if (!existing && global.__inMemoryProductionList) {
-      existing = global.__inMemoryProductionList.find((p) => p.id === id);
-    }
-
-    if (!existing) {
-      return NextResponse.json({ success: false, message: 'Data produksi tidak ditemukan' }, { status: 404 });
-    }
-
     try {
       await prisma.milkProduction.delete({ where: { id } });
-    } catch (e) { }
-
-    if (global.__inMemoryProductionList) {
-      global.__inMemoryProductionList = global.__inMemoryProductionList.filter((p) => p.id !== id);
+    } catch (e) {
+      if (global.__inMemoryProductionList) {
+        global.__inMemoryProductionList = global.__inMemoryProductionList.filter((p) => p.id !== id);
+      }
     }
 
-    try {
-      const validUserId = await resolveValidUserId(authUser);
-      await prisma.systemLog.create({
-        data: {
-          userId: validUserId,
-          userEmail: authUser.email,
-          action: 'DELETE_PRODUCTION',
-          details: `Menghapus data produksi (ID: ${id})`,
-        },
-      });
-    } catch (e) { }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Data produksi berhasil dihapus.',
-    });
+    return NextResponse.json({ success: true, message: 'Data produksi berhasil dihapus' });
   } catch (error) {
     console.error('DELETE /api/farm/production/[id] error:', error);
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
