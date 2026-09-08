@@ -23,9 +23,9 @@ model User {
   email     String   @unique
   password  String
   role      String   @default("ADMIN_FARM") // SUPERADMIN, ADMIN_FARM, ADMIN_PEMASARAN, ADMIN_PENGEMASAN
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   logs         SystemLog[]
   productions  MilkProduction[]
@@ -40,13 +40,13 @@ model User {
 
 model SystemLog {
   id        String   @id @default(uuid())
-  userId    String?
+  userId    String?  @map("user_id")
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userEmail String
+  userEmail String   @map("user_email")
   action    String
   level     String   @default("INFO") // INFO, WARN, ERROR
   details   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("system_logs")
 }
@@ -55,12 +55,12 @@ model MilkCategory {
   id               String   @id @default(uuid())
   name             String   @unique // e.g. Susu Murni Segar, Susu Olahan Cokelat, Yogurt, Keju
   code             String   @unique // e.g. SEGAR_MURNI, OLAHAN_COKELAT, YOGURT
-  productType      String   @default("SEGAR") // "SEGAR" or "OLAHAN"
-  animalType       String   @default("SAPI") // "SAPI" or "KAMBING"
-  defaultPackaging String   @default("botol") // "cup", "pack", "botol", "liter"
+  productType      String   @default("SEGAR") @map("product_type") // "SEGAR" or "OLAHAN"
+  animalType       String   @default("SAPI") @map("animal_type") // "SAPI" or "KAMBING"
+  defaultPackaging String   @default("botol") @map("default_packaging") // "cup", "pack", "botol", "liter"
   description      String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   productions MilkProduction[]
   packagings  MilkPackaging[]
@@ -73,37 +73,37 @@ model MilkProduction {
   id                       String   @id @default(uuid())
   date                     DateTime @default(now())
   shift                    String   @default("Pagi") // "Pagi" or "Sore"
-  farmOrigin               String   @default("Manggala") // "Manggala", "Limpakuwus", "Tegal Sari", "Eduwisata"
-  categoryId               String
+  farmOrigin               String   @default("Manggala") @map("farm_origin") // "Manggala", "Limpakuwus", "Tegal Sari", "Eduwisata"
+  categoryId               String   @map("category_id")
   category                 MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  productType              String   @default("SEGAR") // "SEGAR" or "OLAHAN"
-  animalType               String   @default("SAPI") // "SAPI" or "KAMBING"
-  packagingType            String   @default("botol") // "cup", "pack", "botol", "liter"
-  grossVolumeLiters        Float    @default(0) // Produksi susu (Gross Liter)
-  pedetVolumeLiters        Float    @default(0) // Susu untuk Pedet (Sapi) / Cempe (Kambing) (Liter)
-  afkirVolumeLiters        Float    @default(0) // Susu Afkir / Rusak (Liter)
-  soldFreshVolumeLiters    Float    @default(0) // Susu Dijual Langsung Pasca Perah (Liter)
-  keteranganPenjualan      String?  // Catatan/Keterangan Pembeli
-  usageType                String?  // Ringkasan kegunaan / catatan alokasi
-  usageVolumeLiters        Float    @default(0) // Total potongan volume (pedet + afkir + dijual segar)
-  rawVolumeLiters          Float    @default(0) // Susu siap olah (gross - pedet - afkir - dijual segar)
-  processedLiters          Float    @default(0) // Input jumlah susu yang diproses/dikemas (liter)
-  packagedQty              Int      @default(0) // Input jumlah produk setelah dikemas (botol/cup/pack)
+  productType              String   @default("SEGAR") @map("product_type") // "SEGAR" or "OLAHAN"
+  animalType               String   @default("SAPI") @map("animal_type") // "SAPI" or "KAMBING"
+  packagingType            String   @default("botol") @map("packaging_type") // "cup", "pack", "botol", "liter"
+  grossVolumeLiters        Float    @default(0) @map("gross_volume_liters") // Produksi susu (Gross Liter)
+  pedetVolumeLiters        Float    @default(0) @map("pedet_volume_liters") // Susu untuk Pedet (Sapi) / Cempe (Kambing) (Liter)
+  afkirVolumeLiters        Float    @default(0) @map("afkir_volume_liters") // Susu Afkir / Rusak (Liter)
+  soldFreshVolumeLiters    Float    @default(0) @map("sold_fresh_volume_liters") // Susu Dijual Langsung Pasca Perah (Liter)
+  keteranganPenjualan      String?  @map("keterangan_penjualan") // Catatan/Keterangan Pembeli
+  usageType                String?  @map("usage_type") // Ringkasan kegunaan / catatan alokasi
+  usageVolumeLiters        Float    @default(0) @map("usage_volume_liters") // Total potongan volume (pedet + afkir + dijual segar)
+  rawVolumeLiters          Float    @default(0) @map("raw_volume_liters") // Susu siap olah (gross - pedet - afkir - dijual segar)
+  processedLiters          Float    @default(0) @map("processed_liters") // Input jumlah susu yang diproses/dikemas (liter)
+  packagedQty              Int      @default(0) @map("packaged_qty") // Input jumlah produk setelah dikemas (botol/cup/pack)
   status                   String   @default("SELESAI") // "SELESAI"
   notes                    String?
 
   // Anti-Cheat & Verification Handshake fields
-  kodeTransfer           String?  @unique
-  fotoTimbangan          String?  @db.LongText
-  nomorSegel             String?
-  pinVerifikasi          String?
-  handoverStatus         String   @default("MENUNGGU_VERIFIKASI") // "MENUNGGU_VERIFIKASI", "DITERIMA", "ADA_SELISIH"
-  receivedVolumeLiters  Float?
+  kodeTransfer           String?  @unique @map("kode_transfer")
+  fotoTimbangan          String?  @db.LongText @map("foto_timbangan")
+  nomorSegel             String?  @map("nomor_segel")
+  pinVerifikasi          String?  @map("pin_verifikasi")
+  handoverStatus         String   @default("MENUNGGU_VERIFIKASI") @map("handover_status") // "MENUNGGU_VERIFIKASI", "DITERIMA", "ADA_SELISIH"
+  receivedVolumeLiters  Float?   @map("received_volume_liters")
 
-  createdById      String?
+  createdById      String?  @map("created_by_id")
   createdBy        User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   beritaAcaras     BeritaAcara[]
   packagings       MilkPackaging[]
@@ -114,41 +114,41 @@ model MilkProduction {
 model MilkPackaging {
   id               String   @id @default(uuid())
   date             DateTime @default(now())
-  productionId     String?
+  productionId     String?  @map("production_id")
   production       MilkProduction? @relation(fields: [productionId], references: [id], onDelete: SetNull)
-  productCategory  String   @default("Susu") // "Susu", "Yogurt", "Keju"
-  productSubtype   String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa"
+  productCategory  String   @default("Susu") @map("product_category") // "Susu", "Yogurt", "Keju"
+  productSubtype   String?  @map("product_subtype") // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa"
   origin           String   @default("Sapi") // "Sapi", "Kambing"
   variant          String?  // "Original", "Cokelat", "Stroberi", "Melon", "Vanilla", "Keju Fresh", "Keju Olahan", dll.
-  animalType       String   @default("SAPI") // "SAPI" or "KAMBING" (compat)
-  categoryId       String?
+  animalType       String   @default("SAPI") @map("animal_type") // "SAPI" or "KAMBING" (compat)
+  categoryId       String?  @map("category_id")
   category         MilkCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  processedAmount  Float    @default(0) // Jumlah liter/kg yang diproses
-  processedUnit    String   @default("Liter") // "Liter" or "Kg"
-  processedLiters  Float    @default(0) // Quantified in liters for compat
-  packagingDetails String?  @db.Text // JSON string: [{ packagingType, size, quantity }]
-  packagingType    String?  // Main packaging type e.g. "Botol", "Cup"
-  packageSize      String?  // Main package size e.g. "250 ml", "100 gram"
-  botolQty         Int      @default(0) // Jumlah pcs botol (compat)
-  cupQty           Int      @default(0) // Jumlah pcs cup (compat)
-  plastikBantalQty Int      @default(0) // Jumlah pcs plastik bantal (compat)
-  totalPackagedQty Int      @default(0) // Total pcs produk jadi
+  processedAmount  Float    @default(0) @map("processed_amount") // Jumlah liter/kg yang diproses
+  processedUnit    String   @default("Liter") @map("processed_unit") // "Liter" or "Kg"
+  processedLiters  Float    @default(0) @map("processed_liters") // Quantified in liters for compat
+  packagingDetails String?  @db.Text @map("packaging_details") // JSON string: [{ packagingType, size, quantity }]
+  packagingType    String?  @map("packaging_type") // Main packaging type e.g. "Botol", "Cup"
+  packageSize      String?  @map("package_size") // Main package size e.g. "250 ml", "100 gram"
+  botolQty         Int      @default(0) @map("botol_qty") // Jumlah pcs botol (compat)
+  cupQty           Int      @default(0) @map("cup_qty") // Jumlah pcs cup (compat)
+  plastikBantalQty Int      @default(0) @map("plastik_bantal_qty") // Jumlah pcs plastik bantal (compat)
+  totalPackagedQty Int      @default(0) @map("total_packaged_qty") // Total pcs produk jadi
   status           String   @default("DRAFT") // "DRAFT", "MENUNGGU_PENERIMAAN", "DITERIMA", "PERLU_KOREKSI"
-  sentAt           DateTime?
-  sentById         String?
-  sentByName       String?
-  receivedAt       DateTime?
-  receivedById     String?
-  receivedByName   String?
-  quantitySent     Int      @default(0) // Total pcs dikirim Farm
-  quantityReceived Int      @default(0) // Total pcs dikonfirmasi Pemasaran
+  sentAt           DateTime? @map("sent_at")
+  sentById         String?  @map("sent_by_id")
+  sentByName       String?  @map("sent_by_name")
+  receivedAt       DateTime? @map("received_at")
+  receivedById     String?  @map("received_by_id")
+  receivedByName   String?  @map("received_by_name")
+  quantitySent     Int      @default(0) @map("quantity_sent") // Total pcs dikirim Farm
+  quantityReceived Int      @default(0) @map("quantity_received") // Total pcs dikonfirmasi Pemasaran
   condition        String?  // "Sesuai", "Ada Selisih", "Ada Kerusakan"
-  receptionNotes   String?  @db.Text
+  receptionNotes   String?  @db.Text @map("reception_notes")
   notes            String?
-  createdById      String?
+  createdById      String?  @map("created_by_id")
   createdBy        User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("milk_packagings")
 }
@@ -156,104 +156,104 @@ model MilkPackaging {
 model MilkOutflow {
   id            String   @id @default(uuid())
   date          DateTime @default(now())
-  categoryId    String
+  categoryId    String   @map("category_id")
   category      MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  productType   String   @default("SEGAR") // "SEGAR" or "OLAHAN"
-  animalType    String   @default("SAPI") // "SAPI" or "KAMBING"
-  packagingType String   @default("botol") // "cup", "pack", "botol", "liter"
+  productType   String   @default("SEGAR") @map("product_type") // "SEGAR" or "OLAHAN"
+  animalType    String   @default("SAPI") @map("animal_type") // "SAPI" or "KAMBING"
+  packagingType String   @default("botol") @map("packaging_type") // "cup", "pack", "botol", "liter"
   quantity      Int      @default(0) // Jumlah produk yang keluar/terjual (botol/cup/pack)
   notes         String?
-  createdById   String?
+  createdById   String?  @map("created_by_id")
   createdBy     User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("milk_outflows")
 }
 
 model MilkSale {
   id              String   @id @default(uuid())
-  transactionId   String   @unique // e.g. TRX-20260814-001
+  transactionId   String   @unique @map("transaction_id") // e.g. TRX-20260814-001
   date            DateTime @default(now())
-  productCategory String   @default("Susu") // "Susu", "Yogurt", "Keju"
-  productSubtype  String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa", etc.
+  productCategory String   @default("Susu") @map("product_category") // "Susu", "Yogurt", "Keju"
+  productSubtype  String?  @map("product_subtype") // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa", etc.
   variant         String?  // "Original", "Cokelat", etc.
-  packagingType   String   @default("Botol") // "Botol", "Cup", "Plastik Bantal", etc.
+  packagingType   String   @default("Botol") @map("packaging_type") // "Botol", "Cup", "Plastik Bantal", etc.
   quantity        Int      @default(0) // Jumlah pcs
-  unitPrice       Float    @default(0) // Harga per pcs
-  totalPrice      Float    @default(0) // Total Rp
+  unitPrice       Float    @default(0) @map("unit_price") // Harga per pcs
+  totalPrice      Float    @default(0) @map("total_price") // Total Rp
   status          String   @default("Berhasil") // "Berhasil", "Dibatalkan"
   notes           String?
-  createdById     String?
+  createdById     String?  @map("created_by_id")
   createdBy       User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("milk_sales")
 }
 
 model BeritaAcara {
   id               String      @id @default(uuid())
-  nomorBA          String      @unique // e.g. BA-20260819-001
+  nomorBA          String      @unique @map("nomor_ba") // e.g. BA-20260819-001
   type             String?     // "HIBAH" or "PEMBELIAN" or "FARM_HANDOVER"
   date             DateTime    @default(now())
   shift            String?     @default("Pagi") // "Pagi" or "Sore"
   period           String?     // "Pagi" or "Sore" (for PEMBELIAN)
   location         String?     // "Tegalsari", "Limpakuwus", "Manggala", "Eduwisata"
-  farmLocation     String?     @default("Tegalsari")
-  animalType       String?     @default("SAPI") // "SAPI" or "KAMBING"
+  farmLocation     String?     @default("Tegalsari") @map("farm_location")
+  animalType       String?     @default("SAPI") @map("animal_type") // "SAPI" or "KAMBING"
   unit             String?     @default("Liter") // "Liter" or "Kg"
 
   // Quantities for Farm Handover
-  totalProduksi    Float?      @default(0) // Total gross production
-  penggunaanPedet  Float?      @default(0) // Pedet / Cempe
+  totalProduksi    Float?      @default(0) @map("total_produksi") // Total gross production
+  penggunaanPedet  Float?      @default(0) @map("penggunaan_pedet") // Pedet / Cempe
   afkir            Float?      @default(0) // Susu afkir
-  lainLain         Float?      @default(0) // Alokasi lain-lain
-  diserahterimakan Float?      @default(0) // Volume diserahterimakan ke Pemasaran
+  lainLain         Float?      @default(0) @map("lain_lain") // Alokasi lain-lain
+  diserahterimakan Float?      @default(0)
 
   // Pihak Pemasaran / Receiver / Giver
-  giverName        String?     @default("Tim Kerja Layanan Pemasaran")
-  giverTitle       String?  
-  giverDept        String?     @default("Tim Kerja Layanan Pemasaran")
-  receiverName     String?
-  receiverTitle    String?
-  receiverDept     String?
-  penerimaRole     String?     @default("Seksi Pemasaran")
-  penerimaUserId   String?
-  penerimaName     String?     @default("Seksi Pemasaran")
+  giverName        String?     @default("Tim Kerja Layanan Pemasaran") @map("giver_name")
+  giverTitle       String?     @map("giver_title")
+  giverDept        String?     @default("Tim Kerja Layanan Pemasaran") @map("giver_dept")
+  receiverName     String?     @map("receiver_name")
+  receiverTitle    String?     @map("receiver_title")
+  receiverDept     String?     @map("receiver_dept")
+  penerimaRole     String?     @default("Seksi Pemasaran") @map("penerima_role")
+  penerimaUserId   String?     @map("penerima_user_id")
+  penerimaName     String?     @default("Seksi Pemasaran") @map("penerima_name")
 
   // Pihak Pemeliharaan / Farm (Sender)
-  penyerahRole     String?     @default("Seksi Pemeliharaan")
-  penyerahUserId   String?
-  penyerahName     String?     @default("Seksi Pemeliharaan")
+  penyerahRole     String?     @default("Seksi Pemeliharaan") @map("penyerah_role")
+  penyerahUserId   String?     @map("penyerah_user_id")
+  penyerahName     String?     @default("Seksi Pemeliharaan") @map("penyerah_name")
 
   // Digital Signature & Workflow Status
   status           String?     @default("DRAFT")
-  digitalSignature String?     @db.LongText
-  signedAt         DateTime?
-  signedByName     String?
-  sentAt           DateTime?
-  readAt           DateTime?
-  printedAt        DateTime?
+  digitalSignature String?     @db.LongText @map("digital_signature")
+  signedAt         DateTime?   @map("signed_at")
+  signedByName     String?     @map("signed_by_name")
+  sentAt           DateTime?   @map("sent_at")
+  readAt           DateTime?   @map("read_at")
+  printedAt        DateTime?   @map("printed_at")
 
   purpose          String?  
   notes            String?     @db.Text
   items            String?     @db.Text // JSON: [{ quantity, unit, notes, productType, size }]
 
   // Relation to MilkProduction
-  productionId     String?
+  productionId     String?     @map("production_id")
   production       MilkProduction? @relation(fields: [productionId], references: [id], onDelete: SetNull)
 
   // Relation to MilkPackaging (for BA Susu Olahan)
-  packagingId      String?
-  confirmedBy      String?
-  confirmedByName  String?
-  confirmedAt      DateTime?
+  packagingId      String?     @map("packaging_id")
+  confirmedBy      String?     @map("confirmed_by")
+  confirmedByName  String?     @map("confirmed_by_name")
+  confirmedAt      DateTime?   @map("confirmed_at")
 
-  createdById      String?
+  createdById      String?     @map("created_by_id")
   createdBy        User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
 
   logs             BeritaAcaraLog[]
 
@@ -262,41 +262,41 @@ model BeritaAcara {
 
 model BeritaAcaraLog {
   id            String      @id @default(uuid())
-  beritaAcaraId String
+  beritaAcaraId String      @map("berita_acara_id")
   beritaAcara   BeritaAcara @relation(fields: [beritaAcaraId], references: [id], onDelete: Cascade)
   action        String      // "DRAFT_CREATED", "EDITED", "SIGNED", "SENT", "READ", "PRINTED"
-  actorName     String
-  actorRole     String?
+  actorName     String      @map("actor_name")
+  actorRole     String?     @map("actor_role")
   notes         String?
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime    @default(now()) @map("created_at")
 
   @@map("berita_acara_logs")
 }
 
 model MilkRequest {
   id                   String    @id @default(uuid())
-  requestNo            String    @unique
+  requestNo            String    @unique @map("request_no")
   date                 DateTime  @default(now())
-  volumeLiters         Float     @default(0)
-  processingNeeds      String    // "Susu Pasteurisasi", "Yogurt", "Lainnya"
+  volumeLiters         Float     @default(0) @map("volume_liters")
+  processingNeeds      String    @map("processing_needs")
   priority             String    @default("Normal") // "Normal", "Mendesak"
   notes                String?   @db.Text
   status               String    @default("MENUNGGU_PERSETUJUAN") // "MENUNGGU_PERSETUJUAN", "DISETUJUI", "DITOLAK", "DIPROSES", "SIAP_DITERIMA", "DITERIMA"
-  rejectionReason      String?   @db.Text
-  approvedAt           DateTime?
-  approvedById         String?
-  approvedByName       String?
-  dispatchedAt         DateTime?
-  readyForReceiptAt    DateTime?
-  receivedVolumeLiters Float?
-  receivedAt           DateTime?
-  receivedById         String?
-  receivedByName       String?
+  rejectionReason      String?   @db.Text @map("rejection_reason")
+  approvedAt           DateTime? @map("approved_at")
+  approvedById         String?   @map("approved_by_id")
+  approvedByName       String?   @map("approved_by_name")
+  dispatchedAt         DateTime? @map("dispatched_at")
+  readyForReceiptAt    DateTime? @map("ready_for_receipt_at")
+  receivedVolumeLiters Float?    @map("received_volume_liters")
+  receivedAt           DateTime? @map("received_at")
+  receivedById         String?   @map("received_by_id")
+  receivedByName       String?   @map("received_by_name")
 
-  createdById String?
+  createdById String?  @map("created_by_id")
   createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("milk_requests")
 }
@@ -307,11 +307,11 @@ model PackagingMaterial {
   name          String
   category      String   @default("Kemasan") // "Kemasan", "Tutup", "Label", "Bahan Tambahan"
   unit          String   @default("pcs") // "pcs", "roll", "pack"
-  currentStock  Float    @default(0)
-  minimumStock  Float    @default(500) // Threshold Menipis
-  criticalStock Float    @default(200) // Threshold Kritis
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  currentStock  Float    @default(0) @map("current_stock")
+  minimumStock  Float    @default(500) @map("minimum_stock") // Threshold Menipis
+  criticalStock Float    @default(200) @map("critical_stock") // Threshold Kritis
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   movements     MaterialStockMovement[]
 
@@ -320,18 +320,17 @@ model PackagingMaterial {
 
 model MaterialStockMovement {
   id            String            @id @default(uuid())
-  materialId    String
+  materialId    String            @map("material_id")
   material      PackagingMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
   type          String            // "ADDITION", "DEDUCTION", "ADJUSTMENT", "PRODUCTION"
   quantity      Float             // Absolute quantity changed
-  previousStock Float             @default(0)
-  newStock      Float             @default(0)
+  previousStock Float             @default(0) @map("previous_stock")
+  newStock      Float             @default(0) @map("new_stock")
   source        String            @default("PENYESUAIAN") // "PENGOLAHAN", "PENYESUAIAN", "INITIAL_STOCK"
-  referenceId   String?
+  referenceId   String?           @map("reference_id")
   notes         String?           @db.Text
-  createdById   String?
-  createdAt     DateTime          @default(now())
+  createdById   String?           @map("created_by_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
 
   @@map("material_stock_movements")
 }
-

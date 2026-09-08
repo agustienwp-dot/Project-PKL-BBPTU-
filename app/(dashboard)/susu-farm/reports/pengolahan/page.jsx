@@ -37,7 +37,7 @@ export default function LaporanPengolahanPage() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/uht/reports?month=${month}&year=${year}&t=${Date.now()}`);
+      const res = await api.get(`/susu-farm/reports/pengolahan?month=${month}&year=${year}&t=${Date.now()}`);
       if (res.data?.success) {
         setReportData(res.data.data);
       }
@@ -263,8 +263,8 @@ export default function LaporanPengolahanPage() {
           <button
             onClick={() => setActiveView('PRODUKSI')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${activeView === 'PRODUKSI' || activeView === 'MATRIX'
-              ? 'bg-[#1E3F20] text-white shadow-sm'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-[#1E3F20] text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
           >
             <span>Laporan Produksi</span>
@@ -273,8 +273,8 @@ export default function LaporanPengolahanPage() {
           <button
             onClick={() => setActiveView('STOK_BAHAN')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${activeView === 'STOK_BAHAN'
-              ? 'bg-[#1E3F20] text-white shadow-sm'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-[#1E3F20] text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
           >
             <span>Laporan Sisa Stok Bahan Baku & Kemasan</span>

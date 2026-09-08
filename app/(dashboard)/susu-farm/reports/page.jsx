@@ -23,7 +23,7 @@ export default function ReportsPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [productType, setProductType] = useState('SEGAR'); // SEGAR or OLAHAN
-  const [animalType, setAnimalType] = useState('ALL'); // ALL, SAPI, or KAMBING
+  const [animalType, setAnimalType] = useState('SAPI'); // SAPI or KAMBING
   const [reportData, setReportData] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -34,7 +34,7 @@ export default function ReportsPage() {
 
   const fetchReport = async () => {
     try {
-      const res = await api.get(`/reports/monthly?month=${month}&year=${year}&productType=${productType}&animalType=${animalType}`);
+      const res = await api.get(`/susu-farm/reports/monthly?month=${month}&year=${year}&productType=${productType}&animalType=${animalType}`);
       if (res.data.success) {
         setReportData(res.data.data);
       }
@@ -268,39 +268,36 @@ export default function ReportsPage() {
       </div>
 
       {/* Filter Section (Hidden on print) */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 shrink-0 print:hidden">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-end gap-3 shrink-0 print:hidden">
         <select
           value={animalType}
           onChange={(e) => setAnimalType(e.target.value)}
           className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
         >
-          <option value="ALL">Semua Ternak (Sapi & Kambing)</option>
           <option value="SAPI">Susu Sapi</option>
           <option value="KAMBING">Susu Kambing</option>
         </select>
 
         {/* Month & Year Selectors */}
-        <div className="flex items-center gap-3">
-          <select
-            value={month}
-            onChange={(e) => setMonth(parseInt(e.target.value, 10))}
-            className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
-          >
-            {monthNames.map((name, idx) => (
-              <option key={idx + 1} value={idx + 1}>{name}</option>
-            ))}
-          </select>
+        <select
+          value={month}
+          onChange={(e) => setMonth(parseInt(e.target.value, 10))}
+          className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
+        >
+          {monthNames.map((name, idx) => (
+            <option key={idx + 1} value={idx + 1}>{name}</option>
+          ))}
+        </select>
 
-          <select
-            value={year}
-            onChange={(e) => setYear(parseInt(e.target.value, 10))}
-            className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
-          >
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
-            <option value={2027}>2027</option>
-          </select>
-        </div>
+        <select
+          value={year}
+          onChange={(e) => setYear(parseInt(e.target.value, 10))}
+          className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer"
+        >
+          <option value={2025}>2025</option>
+          <option value={2026}>2026</option>
+          <option value={2027}>2027</option>
+        </select>
       </div>
 
       {/* Printable / Display Official Document Header */}

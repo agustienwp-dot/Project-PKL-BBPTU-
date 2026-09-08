@@ -5,13 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
-import { 
-  Plus, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  ArrowUpRight, 
-  ArrowDownRight, 
+import {
+  Plus,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
   Filter,
   Search,
   FileSpreadsheet,
@@ -25,7 +25,7 @@ export default function StokBahanPage() {
   const [materials, setMaterials] = useState([]);
   const [movements, setMovements] = useState([]);
   const [summary, setSummary] = useState({ warningCount: 0, amanCount: 0, menipisCount: 0, kritisCount: 0 });
-  
+
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedMaterialFilter, setSelectedMaterialFilter] = useState('ALL');
@@ -48,7 +48,7 @@ export default function StokBahanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/uht/stok-bahan?t=${Date.now()}`);
+      const res = await api.get(`/stok-bahan?t=${Date.now()}`);
       if (res.data?.success) {
         setMaterials(res.data.data.materials || []);
         setMovements(res.data.data.movements || []);
@@ -181,7 +181,7 @@ export default function StokBahanPage() {
         notes: adjustForm.notes || '',
         items: adjustForm.items
       };
-      const res = await api.post('/uht/stok-bahan/adjust', payload);
+      const res = await api.post('/stok-bahan/adjust', payload);
       if (res.data?.success) {
         setToast({ type: 'success', message: res.data.message || 'Penambahan stok berhasil disimpan!' });
         setShowAdjustModal(false);
@@ -200,9 +200,9 @@ export default function StokBahanPage() {
   const filteredMaterials = allowedMaterials.filter(mat => {
     const matchesCategory = filterCategory === 'ALL' || (mat.category || '').toLowerCase() === filterCategory.toLowerCase();
     const matchesStatus = filterStatus === 'ALL' || mat.status === filterStatus;
-    const matchesSearch = mat.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          mat.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          mat.displayLabel.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = mat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mat.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mat.displayLabel.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesStatus && matchesSearch;
   });
 
@@ -283,15 +283,14 @@ export default function StokBahanPage() {
               <div
                 key={mat.id}
                 onClick={() => setSelectedMaterialFilter(prev => prev === mat.id ? 'ALL' : mat.id)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
-                  isSelected
-                    ? isCritical
-                      ? 'bg-rose-50/70 border-rose-500 ring-2 ring-rose-500/30 shadow-md'
-                      : 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/30 shadow-md'
-                    : isCritical
-                      ? 'bg-rose-50/30 border-rose-200 hover:border-rose-400 hover:shadow-sm'
-                      : 'bg-white border-slate-200 hover:border-emerald-400 hover:shadow-sm'
-                }`}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                  ? isCritical
+                    ? 'bg-rose-50/70 border-rose-500 ring-2 ring-rose-500/30 shadow-md'
+                    : 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/30 shadow-md'
+                  : isCritical
+                    ? 'bg-rose-50/30 border-rose-200 hover:border-rose-400 hover:shadow-sm'
+                    : 'bg-white border-slate-200 hover:border-emerald-400 hover:shadow-sm'
+                  }`}
               >
                 <div>
                   <div className="mb-2">

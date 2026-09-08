@@ -22,7 +22,8 @@ import {
   ClipboardList,
   Camera,
   Upload,
-  UserPlus
+  UserPlus,
+  Printer
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -92,7 +93,7 @@ export default function ProduksiPage() {
       const [pRes, cRes, baRes] = await Promise.all([
         api.get(url).catch(() => ({ data: { success: true, data: [] } })),
         api.get('/categories?productType=SEGAR').catch(() => ({ data: { success: true, data: [] } })),
-        api.get('/uht/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
+        api.get('/susu-farm/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
       ]);
 
       if (pRes.data && pRes.data.success && Array.isArray(pRes.data.data)) {
@@ -437,59 +438,58 @@ export default function ProduksiPage() {
             className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Input Produksi Susu</span>
+            <span>Input Produksi Susu</span>
           </button>
         )}
       </div>
 
       {/* Filter & Search Section */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 shrink-0">
-        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-          {/* Search bar */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Cari catatan atau petugas..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
-            />
-          </div>
-
-          {/* Filter Animal Type */}
-          <select
-            value={filterAnimalType}
-            onChange={(e) => setFilterAnimalType(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
-          >
-            <option value="">Semua Ternak (Sapi & Kambing)</option>
-            <option value="SAPI">🐄 Susu Sapi</option>
-            <option value="KAMBING">🐐 Susu Kambing</option>
-          </select>
-
-          {/* Filter Date */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-end gap-3 shrink-0">
+        {/* Search bar */}
+        <div className="relative w-full sm:w-64 max-w-xs">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+            type="text"
+            placeholder="Cari catatan atau petugas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
           />
-
-          {(filterCategory || filterAnimalType || filterDate || searchQuery) && (
-            <button
-              onClick={() => {
-                setFilterCategory('');
-                setFilterAnimalType('');
-                setFilterDate('');
-                setSearchQuery('');
-              }}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold"
-            >
-              Reset Filter
-            </button>
-          )}
         </div>
+
+        {/* Filter Animal Type */}
+        <select
+          value={filterAnimalType}
+          onChange={(e) => setFilterAnimalType(e.target.value)}
+          className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+        >
+          <option value="">Semua Ternak (Sapi & Kambing)</option>
+          <option value="SAPI">🐄 Susu Sapi</option>
+          <option value="KAMBING">🐐 Susu Kambing</option>
+        </select>
+
+        {/* Filter Date */}
+        <input
+          type="date"
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+        />
+
+        {(filterCategory || filterAnimalType || filterDate || searchQuery) && (
+          <button
+            type="button"
+            onClick={() => {
+              setFilterCategory('');
+              setFilterAnimalType('');
+              setFilterDate('');
+              setSearchQuery('');
+            }}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          >
+            Reset Filter
+          </button>
+        )}
       </div>
 
       {/* Production History Table Card - Only inside of table scrolls */}
@@ -606,19 +606,20 @@ export default function ProduksiPage() {
                           {canManage && (() => {
                             if (isBaCreated) {
                               return (
-                                <span
-                                  onClick={() => router.push(`/uht/berita-acara?previewForProductionId=${p.id}`)}
-                                  className="text-emerald-600 font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer hover:underline"
-                                  title="Klik untuk lihat & cetak PDF Berita Acara"
+                                <button
+                                  type="button"
+                                  onClick={() => router.push(`/susu-farm/berita-acara?previewForProductionId=${p.id}`)}
+                                  className="p-2 text-slate-400 hover:bg-slate-200 bg-slate-100 border border-slate-200 rounded-xl transition-colors inline-flex items-center justify-center cursor-pointer"
+                                  title="Lihat / Cetak BAST (Sudah Dibuat)"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>BAST Dibuat</span>
-                                </span>
+                                  <Printer className="w-4 h-4 text-slate-400" />
+                                </button>
                               );
                             }
 
                             return (
                               <button
+                                type="button"
                                 onClick={() => {
                                   setExistingBaProductionIds((prev) => new Set([...prev, p.id]));
                                   const pedet = p.pedetVolumeLiters || 0;
@@ -632,35 +633,34 @@ export default function ProduksiPage() {
                                   else farmLoc = 'Manggala';
 
                                   const query = `createForId=${p.id}&date=${p.date}&shift=${p.shift || 'Pagi'}&farm=${farmLoc}&animal=${p.animalType || 'SAPI'}&total=${gross}&pedet=${p.pedetVolumeLiters || 0}&afkir=${p.afkirVolumeLiters || 0}&diserah=${diserah}`;
-                                  router.push(`/uht/berita-acara?${query}`);
+                                  router.push(`/susu-farm/berita-acara?${query}`);
                                 }}
-                                className="px-3 py-2 text-slate-800 hover:bg-slate-200 bg-slate-100 border border-slate-300 rounded-xl transition-colors inline-flex items-center gap-1.5 text-xs font-black cursor-pointer"
-                                title="Buat Berita Acara Serah Terima"
+                                className="p-2 text-emerald-800 hover:bg-emerald-200 bg-emerald-100 border border-emerald-200 rounded-xl transition-colors inline-flex items-center justify-center cursor-pointer shadow-sm"
+                                title="Buat Berita Acara (BAST)"
                               >
-                                <ClipboardList className="w-4 h-4 text-slate-800" />
-                                <span>Buat BAST</span>
+                                <Printer className="w-4 h-4 text-emerald-800" />
                               </button>
                             );
                           })()}
                           <button
                             onClick={() => setSelectedProd(p)}
-                            className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors bg-slate-50 border border-slate-200"
+                            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             title="Lihat Detail"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {canManage && !isBaCreated && !isAccepted && (
+                          {canManage && !isAccepted && (
                             <>
                               <button
                                 onClick={() => openEditModal(p)}
-                                className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors bg-slate-50 border border-slate-200"
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                                 title="Edit Laporan"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => setDeletingProd(p)}
-                                className="p-2 text-rose-700 hover:bg-rose-50 rounded-xl transition-colors bg-rose-50 border border-rose-200"
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                 title="Hapus Laporan"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -716,8 +716,8 @@ export default function ProduksiPage() {
                         if (sapiCats.length > 0) setFormCategoryId(sapiCats[0].id);
                       }}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${formAnimalType === 'SAPI'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       <span>🐄 Sapi</span>
@@ -731,8 +731,8 @@ export default function ProduksiPage() {
                         if (kambingCats.length > 0) setFormCategoryId(kambingCats[0].id);
                       }}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${formAnimalType === 'KAMBING'
-                          ? 'bg-purple-600 text-white border-purple-600 shadow'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       <span>🐐 Kambing</span>
@@ -907,8 +907,8 @@ export default function ProduksiPage() {
                     <label
                       htmlFor="foto-timbangan-input"
                       className={`group border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-all duration-200 ${formErrors.formFotoTimbangan
-                          ? 'border-red-500 bg-red-50/40 hover:bg-red-50'
-                          : 'border-slate-300 hover:border-emerald-600 bg-slate-50 hover:bg-emerald-50/40'
+                        ? 'border-red-500 bg-red-50/40 hover:bg-red-50'
+                        : 'border-slate-300 hover:border-emerald-600 bg-slate-50 hover:bg-emerald-50/40'
                         }`}
                     >
                       <div className="w-10 h-10 rounded-full bg-emerald-100/80 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">

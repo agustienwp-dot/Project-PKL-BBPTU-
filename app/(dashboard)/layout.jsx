@@ -41,18 +41,15 @@ function isRouteAllowed(role, pathname) {
   if (!role || !pathname) return true;
 
   // Root and dashboard are accessible to all authenticated users
-  if (pathname === '/uht/dashboard' || pathname === '/') return true;
   if (pathname.startsWith('/profil')) return true;
-  if (pathname.startsWith('/reports')) return true;
-  if (pathname.startsWith('/uht/berita-acara')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/uht/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/uht/berita-acara', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+    const allowed = ['/uht/berita-acara', '/uht/pengemasan', '/uht/dashboard', '/susu-farm/dashboard', '/superadmin', '/kategori', '/susu-farm/reports', '/profil', '/susu-farm/produksi', '/susu-farm/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_FARM') {
-    const allowed = ['/uht/dashboard', '/produksi', '/uht/berita-acara', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/susu-farm/dashboard', '/susu-farm/produksi', '/susu-farm/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/susu-farm/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -151,20 +148,20 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_FARM') {
       return [
-        { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard },
-        { label: 'Produksi Susu', path: '/produksi', icon: Milk },
-        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
-        { label: 'Laporan', path: '/reports', icon: FileText },
+        { label: 'Dashboard', path: '/susu-farm/dashboard', icon: LayoutDashboard },
+        { label: 'Produksi Susu', path: '/susu-farm/produksi', icon: Milk },
+        { label: 'Berita Acara', path: '/susu-farm/berita-acara', icon: ClipboardList },
+        { label: 'Laporan', path: '/susu-farm/reports', icon: FileText },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard },
+        { label: 'Dashboard', path: '/susu-farm/dashboard', icon: LayoutDashboard },
         { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
         { label: 'Terima Hasil Olahan', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
-        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
+        { label: 'Berita Acara', path: '/susu-farm/berita-acara', icon: ClipboardList },
         { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
         { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
@@ -265,10 +262,6 @@ export default function DashboardLayout({ children }) {
 
             {/* Navigation Links */}
             <div className="flex-1 px-4 py-5 space-y-1.5 overflow-y-auto">
-              <div className="px-3 mb-3 text-[11px] font-black uppercase tracking-widest text-emerald-200/70">
-                MENU NAVIGASI
-              </div>
-
               <nav className="space-y-1.5">
                 {navItems.map((item) => {
                   const Icon = item.icon;
@@ -288,8 +281,8 @@ export default function DashboardLayout({ children }) {
                       href={item.path}
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-semibold transition-all ${isActive
-                          ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
-                          : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                        ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
+                        : 'text-emerald-100 hover:text-white hover:bg-white/10'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -309,9 +302,9 @@ export default function DashboardLayout({ children }) {
           </div>
 
           {/* Drawer Bottom Section: User Profile & Logout */}
-          <div className="p-4 border-t border-white/10 space-y-2.5 shrink-0 bg-[#173219] rounded-br-3xl">
-            <div className="flex items-center gap-3 px-3.5 py-2.5 bg-white/10 rounded-2xl border border-white/15">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0 font-bold">
+          <div className="p-4 border-t border-white/10 space-y-3 shrink-0">
+            <div className="flex items-center gap-3 px-2">
+              <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 font-bold">
                 <User className="w-4 h-4" />
               </div>
               <div className="flex flex-col min-w-0">
@@ -322,7 +315,7 @@ export default function DashboardLayout({ children }) {
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/30 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-extrabold text-rose-200 hover:text-rose-100 hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4 text-rose-300 shrink-0" />
               <span>Keluar</span>
@@ -345,7 +338,7 @@ export default function DashboardLayout({ children }) {
               Anda tidak memiliki izin untuk mengakses halaman ini.
             </p>
             <Link
-              href="/uht/dashboard"
+              href={user?.role === 'ADMIN_FARM' ? '/susu-farm/dashboard' : '/uht/dashboard'}
               className="px-5 py-2.5 bg-[#1E3F20] text-white font-bold text-xs rounded-xl shadow hover:bg-[#16331a] transition-all"
             >
               Kembali ke Dashboard

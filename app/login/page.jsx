@@ -65,7 +65,7 @@ export default function LoginPage() {
     try {
       const data = await login(email, password);
       const userRole = data?.user?.role;
-      
+
       if (userRole === 'ADMIN_PENGEMASAN') {
         window.location.href = '/uht/dashboard';
       } else if (userRole === 'ADMIN_FARM') {
@@ -134,7 +134,7 @@ export default function LoginPage() {
         try {
           const data = await login(regEmail, regPassword);
           const userRole = data?.user?.role;
-          
+
           if (userRole === 'ADMIN_PENGEMASAN') {
             window.location.href = '/uht/dashboard';
           } else if (userRole === 'ADMIN_FARM') {
@@ -148,9 +148,21 @@ export default function LoginPage() {
         }
       }
       setShowConfirmModal(false);
-      window.location.href = '/uht/dashboard';
+      if (userRole === 'ADMIN_PENGEMASAN') {
+        window.location.href = '/uht/dashboard';
+      } else if (userRole === 'ADMIN_FARM') {
+        window.location.href = '/susu-farm/dashboard';
+      } else {
+        window.location.href = '/uht/dashboard';
+      }
     } catch (err) {
-      window.location.href = '/uht/dashboard';
+      if (userRole === 'ADMIN_PENGEMASAN') {
+        window.location.href = '/uht/dashboard';
+      } else if (userRole === 'ADMIN_FARM') {
+        window.location.href = '/susu-farm/dashboard';
+      } else {
+        window.location.href = '/uht/dashboard';
+      }
     } finally {
       setLoading(false);
     }
