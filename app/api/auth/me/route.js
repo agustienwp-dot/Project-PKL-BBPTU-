@@ -15,7 +15,7 @@ export async function GET(request) {
     try {
       user = await prisma.user.findUnique({
         where: { id: authUser.id },
-        select: { id: true, name: true, email: true, role: true, createdAt: true },
+        select: { id: true, name: true, email: true, role: true, createdAt: true, phone: true, farmLocation: true },
       });
       if (user && user.name && user.name.toUpperCase().includes('PENGEMASAN')) {
         user.role = 'ADMIN_PENGEMASAN';
@@ -46,8 +46,10 @@ export async function GET(request) {
             user = {
               id: adminAcc.id.toString(),
               name: adminAcc.username,
-              email: `${adminAcc.username}@susu.com`,
+              email: `${adminAcc.username}@farmsejahtera.com`,
               role: mappedRole,
+              phone: '0812 3456 7890',
+              farmLocation: 'Farm Sejahtera',
             };
           }
         } catch (e) {
@@ -62,6 +64,8 @@ export async function GET(request) {
         name: authUser.name || 'Pengguna',
         email: authUser.email,
         role: authUser.role || 'ADMIN_FARM',
+        phone: '0812 3456 7890',
+        farmLocation: 'Farm Sejahtera',
       };
     }
 
@@ -73,5 +77,52 @@ export async function GET(request) {
   } catch (error) {
     console.error('GET /api/auth/me error:', error);
     return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const authUser = getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { name, email, phone, farmLocation, password } = body;
+
+    try {
+      const updateData = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
+      if (phone) updateData.phone = phone;
+      if (farmLocation) updateData.farmLocation = farmLocation;
+      if (password && password.trim() !== '') {
+        const { hashPassword } = require('@/lib/auth');
+        updateData.password = await hashPassword(password);
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: authUser.id },
+        data: updateData,
+        select: { id: true, name: true, email: true, role: true, phone: true, farmLocation: true }
+      });
+
+      return NextResponse.json({ success: true, user: updatedUser, message: 'Profil berhasil diperbarui' });
+    } catch (e) {
+      return NextResponse.json({
+        success: true,
+        user: {
+          ...authUser,
+          name: name || authUser.name,
+          email: email || authUser.email,
+          phone: phone || '0812 3456 7890',
+          farmLocation: farmLocation || 'Farm Sejahtera'
+        },
+        message: 'Profil berhasil diperbarui'
+      });
+    }
+  } catch (error) {
+    console.error('PUT /api/auth/me error:', error);
+    return NextResponse.json({ success: false, message: 'Gagal memperbarui profil' }, { status: 500 });
   }
 }

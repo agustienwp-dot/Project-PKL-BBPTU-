@@ -101,11 +101,11 @@ export default function DashboardPemasaranPage() {
             </Link>
 
             <Link
-              href="/pemasaran/penjualan?action=new"
+              href="/pemasaran/penjualan"
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Input Penjualan</span>
+              <span>Input Penjualan</span>
             </Link>
           </div>
         )}
