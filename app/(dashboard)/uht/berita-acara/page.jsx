@@ -913,15 +913,6 @@ function BeritaAcaraContent() {
         </div>
       )}
 
-      {/* Print Overlay - Hidden in screen, shown only when printing */}
-      {printBa && (
-        <div className="print-only hidden print:block print:w-full print:m-0 print:p-0 absolute inset-0 bg-white z-[9999]">
-          <div className="print-content">
-            <BeritaAcaraDocumentUht ba={printBa} />
-          </div>
-        </div>
-      )}
-
       {/* 2. FORM MODAL: BAST PEMBELIAN (Screenshot 1) & BAST HIBAH (Screenshot 3) */}
       {showFormModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -1001,8 +992,8 @@ function BeritaAcaraContent() {
                                 }
                               }}
                               className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between gap-3 ${isSelected
-                                  ? 'bg-emerald-100/90 border-emerald-500 shadow-sm font-bold text-emerald-950'
-                                  : 'bg-white border-slate-200 hover:bg-slate-50 font-medium text-slate-700'
+                                ? 'bg-emerald-100/90 border-emerald-500 shadow-sm font-bold text-emerald-950'
+                                : 'bg-white border-slate-200 hover:bg-slate-50 font-medium text-slate-700'
                                 }`}
                             >
                               <div className="flex items-center gap-2.5">
