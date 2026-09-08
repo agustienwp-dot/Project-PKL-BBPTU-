@@ -217,7 +217,7 @@ export default function PenjualanPage() {
             className="flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Tambah Penjualan</span>
+            <span>Tambah Penjualan</span>
           </button>
         )}
       </div>
