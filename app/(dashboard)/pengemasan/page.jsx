@@ -612,7 +612,7 @@ export default function PengemasanPage() {
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Input Hasil Pengolahan</span>
+              <span>Input Hasil Pengolahan</span>
             </button>
           </div>
         )}
