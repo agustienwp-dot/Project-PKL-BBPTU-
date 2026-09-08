@@ -41,28 +41,28 @@ function isRouteAllowed(role, pathname) {
   if (!role || !pathname) return true;
 
   // Root and dashboard are accessible to all authenticated users
-  if (pathname === '/dashboard' || pathname === '/') return true;
+  if (pathname === '/uht/dashboard' || pathname === '/') return true;
   if (pathname.startsWith('/profil')) return true;
   if (pathname.startsWith('/reports')) return true;
-  if (pathname.startsWith('/berita-acara')) return true;
+  if (pathname.startsWith('/uht/berita-acara')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+    const allowed = ['/uht/dashboard', '/superadmin', '/kategori', '/reports', '/profil', '/produksi', '/uht/berita-acara', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_FARM') {
-    const allowed = ['/dashboard', '/produksi', '/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/uht/dashboard', '/produksi', '/uht/berita-acara', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/dashboard', '/pemasaran', '/pemasaran/request-susu', '/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
+    const allowed = ['/uht/dashboard', '/pemasaran', '/pemasaran/request-susu', '/uht/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_PENGEMASAN') {
-    const allowed = ['/dashboard', '/pengemasan', '/pengemasan/request-susu', '/pengemasan/stok-bahan', '/pengemasan/produk-siap-edar', '/riwayat-pengemasan', '/reports/pengolahan', '/reports/pengemasan', '/profil', '/berita-acara'];
+    const allowed = ['/uht/dashboard', '/uht/pengemasan', '/uht/request-susu', '/uht/stok-bahan', '/uht/pengemasan/produk-siap-edar', '/riwayat-pengemasan', '/uht/reports', '/reports/pengemasan', '/profil', '/uht/berita-acara'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -137,10 +137,10 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'SUPERADMIN') {
       return [
-        { label: 'Dashboard Main', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Dashboard Main', path: '/uht/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
         { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
-        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
+        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
         { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
         { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
         { label: 'Penjualan Produk', path: '/pemasaran/penjualan', icon: ShoppingCart },
@@ -151,9 +151,9 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_FARM') {
       return [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard },
         { label: 'Produksi Susu', path: '/produksi', icon: Milk },
-        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
+        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
         { label: 'Laporan', path: '/reports', icon: FileText },
         { label: 'Profil', path: '/profil', icon: User }
       ];
@@ -161,10 +161,10 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard },
         { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
         { label: 'Terima Hasil Olahan', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
-        { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
+        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
         { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
         { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
@@ -174,20 +174,20 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PENGEMASAN') {
       return [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'DASHBOARD' },
-        { label: 'Request Susu', path: '/pengemasan/request-susu', icon: Truck, section: 'PENGOLAHAN' },
-        { label: 'Input Hasil Pengolahan', path: '/pengemasan', icon: Package, section: 'PENGOLAHAN' },
-        { label: 'Sisa Stok Bahan', path: '/pengemasan/stok-bahan', icon: Boxes, section: 'PENGOLAHAN' },
-        { label: 'Berita Acara Olahan', path: '/berita-acara', icon: FileCheck, section: 'PENGOLAHAN' },
-        { label: 'Laporan Pengolahan', path: '/reports/pengolahan', icon: FileText, section: 'PENGOLAHAN' },
+        { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard, section: 'DASHBOARD' },
+        { label: 'Request Susu', path: '/uht/request-susu', icon: Truck, section: 'PENGOLAHAN' },
+        { label: 'Input Hasil Pengolahan', path: '/uht/pengemasan', icon: Package, section: 'PENGOLAHAN' },
+        { label: 'Sisa Stok Bahan', path: '/uht/stok-bahan', icon: Boxes, section: 'PENGOLAHAN' },
+        { label: 'Berita Acara Olahan', path: '/uht/berita-acara', icon: FileCheck, section: 'PENGOLAHAN' },
+        { label: 'Laporan Pengolahan', path: '/uht/reports', icon: FileText, section: 'PENGOLAHAN' },
         { label: 'Profil', path: '/profil', icon: User, section: 'LAINNYA' }
       ];
     }
 
     // Default fallback navigation
     return [
-      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-      { label: 'Berita Acara', path: '/berita-acara', icon: ClipboardList },
+      { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard },
+      { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
       { label: 'Laporan', path: '/reports', icon: FileText },
       { label: 'Profil', path: '/profil', icon: User }
     ];
@@ -280,7 +280,7 @@ export default function DashboardLayout({ children }) {
                       pathname.startsWith(other.path.split('?')[0]) &&
                       other.path.split('?')[0].length > basePath.length
                   );
-                  const isActive = isExactMatch || (basePath !== '/dashboard' && pathname.startsWith(basePath + '/') && !hasMoreSpecificMatch);
+                  const isActive = isExactMatch || (basePath !== '/uht/dashboard' && pathname.startsWith(basePath + '/') && !hasMoreSpecificMatch);
 
                   return (
                     <Link
@@ -345,7 +345,7 @@ export default function DashboardLayout({ children }) {
               Anda tidak memiliki izin untuk mengakses halaman ini.
             </p>
             <Link
-              href="/dashboard"
+              href="/uht/dashboard"
               className="px-5 py-2.5 bg-[#1E3F20] text-white font-bold text-xs rounded-xl shadow hover:bg-[#16331a] transition-all"
             >
               Kembali ke Dashboard

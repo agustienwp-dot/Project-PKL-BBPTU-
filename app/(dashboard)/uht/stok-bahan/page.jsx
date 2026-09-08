@@ -48,7 +48,7 @@ export default function StokBahanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/pengemasan/stok-bahan?t=${Date.now()}`);
+      const res = await api.get(`/uht/stok-bahan?t=${Date.now()}`);
       if (res.data?.success) {
         setMaterials(res.data.data.materials || []);
         setMovements(res.data.data.movements || []);
@@ -181,7 +181,7 @@ export default function StokBahanPage() {
         notes: adjustForm.notes || '',
         items: adjustForm.items
       };
-      const res = await api.post('/pengemasan/stok-bahan/adjust', payload);
+      const res = await api.post('/uht/stok-bahan/adjust', payload);
       if (res.data?.success) {
         setToast({ type: 'success', message: res.data.message || 'Penambahan stok berhasil disimpan!' });
         setShowAdjustModal(false);

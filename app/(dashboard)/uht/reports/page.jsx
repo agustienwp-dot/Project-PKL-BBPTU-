@@ -37,7 +37,7 @@ export default function LaporanPengolahanPage() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/reports/pengolahan?month=${month}&year=${year}&t=${Date.now()}`);
+      const res = await api.get(`/uht/reports?month=${month}&year=${year}&t=${Date.now()}`);
       if (res.data?.success) {
         setReportData(res.data.data);
       }

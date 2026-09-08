@@ -537,7 +537,7 @@ export default function PengemasanPage() {
     setPreviewBa(ba);
     try {
       if (ba?.id) {
-        await api.post(`/berita-acara/${ba.id}/print`);
+        await api.post(`/uht/berita-acara/${ba.id}/print`);
       }
     } catch (e) {}
     setTimeout(() => {
@@ -554,7 +554,7 @@ export default function PengemasanPage() {
         } catch (e) {}
       }
 
-      const res = await api.get('/berita-acara');
+      const res = await api.get('/uht/berita-acara');
       let existingBa = null;
       if (res.data?.success && Array.isArray(res.data.data)) {
         existingBa = res.data.data.find(b => b.packagingId === pkg.id);
@@ -590,7 +590,7 @@ export default function PengemasanPage() {
         notes: pkg.notes || 'Dibuat otomatis dari hasil pengolahan'
       };
 
-      const createRes = await api.post('/berita-acara', newBaPayload);
+      const createRes = await api.post('/uht/berita-acara', newBaPayload);
       if (createRes.data?.success && createRes.data.data) {
         setPreviewBa(createRes.data.data);
         setToast({ type: 'success', message: 'Berita Acara berhasil dibuat & siap dicetak!' });

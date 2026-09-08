@@ -119,7 +119,7 @@ function BeritaAcaraContent() {
   const fetchBaList = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      let url = '/berita-acara?';
+      let url = '/uht/berita-acara?';
       if (filterType !== 'ALL') url += `type=${filterType}&`;
       if (filterDate) url += `date=${filterDate}&`;
       if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
@@ -383,12 +383,12 @@ function BeritaAcaraContent() {
 
     try {
       if (editingBa) {
-        const res = await api.put(`/berita-acara/${editingBa.id}`, payload);
+        const res = await api.put(`/uht/berita-acara/${editingBa.id}`, payload);
         if (res.data.success) {
           setToast({ type: 'success', message: res.data.message || `✓ Berita Acara ${editingBa.nomorBa} berhasil diperbarui.` });
         }
       } else {
-        const res = await api.post('/berita-acara', payload);
+        const res = await api.post('/uht/berita-acara', payload);
         if (res.data.success) {
           const createdItem = res.data.data;
           setToast({
@@ -407,7 +407,7 @@ function BeritaAcaraContent() {
 
   const handleConfirmBaByPemasaran = async (ba) => {
     try {
-      const res = await api.put(`/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
+      const res = await api.put(`/uht/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
       if (res.data.success) {
         setToast({ type: 'success', message: 'Berita Acara produk siap jual telah dikonfirmasi oleh Pemasaran!' });
         setPreviewBa(null);
@@ -427,7 +427,7 @@ function BeritaAcaraContent() {
     setPreviewBa(ba);
     try {
       if (ba?.id) {
-        await api.post(`/berita-acara/${ba.id}/print`);
+        await api.post(`/uht/berita-acara/${ba.id}/print`);
       }
     } catch (e) {}
     setTimeout(() => {
@@ -438,7 +438,7 @@ function BeritaAcaraContent() {
   const handleDelete = async () => {
     if (!deletingBa) return;
     try {
-      const res = await api.delete(`/berita-acara/${deletingBa.id}`);
+      const res = await api.delete(`/uht/berita-acara/${deletingBa.id}`);
       if (res.data.success) {
         setToast({ type: 'success', message: 'Berita Acara berhasil dihapus.' });
         fetchBaList();
@@ -453,7 +453,7 @@ function BeritaAcaraContent() {
 
   const handleStatusChange = async (baId, newStatus) => {
     try {
-      const res = await api.put(`/berita-acara/${baId}`, { status: newStatus });
+      const res = await api.put(`/uht/berita-acara/${baId}`, { status: newStatus });
       if (res.data.success) {
         setToast({ type: 'success', message: res.data.message || `Status berhasil diubah.` });
         fetchBaList();

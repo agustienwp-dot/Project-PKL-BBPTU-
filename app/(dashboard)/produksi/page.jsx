@@ -92,7 +92,7 @@ export default function ProduksiPage() {
       const [pRes, cRes, baRes] = await Promise.all([
         api.get(url).catch(() => ({ data: { success: true, data: [] } })),
         api.get('/categories?productType=SEGAR').catch(() => ({ data: { success: true, data: [] } })),
-        api.get('/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
+        api.get('/uht/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
       ]);
 
       if (pRes.data && pRes.data.success && Array.isArray(pRes.data.data)) {
@@ -607,7 +607,7 @@ export default function ProduksiPage() {
                             if (isBaCreated) {
                               return (
                                 <span
-                                  onClick={() => router.push(`/berita-acara?previewForProductionId=${p.id}`)}
+                                  onClick={() => router.push(`/uht/berita-acara?previewForProductionId=${p.id}`)}
                                   className="text-emerald-600 font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer hover:underline"
                                   title="Klik untuk lihat & cetak PDF Berita Acara"
                                 >
@@ -632,7 +632,7 @@ export default function ProduksiPage() {
                                   else farmLoc = 'Manggala';
 
                                   const query = `createForId=${p.id}&date=${p.date}&shift=${p.shift || 'Pagi'}&farm=${farmLoc}&animal=${p.animalType || 'SAPI'}&total=${gross}&pedet=${p.pedetVolumeLiters || 0}&afkir=${p.afkirVolumeLiters || 0}&diserah=${diserah}`;
-                                  router.push(`/berita-acara?${query}`);
+                                  router.push(`/uht/berita-acara?${query}`);
                                 }}
                                 className="px-3 py-2 text-slate-800 hover:bg-slate-200 bg-slate-100 border border-slate-300 rounded-xl transition-colors inline-flex items-center gap-1.5 text-xs font-black cursor-pointer"
                                 title="Buat Berita Acara Serah Terima"

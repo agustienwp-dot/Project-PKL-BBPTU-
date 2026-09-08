@@ -160,7 +160,7 @@ export default function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await api.get(`/dashboard/stats?t=${Date.now()}`);
+      const res = await api.get(`/uht/dashboard/stats?t=${Date.now()}`);
       if (res.data?.success) {
         setStatsData(res.data.data);
       }
@@ -349,7 +349,7 @@ export default function DashboardPage() {
             </div>
 
             <Link
-              href="/pengemasan"
+              href="/uht/pengemasan"
               className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-center rounded-xl text-[11px] font-bold transition-colors flex items-center justify-center gap-1 mt-1"
             >
               <span>Kelola Pengolahan</span>
@@ -505,7 +505,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <Link
-              href="/pengemasan/stok-bahan"
+              href="/uht/stok-bahan"
               className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 transition-colors"
             >
               <span>Lihat Semua Bahan</span>
