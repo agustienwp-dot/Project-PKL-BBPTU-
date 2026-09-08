@@ -92,7 +92,8 @@ export async function POST(request) {
     const dateObj = tanggal ? new Date(tanggal) : new Date();
     const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
     const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const prefix = isUhtReq ? 'BA-UHT' : (isPemasaran ? 'BAST/PEMASARAN' : 'BAST/BBPTU');
+    const isHibah = jenisPermintaan === 'HIBAH';
+    const prefix = isUhtReq ? 'BA-UHT' : (isHibah ? 'BA-HB' : (isPemasaran ? 'BAST/PEMASARAN' : 'BAST/BBPTU'));
     const nomorBast = body.nomorBast || `${prefix}-${dateStr}-${randomSuffix}`;
 
     let validUserId = authUser.userId || authUser.id || null;

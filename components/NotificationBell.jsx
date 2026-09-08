@@ -47,7 +47,7 @@ function formatRelativeTime(dateString) {
   });
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ isDarkNavbar = false }) {
   const { user } = useAuth();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -263,10 +263,14 @@ export default function NotificationBell() {
           setIsOpen(!isOpen);
           if (!isOpen) fetchNotifications();
         }}
-        className={`relative p-2.5 rounded-2xl transition-all border ${
-          isOpen
-            ? 'bg-emerald-50 text-[#1E3F20] border-emerald-300 shadow-inner'
-            : 'bg-white text-slate-700 hover:text-[#1E3F20] hover:bg-slate-50 border-slate-200 shadow-sm'
+        className={`relative p-2.5 rounded-full transition-all cursor-pointer ${
+          isDarkNavbar
+            ? isOpen
+              ? 'bg-white/30 text-white shadow-inner'
+              : 'bg-white/15 text-white hover:bg-white/25 shadow-xs border border-white/10'
+            : isOpen
+              ? 'bg-emerald-50 text-[#1E3F20] border-emerald-300 shadow-inner'
+              : 'bg-white text-slate-700 hover:text-[#1E3F20] hover:bg-slate-50 border-slate-200 shadow-sm'
         }`}
         title="Notifikasi Stok & Aktivitas"
         aria-label="Notifikasi"

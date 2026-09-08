@@ -18,6 +18,7 @@ import {
   User,
   ShieldCheck,
   FileText,
+  FileCheck,
   PackageCheck,
   Package,
   History,
@@ -28,7 +29,8 @@ import {
   Sparkles,
   ShoppingCart,
   BarChart3,
-  Bell
+  Bell,
+  MoreVertical
 } from 'lucide-react';
 import api from '@/services/api';
 import NotificationBell from '@/components/NotificationBell';
@@ -55,6 +57,7 @@ function isRouteAllowed(role, pathname) {
       '/pemasaran/dashboard',
       '/pemasaran/terima-susu-segar',
       '/pemasaran/bast',
+      '/pemasaran/berita-acara',
       '/pemasaran/terima-data',
       '/pemasaran/laporan'
     ];
@@ -81,6 +84,7 @@ function isRouteAllowed(role, pathname) {
       '/pemasaran/dashboard',
       '/pemasaran/terima-susu-segar',
       '/pemasaran/bast',
+      '/pemasaran/berita-acara',
       '/pemasaran/terima-data',
       '/pemasaran/laporan',
       '/profil'
@@ -96,6 +100,7 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuDotsOpen, setMenuDotsOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
@@ -105,9 +110,10 @@ export default function DashboardLayout({ children }) {
     }
   }, [user, loading, router]);
 
-  // Close sidebar on route change or Escape
+  // Close sidebar and menu dots on route change or Escape
   useEffect(() => {
     setSidebarOpen(false);
+    setMenuDotsOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -180,6 +186,7 @@ export default function DashboardLayout({ children }) {
         { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: Boxes },
         { label: 'Terima Susu Segar', path: '/pemasaran/terima-susu-segar', icon: Milk },
         { label: 'Distribusi Susu Segar', path: '/pemasaran/bast', icon: FileText },
+        { label: 'Berita Acara', path: '/pemasaran/berita-acara', icon: FileCheck },
         { label: 'UHT', path: '/pemasaran/terima-data', icon: PackageCheck, badge: notifBadge },
         { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
@@ -203,6 +210,7 @@ export default function DashboardLayout({ children }) {
         { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: LayoutDashboard },
         { label: 'Terima Susu Segar', path: '/pemasaran/terima-susu-segar', icon: Milk },
         { label: 'Distribusi Susu Segar', path: '/pemasaran/bast', icon: FileText },
+        { label: 'Berita Acara', path: '/pemasaran/berita-acara', icon: FileCheck },
         { label: 'UHT', path: '/pemasaran/terima-data', icon: PackageCheck, badge: notifBadge },
         { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
@@ -224,52 +232,36 @@ export default function DashboardLayout({ children }) {
     <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex flex-col font-sans relative selection:bg-emerald-900 selection:text-white">
       
       {/* ========================================================= */}
-      {/* 1. TOP NAVBAR DENGAN TOMBOL MENU UNTUK BUKA SIDEBAR       */}
+      {/* 1. TOP NAVBAR (WARNA PUTIH BERSIH)                        */}
       {/* ========================================================= */}
-      <header className="sticky top-0 z-30 bg-[#F5F5F0]/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between transition-all">
-        {/* Left Side: Toggle Menu Button with Arrow & Label */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between transition-all border-b border-slate-200/70 shadow-xs">
+        {/* Left Side: Tombol [ ☰ Menu ] */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200/90 shadow-2xs text-xs font-bold transition-all transform active:scale-95 cursor-pointer"
+            className="group inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-[#F8F9FA] hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs text-xs font-extrabold transition-all transform active:scale-95 cursor-pointer"
             title="Buka Menu Navigasi"
           >
-            <Menu className="w-4 h-4 text-emerald-900 transition-transform group-hover:scale-110" />
+            <Menu className="w-4 h-4 text-slate-700 group-hover:scale-110 transition-transform" />
             <span className="font-extrabold text-slate-800">Menu</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
 
-        {/* Right Side: Notification Bell + User Profile Badge */}
+        {/* Right Side: Notification Bell + User Name Pill */}
         <div className="flex items-center gap-3">
-          <NotificationBell />
+          {/* Notification Bell */}
+          <NotificationBell isDarkNavbar={false} />
 
-          {/* User Profile Bubble */}
+          {/* User Name Pill */}
           <Link
             href="/profil"
-            className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full bg-white border border-slate-200/90 shadow-2xs hover:bg-slate-50 transition-all text-xs font-bold text-slate-800"
+            className="inline-flex items-center px-4 py-2 rounded-2xl bg-[#F8F9FA] hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs text-xs font-extrabold transition-all"
             title="Lihat Profil"
           >
-            <div className="w-7 h-7 rounded-full bg-[#1E3F20] text-white flex items-center justify-center font-black text-xs shadow-inner">
-              {(user?.name || 'U').charAt(0).toUpperCase()}
-            </div>
-            <span className="font-extrabold text-slate-900 truncate max-w-[120px]">
-              {user?.name || 'Pengguna'}
-            </span>
+            {user?.name || 'Ines'}
           </Link>
         </div>
       </header>
-
-      {/* Floating Edge Arrow Trigger di tepi kiri layar */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="fixed left-0 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center w-5 h-14 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-r-xl shadow-md transition-all hover:w-6 opacity-75 hover:opacity-100 group cursor-pointer"
-          title="Buka Sidebar Navigasi"
-        >
-          <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 text-emerald-200" />
-        </button>
-      )}
 
       {/* ========================================================= */}
       {/* 2. OVERLAY BACKDROP                                        */}
@@ -384,7 +376,7 @@ export default function DashboardLayout({ children }) {
       {/* ========================================================= */}
       {/* 4. MAIN CONTENT AREA                                      */}
       {/* ========================================================= */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 py-4 sm:py-6">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {isAllowed ? (
           children
         ) : (

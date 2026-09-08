@@ -52,8 +52,6 @@ export default function DistribusiSusuSegarPage() {
   // 1. Commodity Tab: 'SAPI' | 'KAMBING'
   const [commodityTab, setCommodityTab] = useState('SAPI');
 
-  // 2. View Mode: 'BAST' (Dokumen BAST) | 'REKAP_ALOKASI' (Rekap Alokasi & Tujuan Harian)
-  const [viewMode, setViewMode] = useState('BAST');
   const [expandedDays, setExpandedDays] = useState({});
 
   const toggleDayAccordion = (key) => {
@@ -210,28 +208,7 @@ export default function DistribusiSusuSegarPage() {
       });
   }, [activeCommodityBasts, demandTypeFilter, destinationFilter, timeFilter, startDate, endDate, statusFilter, sortOrder, searchTerm]);
 
-  // BAST Documents specifically for Tab 1 (Hibah & Serah Terima)
-  const hibahBastList = useMemo(() => {
-    return filteredBasts.filter((b) => b.jenisPermintaan === 'HIBAH');
-  }, [filteredBasts]);
-
-  // Paginated BAST rows for Tab 1 (Hibah BASTs)
-  const paginatedHibahBasts = useMemo(() => {
-    const startIdx = (currentPage - 1) * pageSize;
-    return hibahBastList.slice(startIdx, startIdx + pageSize);
-  }, [hibahBastList, currentPage, pageSize]);
-
-  const totalHibahPages = Math.ceil(hibahBastList.length / pageSize) || 1;
-
-  // All paginated BASTs (for general reference)
-  const paginatedBasts = useMemo(() => {
-    const startIdx = (currentPage - 1) * pageSize;
-    return filteredBasts.slice(startIdx, startIdx + pageSize);
-  }, [filteredBasts, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredBasts.length / pageSize) || 1;
-
-  // Filtered Daily List according to time and search
+  // Filtered Daily List according to time, search, and filters
   const filteredDailyList = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const d7 = new Date();
@@ -254,18 +231,35 @@ export default function DistribusiSusuSegarPage() {
           if (endDate && dStr > endDate) matchTime = false;
         }
 
+        const allocations = day.bastAllocations || [];
+        let matchDemand = true;
+        if (demandTypeFilter === 'PENJUALAN_LANGSUNG') {
+          matchDemand = allocations.some((a) => a.jenisPermintaan !== 'HIBAH');
+        } else if (demandTypeFilter === 'HIBAH') {
+          matchDemand = allocations.some((a) => a.jenisPermintaan === 'HIBAH');
+        }
+
+        let matchDest = true;
+        if (destinationFilter !== 'ALL') {
+          matchDest = allocations.some(
+            (a) =>
+              (a.instansiPenerima && a.instansiPenerima.toLowerCase().includes(destinationFilter.toLowerCase())) ||
+              (a.catatan && a.catatan.toLowerCase().includes(destinationFilter.toLowerCase()))
+          );
+        }
+
         const matchSearch =
           !searchTerm ||
           day.tanggal.includes(searchTerm) ||
           day.bastUsageDescriptions?.some((desc) => desc.toLowerCase().includes(searchTerm.toLowerCase()));
 
-        return matchTime && matchSearch;
+        return matchTime && matchDemand && matchDest && matchSearch;
       })
       .sort((a, b) => {
         const cmp = new Date(a.tanggal) - new Date(b.tanggal);
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [activeCommodityDaily, timeFilter, startDate, endDate, sortOrder, searchTerm]);
+  }, [activeCommodityDaily, timeFilter, startDate, endDate, demandTypeFilter, destinationFilter, sortOrder, searchTerm]);
 
   // KPI Calculations for active commodity
   const currentTotalGross = useMemo(() => {
@@ -296,42 +290,7 @@ export default function DistribusiSusuSegarPage() {
     return filteredDailyList.reduce((acc, d) => acc + (d.sisaBersihSiapOlah || 0), 0);
   }, [filteredDailyList]);
 
-  // Breakdown by 4 Distribution Destinations
-  const destStats = useMemo(() => {
-    let sppg = 0;
-    let eduwisata = 0;
-    let umum = 0;
-    let hibah = 0;
 
-    activeCommodityBasts.forEach((b) => {
-      const vol = b.volumeLiters || 0;
-      if (b.jenisPermintaan === 'HIBAH') {
-        hibah += vol;
-      } else {
-        const p = (b.instansiPenerima || '').toLowerCase();
-        if (p.includes('sppg')) {
-          sppg += vol;
-        } else if (p.includes('edukasi') || p.includes('eduwisata') || p.includes('kantin')) {
-          eduwisata += vol;
-        } else {
-          umum += vol;
-        }
-      }
-    });
-
-    const total = sppg + eduwisata + umum + hibah || 1;
-    return {
-      sppg,
-      eduwisata,
-      umum,
-      hibah,
-      total: sppg + eduwisata + umum + hibah,
-      sppgPct: Math.round((sppg / total) * 100),
-      eduPct: Math.round((eduwisata / total) * 100),
-      umumPct: Math.round((umum / total) * 100),
-      hibahPct: Math.round((hibah / total) * 100),
-    };
-  }, [activeCommodityBasts]);
 
   // Chart Data Preparation (Daily Penjualan vs Hibah)
   const chartData = useMemo(() => {
@@ -466,12 +425,14 @@ export default function DistribusiSusuSegarPage() {
 
     setSubmittingCreate(true);
     try {
-      const promises = distributionItems.map(async (item) => {
+      let createdHibahDoc = null;
+
+      for (const item of distributionItems) {
         const numVol = parseFloat(item.volume) || 0;
         const finalTujuan = item.isCustomTujuan ? item.customTujuan.trim() : item.tujuan.trim();
         const jenisText = item.jenis === 'HIBAH' ? 'HIBAH' : 'PENJUALAN_LANGSUNG';
 
-        return api.post('/bast', {
+        const res = await api.post('/bast', {
           tanggal: distributionDate,
           volumeLiters: numVol,
           animalType: distributionAnimalType,
@@ -483,9 +444,15 @@ export default function DistribusiSusuSegarPage() {
             : `Distribusi Susu ${distributionAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} ke ${finalTujuan} (${jenisText === 'HIBAH' ? 'Hibah' : 'Penjualan'})`,
           status: 'DIKIRIM_KE_FARM',
         });
-      });
 
-      await Promise.all(promises);
+        if (jenisText === 'HIBAH' && res.data?.data) {
+          createdHibahDoc = {
+            ...res.data.data,
+            animalType: distributionAnimalType,
+            tujuan: finalTujuan,
+          };
+        }
+      }
 
       setToast({
         type: 'success',
@@ -524,7 +491,7 @@ export default function DistribusiSusuSegarPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-14 font-sans">
+    <div className="space-y-6 w-full pb-14 font-sans">
       {toast && (
         <Toast
           type={toast.type}
@@ -533,167 +500,53 @@ export default function DistribusiSusuSegarPage() {
         />
       )}
 
-      {/* ========================================================================= */}
-      {/* 1. HEADER DASHBOARD DENGAN BREADCRUMB                                     */}
-      {/* ========================================================================= */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="p-3.5 bg-[#14532D] text-white rounded-2xl shadow-sm shrink-0">
-            <FileText className="w-6 h-6 text-emerald-300" />
-          </div>
-          <div className="space-y-1">
-            {/* Breadcrumb Navigation */}
-            <nav className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
-              <span className="text-slate-500">Pemasaran</span>
-              <ChevronRight className="w-3 h-3 text-slate-300" />
-              <span className="text-slate-600">Distribusi Susu Segar</span>
-              <ChevronRight className="w-3 h-3 text-slate-300" />
-              <span className="text-emerald-800 font-extrabold">
-                {viewMode === 'BAST' ? 'Dokumen BAST (Hibah)' : 'Rekap Distribusi Susu Segar'}
-              </span>
-            </nav>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Distribusi Susu Segar
-              </h1>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100/90 text-emerald-900 text-xs font-black rounded-full border border-emerald-300">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Terintegrasi Terima Susu Segar Farm</span>
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Pencatatan distribusi susu segar untuk Penjualan Langsung dan Hibah (dengan penerbitan dokumen BAST).
-            </p>
-          </div>
+      {/* Page Header: Title, Commodity Switcher & Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+            DISTRIBUSI SUSU SEGAR
+          </h1>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          {/* Refresh Button */}
-          <button
-            onClick={fetchData}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-all border border-slate-200 active:scale-95"
-            title="Muat Ulang Data"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* Commodity Switcher */}
+          <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200/90 gap-1 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => {
+                setCommodityTab('SAPI');
+                setCurrentPage(1);
+              }}
+              className={`inline-flex items-center px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                commodityTab === 'SAPI'
+                  ? 'bg-[#14532D] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              }`}
+            >
+              <span>Susu Sapi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCommodityTab('KAMBING');
+                setCurrentPage(1);
+              }}
+              className={`inline-flex items-center px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                commodityTab === 'KAMBING'
+                  ? 'bg-[#14532D] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              }`}
+            >
+              <span>Susu Kambing</span>
+            </button>
+          </div>
 
-          {/* Primary Action Button (Satu-satunya Tombol Aksi Utama di Header) */}
           <button
             onClick={() => handleOpenCreateModal()}
-            className="inline-flex items-center gap-2 bg-[#14532D] hover:bg-[#0f3e22] text-white px-5 py-2.5 rounded-2xl text-xs font-extrabold shadow-sm transition-all active:scale-95 border border-emerald-700/50"
+            className="inline-flex items-center gap-2 bg-[#14532D] hover:bg-[#0f3e22] text-white px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 text-emerald-300" />
-            <span>+ Catat Distribusi</span>
-          </button>
-        </div>
-      </header>
-
-      {/* ========================================================================= */}
-      {/* 2. NAVIGATION TABS (SUB-HALAMAN MODUL DISTRIBUSI) & KOMODITAS TABS        */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Navigation Tabs (Tab 1: Dokumen BAST (Hibah) | Tab 2: Rekap Distribusi Susu Segar) */}
-        <div className="flex items-center gap-2 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90 shadow-2xs">
-          {/* Tab 1: Dokumen BAST (Hibah) */}
-          <button
-            type="button"
-            onClick={() => setViewMode('BAST')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'BAST'
-                ? 'bg-[#14532D] text-white shadow-sm ring-2 ring-emerald-600/30'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
-            }`}
-          >
-            <FileText className={`w-4 h-4 ${viewMode === 'BAST' ? 'text-emerald-300' : 'text-slate-500'}`} />
-            <span>Dokumen BAST (Hibah)</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                viewMode === 'BAST'
-                  ? 'bg-emerald-900/60 text-emerald-100'
-                  : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              {activeCommodityBasts.filter(b => b.jenisPermintaan === 'HIBAH').length}
-            </span>
-          </button>
-
-          {/* Tab 2: Rekap Distribusi Susu Segar */}
-          <button
-            type="button"
-            onClick={() => setViewMode('REKAP_ALOKASI')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'REKAP_ALOKASI'
-                ? 'bg-[#14532D] text-white shadow-sm ring-2 ring-emerald-600/30'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
-            }`}
-          >
-            <BarChart3 className={`w-4 h-4 ${viewMode === 'REKAP_ALOKASI' ? 'text-emerald-300' : 'text-slate-500'}`} />
-            <span>Rekap Distribusi Susu Segar</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                viewMode === 'REKAP_ALOKASI'
-                  ? 'bg-emerald-900/60 text-emerald-100'
-                  : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              Excel BBPTUHPT
-            </span>
-          </button>
-        </div>
-
-        {/* Commodity Tabs (Susu Sapi / Susu Kambing) */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Tab Sapi */}
-          <button
-            type="button"
-            onClick={() => {
-              setCommodityTab('SAPI');
-              setCurrentPage(1);
-            }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-2xs ${
-              commodityTab === 'SAPI'
-                ? 'bg-emerald-900 text-white shadow-sm ring-1 ring-emerald-700'
-                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 hover:border-slate-400'
-            }`}
-          >
-            <span className="text-sm leading-none">🐮</span>
-            <span>Susu Sapi</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                commodityTab === 'SAPI'
-                  ? 'bg-emerald-950 text-emerald-100'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {sapiNetSiapOlah.toLocaleString('id-ID')} L
-            </span>
-          </button>
-
-          {/* Tab Kambing */}
-          <button
-            type="button"
-            onClick={() => {
-              setCommodityTab('KAMBING');
-              setCurrentPage(1);
-            }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-2xs ${
-              commodityTab === 'KAMBING'
-                ? 'bg-emerald-900 text-white shadow-sm ring-1 ring-emerald-700'
-                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 hover:border-slate-400'
-            }`}
-          >
-            <span className="text-sm leading-none">🐐</span>
-            <span>Susu Kambing</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                commodityTab === 'KAMBING'
-                  ? 'bg-emerald-950 text-emerald-100'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {kambingNetSiapOlah.toLocaleString('id-ID')} L
-            </span>
+            <span>Input Distribusi</span>
           </button>
         </div>
       </div>
@@ -708,14 +561,14 @@ export default function DistribusiSusuSegarPage() {
             <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               Masuk dari Farm
             </span>
-            <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-2xl shadow-2xs">
-              <Milk className="w-5 h-5 text-emerald-700" />
+            <div className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-2xs">
+              <Milk className="w-5 h-5" />
             </div>
           </div>
           <div className="space-y-1">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
               {currentTotalMasukFarm.toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-bold text-slate-500 font-sans">Liter</span>
+              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">
               Susu segar diterima dari farm hari ini.
@@ -723,20 +576,20 @@ export default function DistribusiSusuSegarPage() {
           </div>
         </div>
 
-        {/* Card 2 (Biru): Distribusi Penjualan */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-blue-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
+        {/* Card 2 (Hijau): Distribusi Penjualan */}
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-blue-800 uppercase tracking-wider">
+            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               Distribusi Penjualan
             </span>
-            <div className="p-2.5 bg-blue-100 text-blue-800 rounded-2xl shadow-2xs">
-              <ShoppingCart className="w-5 h-5 text-blue-700" />
+            <div className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-2xs">
+              <ShoppingCart className="w-5 h-5" />
             </div>
           </div>
           <div className="space-y-1">
-            <h3 className="text-2xl sm:text-3xl font-black text-blue-950 font-mono tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
               {currentVolumePenjualan.toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-bold text-blue-700 font-sans">Liter</span>
+              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">
               Distribusi penjualan melalui dokumen BAST.
@@ -744,20 +597,20 @@ export default function DistribusiSusuSegarPage() {
           </div>
         </div>
 
-        {/* Card 3 (Orange): Distribusi Hibah */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-amber-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
+        {/* Card 3 (Hijau): Distribusi Hibah */}
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-amber-800 uppercase tracking-wider">
+            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               Distribusi Hibah
             </span>
-            <div className="p-2.5 bg-amber-100 text-amber-800 rounded-2xl shadow-2xs">
-              <Gift className="w-5 h-5 text-amber-700" />
+            <div className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-2xs">
+              <Gift className="w-5 h-5" />
             </div>
           </div>
           <div className="space-y-1">
-            <h3 className="text-2xl sm:text-3xl font-black text-amber-950 font-mono tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
               {currentVolumeHibah.toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-bold text-amber-700 font-sans">Liter</span>
+              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">
               Distribusi hibah kepada instansi atau penerima.
@@ -765,10 +618,10 @@ export default function DistribusiSusuSegarPage() {
           </div>
         </div>
 
-        {/* Card 4 (Hijau Muda): Sisa Stok Siap Olah */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-300 shadow-xs space-y-3 hover:shadow-md transition-all bg-emerald-50/20">
+        {/* Card 4 (Hijau): Sisa Stok Siap Olah */}
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-emerald-900 uppercase tracking-wider">
+            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               Sisa Stok Siap Olah
             </span>
             <div className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-2xs">
@@ -780,261 +633,13 @@ export default function DistribusiSusuSegarPage() {
               {currentSisaStokDistribusi.toLocaleString('id-ID')}{' '}
               <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
             </h3>
-            <p className="text-[11px] text-emerald-800 font-medium">
+            <p className="text-[11px] text-slate-500 font-medium">
               Alokasi susu segar siap diambil untuk diolah (UHT/Pasteurisasi).
             </p>
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 4. RINGKASAN DISTRIBUSI HARI INI (VISUAL FLOW SECTION)                    */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-              Ringkasan Aliran Distribusi Susu {commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'}
-            </h3>
-            <p className="text-xs text-slate-500 font-medium">
-              Visual alur penyaluran dari penerimaan farm hingga distribusi penjualan dan hibah
-            </p>
-          </div>
-          <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-extrabold rounded-full">
-            Realtime BAST
-          </span>
-        </div>
-
-        {/* Horizontal Pipeline Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 relative">
-          {/* Step 1: Farm */}
-          <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-700 text-white rounded-xl shadow-xs">
-                <Milk className="w-5 h-5 text-emerald-200" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-emerald-800 uppercase block">1. Masuk Farm</span>
-                <strong className="text-lg font-black text-slate-900 font-mono">
-                  {currentTotalMasukFarm.toLocaleString('id-ID')} Liter
-                </strong>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-emerald-600 hidden md:block" />
-          </div>
-
-          {/* Step 2: Penjualan */}
-          <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-700 text-white rounded-xl shadow-xs">
-                <ShoppingCart className="w-5 h-5 text-blue-200" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-blue-800 uppercase block">2. Penjualan</span>
-                <strong className="text-lg font-black text-slate-900 font-mono">
-                  {currentVolumePenjualan.toLocaleString('id-ID')} Liter
-                </strong>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-blue-600 hidden md:block" />
-          </div>
-
-          {/* Step 3: Hibah */}
-          <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-600 text-white rounded-xl shadow-xs">
-                <Gift className="w-5 h-5 text-amber-200" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-amber-800 uppercase block">3. Hibah</span>
-                <strong className="text-lg font-black text-slate-900 font-mono">
-                  {currentVolumeHibah.toLocaleString('id-ID')} Liter
-                </strong>
-              </div>
-            </div>
-            <span className="text-xs font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
-              Selesai
-            </span>
-          </div>
-        </div>
-
-        {/* Sub-text Sisa Stok */}
-        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <Warehouse className="w-4 h-4 text-emerald-700" />
-            <span className="text-slate-600 font-semibold">
-              Sisa stok susu segar siap diambil untuk diolah:
-            </span>
-            <strong className="text-emerald-950 font-black font-mono text-sm">
-              {currentSisaStokDistribusi.toLocaleString('id-ID')} Liter
-            </strong>
-          </div>
-          <span className="text-[11px] text-slate-500 font-bold bg-emerald-100/70 text-emerald-900 px-2.5 py-0.5 rounded-lg border border-emerald-300">
-            Alokasi Pengolahan (UHT / Pasteurisasi)
-          </span>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. CARD REKONSILIASI DISTRIBUSI (DARK GREEN CARD)                         */}
-      {/* ========================================================================= */}
-      <div className="bg-[#14532D] text-white rounded-3xl p-6 sm:p-7 shadow-md border border-emerald-800/60 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-700/60 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 rounded-2xl">
-              <CheckCircle2 className="w-5 h-5 text-emerald-300" />
-            </div>
-            <div>
-              <h3 className="text-base font-black tracking-tight">
-                Rekonsiliasi Distribusi Hari Ini
-              </h3>
-              <p className="text-xs text-emerald-200 font-medium">
-                Pemeriksaan zero discrepancy antara penerimaan farm, pengeluaran BAST, dan alokasi olahan
-              </p>
-            </div>
-          </div>
-
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-black rounded-full self-start sm:self-auto">
-            <Check className="w-3.5 h-3.5" />
-            <span>100% Sesuai</span>
-          </span>
-        </div>
-
-        {/* 3 Main Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-center">
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[11px] font-bold text-emerald-200 uppercase block">
-              Masuk dari Farm
-            </span>
-            <strong className="text-xl sm:text-2xl font-black font-mono mt-0.5 block">
-              {currentTotalMasukFarm.toLocaleString('id-ID')} Liter
-            </strong>
-          </div>
-
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[11px] font-bold text-amber-200 uppercase block">
-              Total Distribusi (Penjualan + Hibah)
-            </span>
-            <strong className="text-xl sm:text-2xl font-black font-mono text-amber-300 mt-0.5 block">
-              {currentTotalDistribusi.toLocaleString('id-ID')} Liter
-            </strong>
-          </div>
-
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[11px] font-bold text-emerald-200 uppercase block">
-              Sisa Stok Siap Olah
-            </span>
-            <strong className="text-xl sm:text-2xl font-black font-mono text-emerald-300 mt-0.5 block">
-              {currentSisaStokDistribusi.toLocaleString('id-ID')} Liter
-            </strong>
-          </div>
-        </div>
-
-        {/* Formula text */}
-        <div className="pt-2 text-center text-xs font-mono text-emerald-200/90 font-bold bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-800">
-          {currentTotalMasukFarm.toLocaleString('id-ID')} Liter Masuk − {currentTotalDistribusi.toLocaleString('id-ID')} Liter Distribusi BAST = {currentSisaStokDistribusi.toLocaleString('id-ID')} Liter Sisa Siap Diolah
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 6. RINGKASAN DISTRIBUSI BERDASARKAN TUJUAN (4 MINI CARDS)                 */}
-      {/* ========================================================================= */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-            Ringkasan Distribusi Berdasarkan Tujuan
-          </h3>
-          <span className="text-xs text-slate-500 font-semibold">
-            Total {destStats.total.toLocaleString('id-ID')} Liter Tersalurkan
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Mini Card 1: Penjualan SPPG */}
-          <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-xs transition-shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-emerald-700 text-white rounded-xl shadow-2xs">
-                <Building2 className="w-4 h-4 text-emerald-200" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-emerald-950 block">Penjualan SPPG</span>
-                <span className="text-[10px] text-emerald-700 font-medium">Mitra Langganan</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-base font-black text-emerald-950 block font-mono">
-                {destStats.sppg.toLocaleString('id-ID')} L
-              </span>
-              <span className="text-[10px] font-bold text-emerald-700">
-                {destStats.sppgPct}% dari total
-              </span>
-            </div>
-          </div>
-
-          {/* Mini Card 2: Penjualan Eduwisata */}
-          <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-xs transition-shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-700 text-white rounded-xl shadow-2xs">
-                <Compass className="w-4 h-4 text-blue-200" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-blue-950 block">Penjualan Eduwisata</span>
-                <span className="text-[10px] text-blue-700 font-medium">Wisata & Kantin</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-base font-black text-blue-950 block font-mono">
-                {destStats.eduwisata.toLocaleString('id-ID')} L
-              </span>
-              <span className="text-[10px] font-bold text-blue-700">
-                {destStats.eduPct}% dari total
-              </span>
-            </div>
-          </div>
-
-          {/* Mini Card 3: Penjualan Umum */}
-          <div className="p-4 bg-purple-50/70 border border-purple-200/80 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-xs transition-shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-purple-700 text-white rounded-xl shadow-2xs">
-                <Users className="w-4 h-4 text-purple-200" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-purple-950 block">Penjualan Umum</span>
-                <span className="text-[10px] text-purple-700 font-medium">Konsumen Langsung</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-base font-black text-purple-950 block font-mono">
-                {destStats.umum.toLocaleString('id-ID')} L
-              </span>
-              <span className="text-[10px] font-bold text-purple-700">
-                {destStats.umumPct}% dari total
-              </span>
-            </div>
-          </div>
-
-          {/* Mini Card 4: Hibah */}
-          <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-center justify-between shadow-2xs hover:shadow-xs transition-shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-amber-600 text-white rounded-xl shadow-2xs">
-                <Gift className="w-4 h-4 text-amber-200" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-amber-950 block">Penyaluran Hibah</span>
-                <span className="text-[10px] text-amber-700 font-medium">Sosial & Kedinasan</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-base font-black text-amber-950 block font-mono">
-                {destStats.hibah.toLocaleString('id-ID')} L
-              </span>
-              <span className="text-[10px] font-bold text-amber-700">
-                {destStats.hibahPct}% dari total
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* 7. FILTER TOOLBAR MODERN + CHIPS FILTER AKTIF                             */}
@@ -1233,268 +838,8 @@ export default function DistribusiSusuSegarPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 8. TABEL VIEW MODE 1: RIWAYAT DOKUMEN BAST (HIBAH)                        */}
+      {/* 8. TABEL REKAP ALOKASI & TUJUAN DISTRIBUSI HARIAN                        */}
       {/* ========================================================================= */}
-      {viewMode === 'BAST' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
-          {/* Info Banner: Penjualan tidak perlu BAST */}
-          <div className="flex items-start gap-3 p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 shadow-2xs">
-            <Info className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              <strong>Ketentuan BAST:</strong> Dokumen BAST (Berita Acara Serah Terima) resmi diterbitkan khusus untuk penyaluran <strong>Hibah</strong> (Tamu Dinas, Senam/Apel, Yayasan Sosial, Edukasi). Penjualan langsung tidak memerlukan dokumen BAST dan rekapnya dapat dilihat pada tab <strong>Rekap Distribusi Susu Segar</strong>.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-xs">
-                <FileText className="w-5 h-5 text-emerald-300" />
-              </div>
-              <div>
-                <h2 className="text-base font-black text-slate-900">
-                  Riwayat Dokumen BAST (Hibah) Susu {commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'} ({hibahBastList.length} Dokumen)
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Daftar surat Berita Acara Serah Terima (BAST) resmi penyaluran hibah.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-semibold">Tampilkan:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-700"
-              >
-                <option value={10}>10 Baris</option>
-                <option value={20}>20 Baris</option>
-                <option value={50}>50 Baris</option>
-              </select>
-            </div>
-          </div>
-
-          {hibahBastList.length === 0 ? (
-            <div className="py-12 text-center">
-              <EmptyState
-                title={`Belum Ada Dokumen BAST Hibah Susu ${commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'}`}
-                description="Belum ada penyaluran hibah yang diterbitkan surat BAST-nya pada periode filter ini."
-              />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[11px] border-y border-slate-200 sticky top-0 z-10">
-                  <tr>
-                    <th className="py-3 px-3 text-center w-[1%] whitespace-nowrap">No</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Nomor BAST</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Tanggal Penyaluran</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Jenis Susu</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Penerima Hibah</th>
-                    <th className="py-3 px-4 text-right font-black text-amber-950 bg-amber-50/60 whitespace-nowrap">Volume Hibah</th>
-                    <th className="py-3 px-4 text-center whitespace-nowrap">Status Dokumen</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {paginatedHibahBasts.map((b, idx) => {
-                    const rowNum = (currentPage - 1) * pageSize + idx + 1;
-                    const animal = getBastAnimal(b);
-                    const isSent = b.status === 'DIKIRIM_KE_FARM' || b.status === 'DITERIMA';
-
-                    return (
-                      <tr key={b.id || idx} className="hover:bg-slate-50/90 transition-colors">
-                        <td className="py-3.5 px-3 text-center text-slate-400 font-bold w-[1%] whitespace-nowrap">{rowNum}</td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                            <span className="font-mono">{b.nomorBast}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap font-bold text-slate-800">
-                          {new Date(b.tanggal).toLocaleDateString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {animal === 'SAPI' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <span>🐮</span> Susu Sapi
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-black bg-amber-50 text-amber-800 border border-amber-200">
-                              <span>🐐</span> Susu Kambing
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap font-bold text-slate-900">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span>🎁</span>
-                            <span>{b.instansiPenerima || 'Yayasan / Instansi Penerima'}</span>
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-black text-amber-950 bg-amber-50/30 whitespace-nowrap font-mono text-sm">
-                          {b.volumeLiters?.toLocaleString('id-ID')} <span className="text-xs font-normal text-amber-700">Liter</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          {b.status === 'DITERIMA' || isSent ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                              <span>Selesai</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-                              <Clock className="w-3.5 h-3.5 text-amber-700" />
-                              <span>Menunggu</span>
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="bg-slate-100 text-slate-900 font-extrabold border-t-2 border-slate-300">
-                  <tr>
-                    <td colSpan={5} className="py-3.5 px-4 text-center text-xs uppercase tracking-wider">
-                      TOTAL DOKUMEN BAST HIBAH SUSU {commodityTab === 'SAPI' ? 'SAPI' : 'KAMBING'}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-black text-amber-950 font-mono text-sm bg-amber-100/70 whitespace-nowrap">
-                      {currentVolumeHibah.toLocaleString('id-ID')} Liter
-                    </td>
-                    <td className="py-3.5 px-4 text-center text-xs font-semibold text-emerald-800">
-                      Resmi BAST
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {totalHibahPages > 1 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
-              <span className="text-slate-500 font-medium">
-                Menampilkan {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, hibahBastList.length)} dari {hibahBastList.length} dokumen BAST
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="p-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-lg">
-                  {currentPage} / {totalHibahPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalHibahPages))}
-                  disabled={currentPage === totalHibahPages}
-                  className="p-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 8. TABEL VIEW MODE 2: REKAP ALOKASI & TUJUAN DISTRIBUSI HARIAN              */}
-      {/* ========================================================================= */}
-      {viewMode === 'REKAP_ALOKASI' && (
-        <div className="space-y-6">
-          {/* Summary Cards di atas Tabel Rekap Distribusi Harian */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card 1: Penjualan (Biru) */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-blue-200/90 shadow-2xs space-y-2.5 hover:shadow-xs transition-shadow">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-blue-800 uppercase tracking-wider">
-                  Total Penjualan
-                </span>
-                <div className="p-2.5 bg-blue-100 text-blue-800 rounded-2xl">
-                  <ShoppingCart className="w-4 h-4 text-blue-700" />
-                </div>
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-2xl font-black text-blue-950 font-mono tracking-tight">
-                  {currentVolumePenjualan.toLocaleString('id-ID')}{' '}
-                  <span className="text-xs font-bold text-blue-700 font-sans">Liter</span>
-                </h4>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  SPPG, Eduwisata, & Konsumen Umum
-                </p>
-              </div>
-            </div>
-
-            {/* Card 2: Hibah (Orange) */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-amber-200/90 shadow-2xs space-y-2.5 hover:shadow-xs transition-shadow">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-amber-800 uppercase tracking-wider">
-                  Total Hibah
-                </span>
-                <div className="p-2.5 bg-amber-100 text-amber-800 rounded-2xl">
-                  <Gift className="w-4 h-4 text-amber-700" />
-                </div>
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-2xl font-black text-amber-950 font-mono tracking-tight">
-                  {currentVolumeHibah.toLocaleString('id-ID')}{' '}
-                  <span className="text-xs font-bold text-amber-700 font-sans">Liter</span>
-                </h4>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Senam/Apel, Tamu Dinas, & Edukasi
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3: Total Distribusi (Hijau) */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-200/90 shadow-2xs space-y-2.5 hover:shadow-xs transition-shadow">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
-                  Total Distribusi
-                </span>
-                <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-2xl">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                </div>
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-2xl font-black text-emerald-950 font-mono tracking-tight">
-                  {currentTotalDistribusi.toLocaleString('id-ID')}{' '}
-                  <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
-                </h4>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Total Penjualan + Penyaluran Hibah
-                </p>
-              </div>
-            </div>
-
-            {/* Card 4: Sisa Stok (Hijau Muda) */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-300 shadow-2xs space-y-2.5 hover:shadow-xs transition-shadow bg-emerald-50/30">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-emerald-900 uppercase tracking-wider">
-                  Sisa Stok Siap Olah
-                </span>
-                <div className="p-2.5 bg-emerald-600 text-white rounded-2xl">
-                  <Warehouse className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-2xl font-black text-emerald-950 font-mono tracking-tight">
-                  {currentSisaStokDistribusi.toLocaleString('id-ID')}{' '}
-                  <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
-                </h4>
-                <p className="text-[11px] text-emerald-800 font-medium">
-                  Sisa susu segar siap olah UHT
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Tabel Rekap Harian */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
@@ -1505,19 +850,9 @@ export default function DistribusiSusuSegarPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-black text-slate-900">
-                    Rekap Harian Alokasi & Tujuan Distribusi Susu {commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'}
+                    Distribusi Penjualan & Hibah
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Satu baris per tanggal distribusi dengan rincian accordion tujuan penyaluran.
-                  </p>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-900 text-xs font-black rounded-full border border-emerald-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Format Manual BBPTUHPT</span>
-                </span>
               </div>
             </div>
 
@@ -1792,8 +1127,6 @@ export default function DistribusiSusuSegarPage() {
               </div>
             )}
           </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 9. GRAFIK DISTRIBUSI (AREA/LINE CHART SVG RESPONSIF)                      */}
@@ -2047,7 +1380,7 @@ export default function DistribusiSusuSegarPage() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-black transition-all active:scale-95 shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-amber-700" />
-                  <span>+ Tambah Tujuan</span>
+                  <span>Tambah Tujuan</span>
                 </button>
               </div>
 
@@ -2229,6 +1562,8 @@ export default function DistribusiSusuSegarPage() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }

@@ -270,10 +270,10 @@ export default function LaporanPemasaranPage() {
         'No',
         'Tanggal',
         'Jenis Ternak',
-        'Susu Segar Masuk (Gross L)',
-        `Pakan ${freshCommodity === 'KAMBING' ? 'Cempe' : 'Pedet'} (L)`,
+        'Susu Segar Masuk (L)',
+        `${freshCommodity === 'KAMBING' ? 'Cempe' : 'Pedet'} (L)`,
         'Susu Afkir (L)',
-        'Diterima Pengolahan (Net L)',
+        'Diterima Pemasaran (Net L)',
       ]);
 
       headerRow.height = 24;
@@ -546,7 +546,7 @@ export default function LaporanPemasaranPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-6 w-full pb-10 font-sans">
       {toast && (
         <Toast
           type={toast.type}
@@ -955,12 +955,12 @@ export default function LaporanPemasaranPage() {
                           <tr>
                             <th className="px-3 py-3.5 text-center w-10">No</th>
                             <th className="px-3 py-3.5 whitespace-nowrap">Tanggal</th>
-                            <th className="px-3 py-3.5 text-right font-black text-slate-900 whitespace-nowrap">Susu Segar Masuk (Gross)</th>
+                            <th className="px-3 py-3.5 text-right font-black text-slate-900 whitespace-nowrap">Susu Segar Masuk</th>
                             <th className="px-3 py-3.5 text-right text-slate-600 whitespace-nowrap">
-                              Pakan {freshCommodity === 'KAMBING' ? 'Cempe' : 'Pedet'} (L)
+                              {freshCommodity === 'KAMBING' ? 'Cempe' : 'Pedet'} (L)
                             </th>
-                            <th className="px-3 py-3.5 text-right text-rose-600 whitespace-nowrap">Susu Afkir (L)</th>
-                            <th className="px-3 py-3.5 text-right font-black text-emerald-950 bg-emerald-100 whitespace-nowrap">Diterima Pengolahan (Net)</th>
+                            <th className="px-3 py-3.5 text-right text-slate-700 whitespace-nowrap">Susu Afkir (L)</th>
+                            <th className="px-3 py-3.5 text-right font-black text-emerald-950 bg-emerald-100 whitespace-nowrap">Diterima Pemasaran (Net)</th>
                             <th className="px-3 py-3.5 text-center font-bold text-slate-700 whitespace-nowrap">Kesesuaian</th>
                             <th className="px-3 py-3.5 text-center whitespace-nowrap">Status</th>
                           </tr>
@@ -980,10 +980,10 @@ export default function LaporanPemasaranPage() {
                                   })}
                                 </td>
                                 <td className="px-3 py-3.5 text-right font-bold font-mono text-slate-900">{day.totalGross} L</td>
-                                <td className="px-3 py-3.5 text-right font-mono text-slate-600">
+                                <td className="px-3 py-3.5 text-right font-mono font-bold text-slate-900">
                                   {day.totalPedet} L
                                 </td>
-                                <td className="px-3 py-3.5 text-right font-mono text-rose-600 font-semibold">
+                                <td className="px-3 py-3.5 text-right font-mono font-bold text-slate-900">
                                   {day.totalAfkir} L
                                 </td>
                                 <td className="px-3 py-3.5 text-right font-black font-mono text-emerald-950 bg-emerald-50 text-sm">
@@ -1093,8 +1093,8 @@ export default function LaporanPemasaranPage() {
                               </span>
                             </td>
                             <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{r.produksiSusu} L</td>
-                            <td className="px-4 py-3.5 text-right font-mono text-slate-500">{r.susuPedet} L</td>
-                            <td className="px-4 py-3.5 text-right font-mono text-rose-600 font-semibold">{r.susuAfkir} L</td>
+                            <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{r.susuPedet} L</td>
+                            <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{r.susuAfkir} L</td>
                             <td className="px-4 py-3.5 text-right font-mono font-black text-emerald-950 bg-emerald-50/70 text-sm">
                               {r.susuSiapOlah} Liter
                             </td>
@@ -1550,7 +1550,7 @@ export default function LaporanPemasaranPage() {
                 <span className="font-black text-slate-900">{selectedFreshRecord.produksiSusu} Liter</span>
               </div>
               <div className="flex justify-between py-1.5 text-amber-800">
-                <span>Potongan Pakan {selectedFreshRecord.jenisTernak === 'KAMBING' ? 'Cempe' : 'Pedet'}:</span>
+                <span>Potongan {selectedFreshRecord.jenisTernak === 'KAMBING' ? 'Cempe' : 'Pedet'}:</span>
                 <span className="font-bold">- {selectedFreshRecord.susuPedet} Liter</span>
               </div>
               <div className="flex justify-between py-1.5 text-rose-700">

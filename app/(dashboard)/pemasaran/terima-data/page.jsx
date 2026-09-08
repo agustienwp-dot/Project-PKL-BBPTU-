@@ -932,7 +932,7 @@ export default function TerimaProdukOlahanPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-12 font-sans">
+    <div className="space-y-6 w-full pb-12 font-sans">
       {toast && (
         <Toast
           type={toast.type}
@@ -941,40 +941,18 @@ export default function TerimaProdukOlahanPage() {
         />
       )}
 
-      {/* ========================================================================= */}
-      {/* 1. HEADER DASHBOARD                                                       */}
-      {/* ========================================================================= */}
-      <header className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Sebelah Kiri: Judul besar, Badge kategori aktif, Subtitle */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {viewMode === 'PENJUALAN' ? 'Riwayat Penjualan UHT' : 'Produk UHT'}
-            </h1>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-              {activeTab === 'susu_original'
-                ? 'Original'
-                : activeTab === 'susu_rasa'
-                ? 'Rasa'
-                : activeTab === 'yogurt'
-                ? 'Yogurt'
-                : 'Keju'}
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            {viewMode === 'PENJUALAN'
-              ? 'Daftar riwayat seluruh transaksi penjualan susu olahan yang telah dicatat.'
-              : 'Manajemen stok produk olahan UHT serta pencatatan penjualan dan distribusi.'}
-          </p>
-        </div>
+      {/* Page Title (Tanpa Bar / Kotak) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+          {viewMode === 'PENJUALAN' ? 'RIWAYAT PENJUALAN UHT' : 'PRODUK UHT'}
+        </h1>
 
-        {/* Sebelah Kanan: Action Buttons */}
+        {/* Sebelah Kanan: Action Buttons Utama */}
         <div className="flex flex-wrap items-center gap-2.5">
           {viewMode === 'PENJUALAN' ? (
             <button
               onClick={() => setViewMode('STOK')}
-              className="inline-flex items-center gap-2 bg-[#14532D] hover:bg-[#0f3e22] text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center gap-2 bg-[#1E3F20] hover:bg-[#16331a] text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 text-emerald-300" />
               <span>← Kembali ke Data Stok</span>
@@ -984,7 +962,7 @@ export default function TerimaProdukOlahanPage() {
               {/* Tombol Hijau Utama: + Input Penjualan */}
               <button
                 onClick={() => handleOpenSaleModal()}
-                className="inline-flex items-center gap-2 bg-[#14532D] hover:bg-[#0f3e22] text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold shadow-sm transition-all active:scale-95 border border-emerald-700/50"
+                className="inline-flex items-center gap-2 bg-[#1E3F20] hover:bg-[#16331a] text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-emerald-300" />
                 <span>+ Input Penjualan</span>
@@ -993,7 +971,7 @@ export default function TerimaProdukOlahanPage() {
               {/* Tombol Outline: Permintaan Susu */}
               <button
                 onClick={() => setShowMilkRequestsModal(true)}
-                className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border border-slate-300 shadow-2xs active:scale-95"
+                className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-2xl text-xs font-bold transition-all border border-slate-200 shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
               >
                 <Milk className="w-4 h-4 text-amber-600" />
                 <span>Permintaan Susu</span>
@@ -1011,7 +989,7 @@ export default function TerimaProdukOlahanPage() {
               {/* Tombol Outline: Riwayat Penjualan */}
               <button
                 onClick={() => setViewMode('PENJUALAN')}
-                className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border border-slate-300 shadow-2xs active:scale-95"
+                className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-2xl text-xs font-bold transition-all border border-slate-200 shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
               >
                 <ShoppingCart className="w-4 h-4 text-blue-600" />
                 <span>Riwayat Penjualan</span>
@@ -1021,17 +999,8 @@ export default function TerimaProdukOlahanPage() {
               </button>
             </>
           )}
-
-          {/* Refresh Data Button */}
-          <button
-            onClick={fetchData}
-            title="Muat ulang data"
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl transition-all active:scale-95 border border-slate-200"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
-      </header>
+      </div>
 
       {/* ========================================================================= */}
       {/* 2. KATEGORI PRODUK MENJADI TABS (PILL TABS HORIZONTAL)                    */}
@@ -1169,15 +1138,6 @@ export default function TerimaProdukOlahanPage() {
                 </h3>
                 <span className="text-xs font-bold text-slate-500">Pcs</span>
               </div>
-              <div className="pt-1">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black ${
-                  tabRemainingStock > 0
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                    : 'bg-rose-100 text-rose-800 border border-rose-200'
-                }`}>
-                  {tabRemainingStock > 0 ? 'Tersedia' : 'Habis'}
-                </span>
-              </div>
             </div>
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <PackageCheck className="w-7 h-7 text-emerald-700" />
@@ -1197,16 +1157,11 @@ export default function TerimaProdukOlahanPage() {
                 </h3>
                 <span className="text-xs font-bold text-slate-500">Pcs</span>
               </div>
-              <div className="pt-1">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200">
-                  {tabTotalQty > 0 ? ((tabSoldQty / tabTotalQty) * 100).toFixed(0) : 0}% Terdistribusi
-                </span>
-              </div>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <ShoppingCart className="w-7 h-7 text-blue-700" />
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <ShoppingCart className="w-7 h-7 text-emerald-700" />
             </div>
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-blue-50/50 pointer-events-none" />
+            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-emerald-50/50 pointer-events-none" />
           </div>
 
           {/* Card 3 — Kuning (Total Produksi) */}
@@ -1221,16 +1176,11 @@ export default function TerimaProdukOlahanPage() {
                 </h3>
                 <span className="text-xs font-bold text-slate-500">Pcs</span>
               </div>
-              <div className="pt-1">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
-                  {filteredActiveItems.length} Batch
-                </span>
-              </div>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Factory className="w-7 h-7 text-amber-700" />
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Factory className="w-7 h-7 text-emerald-700" />
             </div>
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-amber-50/50 pointer-events-none" />
+            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-emerald-50/50 pointer-events-none" />
           </div>
 
           {/* Card 4 — Orange (Bahan Baku Digunakan) */}
@@ -1245,7 +1195,7 @@ export default function TerimaProdukOlahanPage() {
                   Bahan Baku Digunakan
                 </span>
                 {totalLitersMenunggu > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
                 )}
               </div>
               <div className="flex items-baseline gap-2">
@@ -1255,15 +1205,15 @@ export default function TerimaProdukOlahanPage() {
                 <span className="text-xs font-bold text-slate-500">Liter</span>
               </div>
               <div className="pt-1">
-                <span className="text-[10px] font-semibold text-orange-700 block">
+                <span className="text-[10px] font-bold text-red-600 block">
                   {totalLitersMenunggu > 0 ? `${totalLitersMenunggu} L Menunggu Diserahkan` : 'Susu segar yang diproses'}
                 </span>
               </div>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Milk className="w-7 h-7 text-orange-700" />
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Milk className="w-7 h-7 text-emerald-700" />
             </div>
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-orange-50/50 pointer-events-none" />
+            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-emerald-50/50 pointer-events-none" />
           </div>
         </div>
       )}

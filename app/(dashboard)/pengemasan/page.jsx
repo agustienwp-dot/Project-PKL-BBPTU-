@@ -330,7 +330,7 @@ export default function PengemasanPage() {
             <Package className="w-4 h-4" />
             <span>{canManage ? 'POV Admin Farm Produksi' : 'Informasi Hasil Pengemasan (Read Only)'}</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Pengemasan Produk</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">PENGEMASAN PRODUK</h1>
           <p className="text-xs text-slate-500 font-medium">
             {canManage ? 'Input hasil pengemasan, simpan DRAFT, dan kirim ke Admin Pemasaran untuk konfirmasi penerimaan.' : 'Lihat riwayat hasil pengemasan produk.'}
           </p>

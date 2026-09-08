@@ -263,7 +263,7 @@ export default function RiwayatPengemasanPage() {
           <ClipboardList className="w-4 h-4" />
           <span>POV Admin Farm Produksi</span>
         </div>
-        <h1 className="text-2xl font-black text-slate-900">Riwayat Pengemasan & Pengiriman</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">RIWAYAT PENGEMASAN & PENGIRIMAN</h1>
         <p className="text-xs text-slate-500 font-medium">Tabel riwayat pengemasan dan status pengiriman produk ke Admin Pemasaran.</p>
       </div>
 
