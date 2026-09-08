@@ -154,7 +154,7 @@ export default function LandingPage() {
             </Link>
             {mounted && user && (
               <Link
-                href="/dashboard"
+                href="/susu-farm/dashboard"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs sm:text-sm transition-all"
               >
                 <span>Buka Dashboard</span>

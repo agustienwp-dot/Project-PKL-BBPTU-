@@ -93,7 +93,7 @@ export default function ProduksiPage() {
       const [pRes, cRes, baRes] = await Promise.all([
         api.get(url).catch(() => ({ data: { success: true, data: [] } })),
         api.get('/categories?productType=SEGAR').catch(() => ({ data: { success: true, data: [] } })),
-        api.get('/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
+        api.get('/susu-farm/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
       ]);
 
       if (pRes.data && pRes.data.success && Array.isArray(pRes.data.data)) {
@@ -608,7 +608,7 @@ export default function ProduksiPage() {
                               return (
                                 <button
                                   type="button"
-                                  onClick={() => router.push(`/berita-acara?previewForProductionId=${p.id}`)}
+                                  onClick={() => router.push(`/susu-farm/berita-acara?previewForProductionId=${p.id}`)}
                                   className="p-2 text-slate-400 hover:bg-slate-200 bg-slate-100 border border-slate-200 rounded-xl transition-colors inline-flex items-center justify-center cursor-pointer"
                                   title="Lihat / Cetak BAST (Sudah Dibuat)"
                                 >
@@ -633,7 +633,7 @@ export default function ProduksiPage() {
                                   else farmLoc = 'Manggala';
 
                                   const query = `createForId=${p.id}&date=${p.date}&shift=${p.shift || 'Pagi'}&farm=${farmLoc}&animal=${p.animalType || 'SAPI'}&total=${gross}&pedet=${p.pedetVolumeLiters || 0}&afkir=${p.afkirVolumeLiters || 0}&diserah=${diserah}`;
-                                  router.push(`/berita-acara?${query}`);
+                                  router.push(`/susu-farm/berita-acara?${query}`);
                                 }}
                                 className="p-2 text-emerald-800 hover:bg-emerald-200 bg-emerald-100 border border-emerald-200 rounded-xl transition-colors inline-flex items-center justify-center cursor-pointer shadow-sm"
                                 title="Buat Berita Acara (BAST)"

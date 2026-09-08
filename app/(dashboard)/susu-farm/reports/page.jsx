@@ -34,7 +34,7 @@ export default function ReportsPage() {
 
   const fetchReport = async () => {
     try {
-      const res = await api.get(`/reports/monthly?month=${month}&year=${year}&productType=${productType}&animalType=${animalType}`);
+      const res = await api.get(`/susu-farm/reports/monthly?month=${month}&year=${year}&productType=${productType}&animalType=${animalType}`);
       if (res.data.success) {
         setReportData(res.data.data);
       }

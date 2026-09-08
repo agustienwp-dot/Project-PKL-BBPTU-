@@ -64,7 +64,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      window.location.href = '/dashboard';
+      window.location.href = '/susu-farm/dashboard';
     } catch (err) {
       console.error('Login error:', err);
       const msg =
@@ -130,9 +130,9 @@ export default function LoginPage() {
         }
       }
       setShowConfirmModal(false);
-      window.location.href = '/dashboard';
+      window.location.href = '/susu-farm/dashboard';
     } catch (err) {
-      window.location.href = '/dashboard';
+      window.location.href = '/susu-farm/dashboard';
     } finally {
       setLoading(false);
     }

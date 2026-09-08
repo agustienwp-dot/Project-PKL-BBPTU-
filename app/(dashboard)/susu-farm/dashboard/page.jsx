@@ -160,7 +160,7 @@ export default function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await api.get(`/dashboard/stats?t=${Date.now()}`);
+      const res = await api.get(`/susu-farm/dashboard/stats?t=${Date.now()}`);
       if (res.data?.success) {
         setStatsData(res.data.data);
       }

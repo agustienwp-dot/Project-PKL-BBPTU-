@@ -8,7 +8,7 @@ export default function RiwayatProduksiPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/produksi');
+    router.replace('/susu-farm/produksi');
   }, [router]);
 
   return <LoadingSpinner text="Mengarahkan ke modul Produksi..." />;
