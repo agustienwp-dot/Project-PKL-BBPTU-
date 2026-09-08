@@ -6,17 +6,14 @@ import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import { 
-  FileText, 
   Printer, 
   Download, 
   RefreshCw, 
   Package, 
   Milk, 
-  Boxes, 
   FileSpreadsheet,
   Calendar,
   CheckCircle2,
-  Table as TableIcon,
   Tag
 } from 'lucide-react';
 
@@ -198,7 +195,7 @@ export default function LaporanPengolahanPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12 print:p-0 print:space-y-4">
+    <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden print:p-0 print:h-auto print:overflow-visible">
       {/* LANDSCAPE PRINT STYLING INJECTION */}
       <style>{`
         @media print {
@@ -224,7 +221,7 @@ export default function LaporanPengolahanPage() {
             word-break: normal !important;
             font-size: 8.5px !important;
           }
-          .overflow-x-auto {
+          .overflow-x-auto, .overflow-auto {
             overflow: visible !important;
           }
         }
@@ -233,14 +230,10 @@ export default function LaporanPengolahanPage() {
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* TOP BAR / HEADER PAGE */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 print:hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 py-1 px-1 print:hidden">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1E3F20] text-white rounded-full text-xs font-bold mb-2">
-            <FileText className="w-4 h-4 text-emerald-200" />
-            <span>DIVISI UHT / PENGOLAHAN</span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Laporan Pengolahan Susu & Rekapitulasi Produk</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Laporan Pengolahan Susu & Rekapitulasi Produk</h1>
+          <p className="text-xs text-slate-500 font-medium">
             Pantau akumulasi harian dan rekapitulasi bulanan pengolahan Susu Olahan Rasa, Yogurt, dan Keju.
           </p>
         </div>
@@ -265,7 +258,7 @@ export default function LaporanPengolahanPage() {
       </div>
 
       {/* FILTER & VIEW TOGGLE (Hidden on print) */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-end gap-4 shrink-0 print:hidden">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveView('PRODUKSI')}
@@ -275,7 +268,6 @@ export default function LaporanPengolahanPage() {
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            <TableIcon className="w-4 h-4" />
             <span>Laporan Produksi</span>
           </button>
 
@@ -287,7 +279,6 @@ export default function LaporanPengolahanPage() {
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            <Boxes className="w-4 h-4" />
             <span>Laporan Sisa Stok Bahan Baku & Kemasan</span>
           </button>
         </div>
@@ -317,27 +308,24 @@ export default function LaporanPengolahanPage() {
       </div>
 
       {/* PRINTABLE OFFICIAL DOCUMENT WRAPPER */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0">
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden print:border-none print:shadow-none print:p-0 print:overflow-visible">
         
         {/* DOCUMENT TITLE HEADER */}
-        <div className="text-center space-y-1.5 border-b border-slate-200 pb-4 print:border-black">
-          <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-wide print:text-black">
+        <div className="text-center space-y-1 border-b border-slate-200 pb-3 shrink-0 print:border-black">
+          <h2 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-wide print:text-black">
             {activeView === 'STOK_BAHAN'
               ? 'LAPORAN PERSEDIAAN SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)'
               : 'SERAH TERIMA SUSU OLAHAN & PRODUK SIAP JUAL BBPTU HPT BATURRADEN'}
           </h2>
-          <h3 className="text-sm md:text-base font-bold text-slate-700 uppercase tracking-wide print:text-black">
+          <h3 className="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide print:text-black">
             {activeView === 'STOK_BAHAN'
               ? 'SEKSI PENGEMASAN & OLAHAN - BBPTU HPT BATURRADEN'
               : 'DARI SEKSI PENGEMASAN & OLAHAN KE SEKSI PEMASARAN'}
           </h3>
-          <p className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-widest pt-1 print:text-black">
+          <p className="text-xs font-extrabold text-slate-800 uppercase tracking-widest pt-0.5 print:text-black">
             TAHUN {year}
           </p>
-        </div>
-
-        <div className="flex items-center justify-between font-bold text-xs text-slate-800 print:text-black uppercase tracking-wider">
-          <div>
+          <div className="text-xs font-bold text-slate-800 print:text-black uppercase tracking-wider pt-1">
             BULAN : <span className="font-black text-emerald-950 print:text-black">{monthNames[month - 1]} {year}</span>
           </div>
         </div>
@@ -347,85 +335,83 @@ export default function LaporanPengolahanPage() {
           loading ? (
             <div className="p-12 text-center"><LoadingSpinner text="Memuat Laporan Produksi..." /></div>
           ) : (
-            <div className="space-y-6">
-              <div className="overflow-x-auto">
-                <table className="w-full text-center text-[10px] md:text-[11px] border-collapse border border-slate-300 print:border-black font-mono">
-                  <thead>
-                    {/* Row 1 Header */}
-                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
-                      <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
-                      <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
-                      <th colSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-50/70 text-blue-950">BAHAN BAKU SUSU</th>
-                      <th colSpan={6} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-50/70 text-emerald-950">HASIL PRODUKSI (PCS)</th>
-                      <th rowSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-100 text-emerald-950">JUMLAH PRODUK</th>
-                    </tr>
+            <div className="overflow-auto flex-1 min-h-0 mt-3">
+              <table className="w-full text-center text-[10px] md:text-[11px] border-collapse border border-slate-300 print:border-black font-mono relative">
+                <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
+                  {/* Row 1 Header */}
+                  <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
+                    <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
+                    <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
+                    <th colSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-50/70 text-blue-950">BAHAN BAKU SUSU</th>
+                    <th colSpan={6} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-50/70 text-emerald-950">HASIL PRODUKSI (PCS)</th>
+                    <th rowSpan={2} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-emerald-100 text-emerald-950">JUMLAH PRODUK</th>
+                  </tr>
 
-                    {/* Row 2 Header */}
-                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200 text-[10px]">
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DITERIMA</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DIOLAH</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 115 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 130 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 200 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 250 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-purple-50">YOGURT 200 ML</th>
-                      <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-amber-50">KEJU</th>
-                    </tr>
+                  {/* Row 2 Header */}
+                  <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200 text-[10px]">
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DITERIMA</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DIOLAH</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 115 ML</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 130 ML</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 200 ML</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 250 ML</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-purple-50">YOGURT 200 ML</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-amber-50">KEJU</th>
+                  </tr>
 
-                    {/* Row 3 Units Header */}
-                    <tr className="bg-slate-50 text-slate-500 text-[9px] font-mono">
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( LTR )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( LTR )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
-                      <td className="border border-slate-300 print:border-black px-1 py-0.5 font-sans font-bold bg-emerald-100 text-emerald-950">( PCS )</td>
-                    </tr>
-                  </thead>
+                  {/* Row 3 Units Header */}
+                  <tr className="bg-slate-50 text-slate-500 text-[9px] font-mono">
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( LTR )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( LTR )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5">( PCS )</td>
+                    <td className="border border-slate-300 print:border-black px-1 py-0.5 font-sans font-bold bg-emerald-100 text-emerald-950">( PCS )</td>
+                  </tr>
+                </thead>
 
-                  <tbody className="divide-y divide-slate-200 print:divide-black text-slate-800">
-                    {dailyLogs.map((log) => {
-                      const hasActivity = log.susuDiolah > 0 || log.totalProduk > 0 || log.susuDiterima > 0;
-                      return (
-                        <tr key={log.day} className={`hover:bg-amber-50/40 transition-colors ${hasActivity ? 'bg-emerald-50/15' : ''}`}>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 font-sans font-bold">{log.day}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 font-sans whitespace-nowrap">{log.dateStr}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-blue-900 font-bold">{fmtNum(log.susuDiterima)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-purple-900 font-bold">{fmtNum(log.susuDiolah)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu115)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu130)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu200)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu250)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-purple-900 bg-purple-50/30">{fmtNum(log.yogurt200)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-amber-900 bg-amber-50/30">{fmtNum(log.keju)}</td>
-                          <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-black bg-emerald-50 text-emerald-950">{fmtNum(log.totalProduk)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
+                <tbody className="divide-y divide-slate-200 print:divide-black text-slate-800">
+                  {dailyLogs.map((log) => {
+                    const hasActivity = log.susuDiolah > 0 || log.totalProduk > 0 || log.susuDiterima > 0;
+                    return (
+                      <tr key={log.day} className={`hover:bg-amber-50/40 transition-colors ${hasActivity ? 'bg-emerald-50/15' : ''}`}>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 font-sans font-bold">{log.day}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 font-sans whitespace-nowrap">{log.dateStr}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-blue-900 font-bold">{fmtNum(log.susuDiterima)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-purple-900 font-bold">{fmtNum(log.susuDiolah)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu115)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu130)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu200)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu250)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-purple-900 bg-purple-50/30">{fmtNum(log.yogurt200)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-amber-900 bg-amber-50/30">{fmtNum(log.keju)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-black bg-emerald-50 text-emerald-950">{fmtNum(log.totalProduk)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
 
-                  {/* FOOTER TOTAL BULAN INI */}
-                  <tfoot>
-                    <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-400 print:border-black print:bg-slate-200">
-                      <td colSpan={2} className="border border-slate-300 print:border-black px-2 py-2 text-center font-sans">
-                        JUMLAH TOTAL BULAN INI
-                      </td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 font-black">{fmtNum(monthlyTotals.susuDiterima)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-purple-950 font-black">{fmtNum(monthlyTotals.susuDiolah)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu115)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu130)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu200)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu250)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-purple-950 bg-purple-100/50">{fmtNum(monthlyTotals.yogurt200)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-amber-950 bg-amber-100/50">{fmtNum(monthlyTotals.keju)}</td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-emerald-950 bg-emerald-200 font-black text-xs">{fmtNum(monthlyTotals.totalProduk)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                {/* FOOTER TOTAL BULAN INI */}
+                <tfoot className="sticky bottom-0 z-10 bg-slate-100 shadow-2xs">
+                  <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-400 print:border-black print:bg-slate-200">
+                    <td colSpan={2} className="border border-slate-300 print:border-black px-2 py-2 text-center font-sans">
+                      JUMLAH TOTAL BULAN INI
+                    </td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 font-black">{fmtNum(monthlyTotals.susuDiterima)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-purple-950 font-black">{fmtNum(monthlyTotals.susuDiolah)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu115)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu130)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu200)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu250)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-purple-950 bg-purple-100/50">{fmtNum(monthlyTotals.yogurt200)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-amber-950 bg-amber-100/50">{fmtNum(monthlyTotals.keju)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-emerald-950 bg-emerald-200 font-black text-xs">{fmtNum(monthlyTotals.totalProduk)}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           )
         )}
@@ -435,77 +421,75 @@ export default function LaporanPengolahanPage() {
           loading ? (
             <div className="p-12 text-center"><LoadingSpinner text="Memuat Laporan Sisa Stok Bahan..." /></div>
           ) : (
-            <div className="space-y-6">
-              <div className="overflow-x-auto">
-                <table className="w-full text-center text-[10px] md:text-[11px] border-collapse border border-slate-300 print:border-black font-mono">
-                  <thead>
-                    {/* Row 1 Header */}
-                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
-                      <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
-                      <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
-                      <th colSpan={materialUsage.length + 1} className="border border-slate-300 print:border-black px-2 py-2 font-sans bg-amber-50/80 text-amber-950 text-xs tracking-wider">
-                        SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)
+            <div className="overflow-auto flex-1 min-h-0 mt-3">
+              <table className="w-full text-center text-[10px] md:text-[11px] border-collapse border border-slate-300 print:border-black font-mono relative">
+                <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
+                  {/* Row 1 Header */}
+                  <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
+                    <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
+                    <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
+                    <th colSpan={materialUsage.length + 1} className="border border-slate-300 print:border-black px-2 py-2 font-sans bg-amber-50/80 text-amber-950 text-xs tracking-wider">
+                      SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)
+                    </th>
+                  </tr>
+
+                  {/* Row 2 Header */}
+                  <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200 text-[10px]">
+                    <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-100/60 text-blue-950">
+                      SUSU SEGAR
+                    </th>
+                    {materialUsage.map((m) => (
+                      <th key={m.id} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-amber-100/40 text-slate-900 whitespace-nowrap">
+                        {m.name.toUpperCase()}
                       </th>
-                    </tr>
-
-                    {/* Row 2 Header */}
-                    <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200 text-[10px]">
-                      <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-100/60 text-blue-950">
-                        SUSU SEGAR
-                      </th>
-                      {materialUsage.map((m) => (
-                        <th key={m.id} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-amber-100/40 text-slate-900 whitespace-nowrap">
-                          {m.name.toUpperCase()}
-                        </th>
-                      ))}
-                    </tr>
-
-                    {/* Row 3 Units Header */}
-                    <tr className="bg-slate-50 text-slate-500 text-[9px] font-mono">
-                      <td className="border border-slate-300 print:border-black px-1.5 py-1 font-bold text-blue-900 bg-blue-50">( LTR )</td>
-                      {materialUsage.map((m) => (
-                        <td key={m.id} className="border border-slate-300 print:border-black px-1.5 py-1">
-                          ( {(m.unit || 'PCS').toUpperCase()} )
-                        </td>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-slate-200 print:divide-black text-slate-800">
-                    {dailyLogs.map((log) => (
-                      <tr key={log.day} className="hover:bg-amber-50/40 transition-colors">
-                        <td className="border border-slate-300 print:border-black px-2 py-1 font-sans font-bold">{log.day}</td>
-                        <td className="border border-slate-300 print:border-black px-2 py-1 font-sans whitespace-nowrap">{log.dateStr}</td>
-                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-blue-950 bg-blue-50/30">
-                          {fmtNum(summary.sisaStokSusuSegar || 0)}
-                        </td>
-                        {materialUsage.map((m) => (
-                          <td key={m.id} className="border border-slate-300 print:border-black px-2 py-1 text-right text-slate-700 bg-slate-50/30 font-medium">
-                            {fmtNum(m.finalStock)}
-                          </td>
-                        ))}
-                      </tr>
                     ))}
-                  </tbody>
+                  </tr>
 
-                  {/* FOOTER TOTAL SISA STOK REAL-TIME */}
-                  <tfoot>
-                    <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-400 print:border-black print:bg-slate-200">
-                      <td colSpan={2} className="border border-slate-300 print:border-black px-2 py-2 text-center font-sans">
-                        SISA STOK SAAT INI (REAL-TIME)
+                  {/* Row 3 Units Header */}
+                  <tr className="bg-slate-50 text-slate-500 text-[9px] font-mono">
+                    <td className="border border-slate-300 print:border-black px-1.5 py-1 font-bold text-blue-900 bg-blue-50">( LTR )</td>
+                    {materialUsage.map((m) => (
+                      <td key={m.id} className="border border-slate-300 print:border-black px-1.5 py-1">
+                        ( {(m.unit || 'PCS').toUpperCase()} )
                       </td>
-                      <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 bg-blue-100/60 font-black text-xs">
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-200 print:divide-black text-slate-800">
+                  {dailyLogs.map((log) => (
+                    <tr key={log.day} className="hover:bg-amber-50/40 transition-colors">
+                      <td className="border border-slate-300 print:border-black px-2 py-1 font-sans font-bold">{log.day}</td>
+                      <td className="border border-slate-300 print:border-black px-2 py-1 font-sans whitespace-nowrap">{log.dateStr}</td>
+                      <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-blue-950 bg-blue-50/30">
                         {fmtNum(summary.sisaStokSusuSegar || 0)}
                       </td>
                       {materialUsage.map((m) => (
-                        <td key={m.id} className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-slate-900 bg-amber-100/50 text-xs">
+                        <td key={m.id} className="border border-slate-300 print:border-black px-2 py-1 text-right text-slate-700 bg-slate-50/30 font-medium">
                           {fmtNum(m.finalStock)}
                         </td>
                       ))}
                     </tr>
-                  </tfoot>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+
+                {/* FOOTER TOTAL SISA STOK REAL-TIME */}
+                <tfoot className="sticky bottom-0 z-10 bg-slate-100 shadow-2xs">
+                  <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-400 print:border-black print:bg-slate-200">
+                    <td colSpan={2} className="border border-slate-300 print:border-black px-2 py-2 text-center font-sans">
+                      SISA STOK SAAT INI (REAL-TIME)
+                    </td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 bg-blue-100/60 font-black text-xs">
+                      {fmtNum(summary.sisaStokSusuSegar || 0)}
+                    </td>
+                    {materialUsage.map((m) => (
+                      <td key={m.id} className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-slate-900 bg-amber-100/50 text-xs">
+                        {fmtNum(m.finalStock)}
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           )
         )}

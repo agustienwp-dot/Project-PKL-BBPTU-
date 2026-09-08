@@ -54,8 +54,8 @@ export default function BeritaAcaraDocument({ ba }) {
         <p className={`text-xs uppercase tracking-tight ${isOlahan ? 'font-normal' : 'font-semibold'}`}>
           {isOlahan ? (
             <>
-              DARI SEKSI PENGEMASAN & OLAHAN KE{' '}
-              <span className="border-b border-dotted border-black px-2 inline-block font-normal">
+              DARI SEKSI UHT KE{' '}
+              <span className="border-b border-dotted border-black px-2 inline-block font-normal uppercase">
                 {penerima || 'SEKSI PEMASARAN'}
               </span>
             </>
@@ -75,10 +75,7 @@ export default function BeritaAcaraDocument({ ba }) {
             </>
           )}
         </p>
-        <p className="text-xs font-bold font-sans pt-1">
-          Nomor: {ba.nomorBa || ba.nomor_ba || '-'}
-        </p>
-        <p className="text-xs md:text-sm font-sans font-bold text-slate-900 pt-0.5 tracking-wide">
+        <p className="text-xs md:text-sm font-sans font-bold text-slate-900 pt-1 tracking-wide">
           Nomor: {ba.nomorBa || ba.nomor_ba || '-'}
         </p>
       </div>
@@ -131,26 +128,59 @@ export default function BeritaAcaraDocument({ ba }) {
           </thead>
           <tbody>
             {Array.isArray(parsedItems) && parsedItems.length > 0 ? (
-              parsedItems.map((item, idx) => (
-                <tr key={idx} className="border-b border-black text-xs md:text-sm min-h-[45px]">
-                  <td className="border-r border-black p-3 font-medium align-top">
-                    {item.product ? (
-                      <span className="font-bold">{item.product} {item.size || ''}</span>
-                    ) : item.quantity ? (
-                      <span className="text-sm font-bold">{item.quantity} Liter</span>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="p-3 font-medium align-top">
-                    {item.quantity && item.unit && item.product ? (
-                      <span className="font-bold text-black">{item.quantity} {item.unit}</span>
-                    ) : (
-                      <span>{item.purpose || ba.purpose || ba.notes || '-'}</span>
-                    )}
-                  </td>
-                </tr>
-              ))
+              parsedItems.map((item, idx) => {
+                if (isOlahan) {
+                  let nameLabel = item.product || item.name || item.productCategory || 'Susu Olahan';
+                  let pkgType = item.packagingType || '';
+                  let sizeStr = item.size || item.packageSize || '';
+                  let varStr = item.variant ? `(${item.variant})` : '';
+                  let unitStr = item.unit || (pkgType.toLowerCase().includes('botol') ? 'Botol' : (pkgType.toLowerCase().includes('cup') ? 'Cup' : (pkgType.toLowerCase().includes('keju') || nameLabel.toLowerCase().includes('keju') ? 'Kemasan Keju' : 'pcs')));
+                  let qtyVal = item.quantity ?? 0;
+
+                  let formattedName = nameLabel;
+                  if (pkgType && !nameLabel.toLowerCase().includes(pkgType.toLowerCase()) && !pkgType.toLowerCase().includes(nameLabel.toLowerCase())) {
+                    formattedName += ` ${pkgType}`;
+                  }
+                  if (varStr) {
+                    formattedName += ` - ${varStr}`;
+                  }
+                  if (sizeStr) {
+                    formattedName += ` ${sizeStr}`;
+                  }
+
+                  return (
+                    <tr key={idx} className="border-b border-black text-xs md:text-sm min-h-[45px]">
+                      <td className="border-r border-black p-3 font-medium align-top">
+                        <span className="font-bold text-black">{formattedName}</span>
+                      </td>
+                      <td className="p-3 font-medium align-top">
+                        <span className="font-bold text-black">{qtyVal} {unitStr}</span>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={idx} className="border-b border-black text-xs md:text-sm min-h-[45px]">
+                    <td className="border-r border-black p-3 font-medium align-top">
+                      {item.product ? (
+                        <span className="font-bold">{item.product} {item.size || ''}</span>
+                      ) : item.quantity ? (
+                        <span className="text-sm font-bold">{item.quantity} Liter</span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="p-3 font-medium align-top">
+                      {item.quantity && item.unit && item.product ? (
+                        <span className="font-bold text-black">{item.quantity} {item.unit}</span>
+                      ) : (
+                        <span>{item.purpose || ba.purpose || ba.notes || '-'}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr className="border-b border-black text-xs md:text-sm min-h-[100px]">
                 <td className="border-r border-black p-4 font-bold text-sm md:text-base align-top">
@@ -162,14 +192,6 @@ export default function BeritaAcaraDocument({ ba }) {
               </tr>
             )}
 
-            {/* Note row at the bottom of the table if available */}
-            {ba.notes && (
-              <tr className="border-t border-black">
-                <td colSpan={2} className="p-2 text-xs italic font-sans text-slate-800">
-                  Catatan: {ba.notes}
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>

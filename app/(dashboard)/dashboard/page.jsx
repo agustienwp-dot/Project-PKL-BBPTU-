@@ -234,30 +234,19 @@ export default function DashboardPage() {
     const totalSusuOlahan = stokBotol115 + stokBotol250 + stokCup + stokPlastikBantal;
 
     return (
-      <div className="space-y-6 pb-12 bg-[#F6F8FA] -m-6 p-6 min-h-screen">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pb-12 bg-[#F6F8FA] -m-6 p-6">
         {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
         {/* 1. HEADER DASHBOARD GREETING */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1E3F20] to-emerald-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-emerald-900/20">
-              🥛
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                  Divisi UHT / Pengolahan
-                </span>
-              </div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">
-                Dashboard Divisi UHT / Pengolahan
-              </h1>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Ringkasan hasil pengolahan (Susu Olahan Rasa, Yogurt, Keju) & persediaan stok • {todayFormatted}</span>
-              </p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              Dashboard
+            </h1>
+            <p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>Ringkasan hasil pengolahan (Susu Olahan Rasa, Yogurt, Keju) & persediaan stok • {todayFormatted}</span>
+            </p>
           </div>
         </div>
 
@@ -536,20 +525,10 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {(pkgStats.materials || []).slice(0, 6).map((mat) => {
-                  const mName = mat.name || '';
-                  const mLower = mName.toLowerCase();
-                  let iconSymbol = '📦';
-                  if (mLower.includes('botol')) iconSymbol = '🍾';
-                  else if (mLower.includes('cup')) iconSymbol = '🥤';
-                  else if (mLower.includes('bantal') || mLower.includes('plastik')) iconSymbol = '🛍️';
-                  else if (mLower.includes('label') || mLower.includes('stiker')) iconSymbol = '🏷️';
-                  else if (mLower.includes('keju')) iconSymbol = '🧀';
-
                   return (
                     <tr key={mat.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-3">
-                        <span className="text-base shrink-0">{iconSymbol}</span>
-                        <span>{mat.name}</span>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {mat.name}
                       </td>
                       <td className="py-3.5 px-4 text-center font-mono font-black text-slate-900 text-sm">
                         {Number(mat.currentStock).toLocaleString('id-ID')}
@@ -557,19 +536,19 @@ export default function DashboardPage() {
                       <td className="py-3.5 px-4 text-center text-slate-500 font-semibold">
                         {mat.unit || 'pcs'}
                       </td>
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-center font-bold text-xs">
                         {mat.status === 'Aman' && (
-                          <span className="px-3 py-1 rounded-lg bg-emerald-100/80 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-200/60 inline-block">
+                          <span className="text-emerald-600 font-bold">
                             Aman
                           </span>
                         )}
                         {mat.status === 'Menipis' && (
-                          <span className="px-3 py-1 rounded-lg bg-amber-100/80 text-amber-900 text-[10px] font-black uppercase tracking-wider border border-amber-200/60 inline-block">
+                          <span className="text-amber-600 font-bold">
                             Menipis
                           </span>
                         )}
                         {mat.status === 'Kritis' && (
-                          <span className="px-3 py-1 rounded-lg bg-rose-100/80 text-rose-800 text-[10px] font-black uppercase tracking-wider border border-rose-200/60 inline-block animate-pulse">
+                          <span className="text-rose-600 font-bold">
                             Kritis
                           </span>
                         )}
@@ -603,7 +582,7 @@ export default function DashboardPage() {
   const maxChartVal = Math.max(...chartData.map(d => d.totalLiters || 0), 10);
 
   return (
-    <div className="space-y-6 pb-12 bg-[#F6F8FA] -m-6 p-6 min-h-screen">
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pb-12 bg-[#F6F8FA] -m-6 p-6">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* WELCOME HEADER */}

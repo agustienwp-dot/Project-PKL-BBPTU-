@@ -6,6 +6,7 @@ import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
+import BeritaAcaraDocument from '@/components/BeritaAcaraDocument';
 import {
   Package,
   Plus,
@@ -21,7 +22,8 @@ import {
   Layers,
   ArrowLeft,
   ChevronRight,
-  Truck
+  Truck,
+  Printer
 } from 'lucide-react';
 
 export default function PengemasanPage() {
@@ -154,6 +156,7 @@ export default function PengemasanPage() {
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [sendingPkg, setSendingPkg] = useState(null);
   const [deletingPkg, setDeletingPkg] = useState(null);
+  const [previewBa, setPreviewBa] = useState(null);
 
   // Incoming Milk Receptions & Production Dropdown
   const [incomingProductions, setIncomingProductions] = useState([]);
@@ -530,6 +533,97 @@ export default function PengemasanPage() {
     }
   };
 
+  const handlePrint = async (ba) => {
+    setPreviewBa(ba);
+    try {
+      if (ba?.id) {
+        await api.post(`/berita-acara/${ba.id}/print`);
+      }
+    } catch (e) {}
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
+  const handleGenerateOrPrintBa = async (pkg) => {
+    try {
+      let itemsPayload = [];
+      if (pkg.packagingDetails) {
+        try {
+          itemsPayload = typeof pkg.packagingDetails === 'string' ? JSON.parse(pkg.packagingDetails) : pkg.packagingDetails;
+        } catch (e) {}
+      }
+
+      const res = await api.get('/berita-acara');
+      let existingBa = null;
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        existingBa = res.data.data.find(b => b.packagingId === pkg.id);
+      }
+
+      if (existingBa) {
+        let existingItems = [];
+        if (existingBa.items) {
+          try {
+            existingItems = typeof existingBa.items === 'string' ? JSON.parse(existingBa.items) : existingBa.items;
+          } catch (e) {}
+        }
+        if ((!Array.isArray(existingItems) || existingItems.length === 0) && itemsPayload.length > 0) {
+          existingBa.items = itemsPayload;
+        }
+        setPreviewBa(existingBa);
+        return;
+      }
+
+      const newBaPayload = {
+        type: 'SUSU_OLAHAN',
+        packagingId: pkg.id,
+        date: pkg.date,
+        diserahterimakan: pkg.totalPackagedQty || 0,
+        unit: 'pcs',
+        items: itemsPayload,
+        penyerahName: user?.name || pkg.createdBy?.name || 'ADMIN_PENGEMASAN',
+        penyerahRole: 'Seksi Pengemasan & Olahan',
+        penerimaName: 'Seksi Pemasaran',
+        penerimaRole: 'Seksi Pemasaran',
+        farmLocation: 'Pengemasan & Olahan',
+        status: 'TERKIRIM_KE_PEMASARAN',
+        notes: pkg.notes || 'Dibuat otomatis dari hasil pengolahan'
+      };
+
+      const createRes = await api.post('/berita-acara', newBaPayload);
+      if (createRes.data?.success && createRes.data.data) {
+        setPreviewBa(createRes.data.data);
+        setToast({ type: 'success', message: 'Berita Acara berhasil dibuat & siap dicetak!' });
+      } else {
+        const fallbackBa = {
+          ...newBaPayload,
+          nomorBa: `BAST-OLAHAN/${new Date().getFullYear()}/${(pkg.id || '000').slice(-4).toUpperCase()}`,
+        };
+        setPreviewBa(fallbackBa);
+      }
+    } catch (err) {
+      console.error('Error creating/fetching Berita Acara for packaging:', err);
+      let itemsPayload = [];
+      if (pkg.packagingDetails) {
+        try {
+          itemsPayload = typeof pkg.packagingDetails === 'string' ? JSON.parse(pkg.packagingDetails) : pkg.packagingDetails;
+        } catch (e) {}
+      }
+      setPreviewBa({
+        type: 'SUSU_OLAHAN',
+        nomorBa: `BAST-OLAHAN/${new Date().getFullYear()}/${(pkg.id || '000').slice(-4).toUpperCase()}`,
+        date: pkg.date,
+        diserahterimakan: pkg.totalPackagedQty || 0,
+        unit: 'pcs',
+        items: itemsPayload,
+        penyerahName: user?.name || pkg.createdBy?.name || 'ADMIN_PENGEMASAN',
+        penerimaName: 'Seksi Pemasaran',
+        farmLocation: 'Pengemasan & Olahan',
+        status: 'TERKIRIM_KE_PEMASARAN'
+      });
+    }
+  };
+
   const filteredPackagings = packagings.filter((p) => {
     const q = searchQuery.toLowerCase();
     const cat = (p.productCategory || '').toLowerCase();
@@ -589,41 +683,65 @@ export default function PengemasanPage() {
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+    <>
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden print:hidden">
+        {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1E3F20] text-white rounded-full text-xs font-bold mb-2">
-            <Package className="w-4 h-4 text-emerald-200" />
-            <span>Divisi UHT / Pengolahan</span>
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 py-1 px-1">
+          <div>
+            <h1 className="text-xl md:text-2xl font-black text-slate-900">Input Hasil Pengolahan Produk</h1>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Pengolahan susu mentah menjadi Susu Olahan Rasa, Yogurt, dan Keju. Stok produk dan bahan terpotong otomatis secara real-time.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Input Hasil Pengolahan Produk</h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Pengolahan susu mentah menjadi Susu Olahan Rasa, Yogurt, dan Keju. Stok produk dan bahan terpotong otomatis secara real-time.
-          </p>
+
+          {canManage && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={() => openAddModal('HASIL_PENGOLAHAN')}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Input Hasil Pengolahan</span>
+              </button>
+            </div>
+          )}
         </div>
-
-        {canManage && (
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={() => openAddModal('HASIL_PENGOLAHAN')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Input Hasil Pengolahan</span>
-            </button>
-          </div>
-        )}
-      </div>
 
 
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-          <div className="relative flex-1 min-w-[200px]">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0">
+        {/* LEFT: Select All & Bulk Actions */}
+        <div className="flex items-center gap-3">
+          {filteredPackagings.length > 0 && (
+            <label className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900 text-xs font-bold cursor-pointer transition-colors select-none">
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={handleToggleSelectAll}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              <span>{isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
+            </label>
+          )}
+
+          {selectedIds.length > 0 && canManage && (
+            <button
+              type="button"
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95 animate-in fade-in"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus ({selectedIds.length}) Data Terpilih</span>
+            </button>
+          )}
+        </div>
+
+        {/* RIGHT: Search & Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full sm:w-72 md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -669,55 +787,14 @@ export default function PengemasanPage() {
       </div>
 
       {/* Packaging Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-base font-black text-slate-800 flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-amber-600" />
-              <span>Tabel Hasil Pengemasan ({filteredPackagings.length} Entry)</span>
-            </h2>
-            {selectedIds.length > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs animate-in fade-in">
-                {selectedIds.length} Data Dipilih
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* SELECT ALL ACTION */}
-            {filteredPackagings.length > 0 && (
-              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors select-none">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  onChange={handleToggleSelectAll}
-                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-                />
-                <span>{isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
-              </label>
-            )}
-
-            {/* BULK DELETE BUTTON */}
-            {selectedIds.length > 0 && canManage && (
-              <button
-                type="button"
-                onClick={() => setShowBulkDeleteModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95 animate-in fade-in"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus ({selectedIds.length}) Data Terpilih</span>
-              </button>
-            )}
-          </div>
-        </div>
-
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
         {loading ? (
           <div className="p-8 text-center"><LoadingSpinner text="Memuat data pengemasan..." /></div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+          <div className="overflow-auto flex-1 min-h-0">
+            <table className="w-full text-left text-xs relative">
+              <thead className="sticky top-0 z-10 bg-[#1E3F20] text-white font-bold uppercase tracking-wider shadow-2xs">
+                <tr>
                   <th className="py-3.5 px-3 w-10 text-center">
                     <input
                       type="checkbox"
@@ -819,6 +896,16 @@ export default function PengemasanPage() {
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1.5">
+                            {/* 🖨️ CETAK / BUAT BERITA ACARA */}
+                            <button
+                              type="button"
+                              onClick={() => handleGenerateOrPrintBa(p)}
+                              className="p-1.5 text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+                              title="Cetak Berita Acara"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+
                             {/* 👁️ LIHAT DETAIL */}
                             <button
                               type="button"
@@ -2733,6 +2820,38 @@ export default function PengemasanPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+
+      {/* MODAL PREVIEW & CETAK BERITA ACARA */}
+      {previewBa && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50 overflow-y-auto print:p-0 print:bg-white print:static print:block">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl animate-in fade-in zoom-in duration-200 print:p-0 print:shadow-none print:m-0 print:rounded-none print:max-h-none overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0 print:hidden">
+              <h3 className="font-bold text-slate-900 text-base">Preview Berita Acara</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePrint(previewBa)}
+                  className="px-4 py-1.5 bg-[#00a86b] hover:bg-[#008f5b] text-white rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak / Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewBa(null)}
+                  className="text-slate-400 hover:text-slate-600 rounded-full cursor-pointer font-normal text-xl leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto my-4 pr-1 print:overflow-visible print:my-0 print:pr-0">
+              <BeritaAcaraDocument ba={previewBa} />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

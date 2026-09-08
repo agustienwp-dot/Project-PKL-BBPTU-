@@ -99,12 +99,11 @@ function BeritaAcaraContent() {
   const [formAfkir, setFormAfkir] = useState('');
   const [formLainLain, setFormLainLain] = useState('');
   const [formDiserahterimakan, setFormDiserahterimakan] = useState('');
-  const [formPenyerahName, setFormPenyerahName] = useState(user?.name || 'Seksi Pemeliharaan');
-  const [formPenerimaName, setFormPenerimaName] = useState('Seksi Pemasaran');
   const [formPenerimaUserId, setFormPenerimaUserId] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
   const canManage = ['ADMIN_FARM', 'ADMIN_PENGEMASAN', 'ADMIN_PEMASARAN', 'SUPERADMIN'].includes(user?.role);
+  const canCreate = ['ADMIN_FARM', 'ADMIN_PEMASARAN', 'SUPERADMIN'].includes(user?.role) && user?.role !== 'ADMIN_PENGEMASAN' && filterType !== 'SUSU_OLAHAN';
 
   const fetchPackagings = async () => {
     try {
@@ -154,12 +153,8 @@ function BeritaAcaraContent() {
   }, [filterType, filterDate, searchQuery]);
 
   const openCreateModal = () => {
-    if (user?.role === 'ADMIN_PENGEMASAN') {
-      selectTypeAndOpenForm('SUSU_OLAHAN');
-    } else {
-      setEditingBa(null);
-      setShowTypeModal(true);
-    }
+    setEditingBa(null);
+    setShowTypeModal(true);
   };
 
   const selectTypeAndOpenForm = (type) => {
@@ -242,40 +237,19 @@ function BeritaAcaraContent() {
     }
 
     setFormOlahanItems(items);
-  const openCreateModal = () => {
-    setEditingBa(null);
-    setFormProductionId('');
-    setFormDate(new Date().toISOString().split('T')[0]);
-    setFormShift('Pagi');
-    setFormFarmLocation('Tegalsari');
-    setFormAnimalType('SAPI');
-    setFormUnit('Lt');
-    setFormTotalProduksi('');
-    setFormPenggunaanPedet('0');
-    setFormAfkir('0');
-    setFormLainLain('0');
-    setFormDiserahterimakan('');
-    setFormPenyerahName(user?.name || 'Seksi Pemeliharaan');
-    setFormPenerimaName('Seksi Pemasaran');
-    setFormNotes('');
-    setShowFormModal(true);
   };
 
   const openEditModal = (ba) => {
     setEditingBa(ba);
-    const targetType = ba.type || (ba.nomorBa?.includes('BAST-PB') ? 'PEMBELIAN' : (ba.nomorBa?.includes('BAST-HB') ? 'HIBAH' : 'SERAH_TERIMA_FARM'));
+    const targetType = ba.type || (ba.nomorBa?.includes('BAST-PB') ? 'PEMBELIAN' : (ba.nomorBa?.includes('BAST-HB') ? 'HIBAH' : (ba.nomorBa?.includes('BAST-OLAHAN') ? 'SUSU_OLAHAN' : 'SERAH_TERIMA_FARM')));
     setBaType(targetType);
     setFormDate(new Date(ba.date || Date.now()).toISOString().split('T')[0]);
     setFormShift(ba.shift || ba.period || 'Pagi');
-    setFormFarmLocation(ba.farmLocation || ba.location || 'Tegalsari');
-    setFormPenyerahName(ba.penyerahName || ba.giverName || 'Tim Kerja Layanan Pemasaran');
-    setFormPenyerahJabatan(ba.giverDept || ba.penyerahName || 'Tim Kerja Layanan Pemasaran');
-    setFormPenerimaName(ba.penerimaName || ba.receiverName || '');
-    setFormPenerimaJabatan(ba.receiverTitle || '');
-    setFormProductionId(ba.productionId || ba.production_id || '');
-    setFormDate(new Date(ba.date).toISOString().split('T')[0]);
-    setFormShift(ba.shift || 'Pagi');
-    setFormFarmLocation(ba.farm_location || ba.farmLocation || 'Tegalsari');
+    setFormFarmLocation(ba.farmLocation || ba.farm_location || ba.location || 'Tegalsari');
+    setFormPenyerahName(ba.penyerahName || ba.giverName || ba.penyerah_name || 'Tim Kerja Layanan Pemasaran');
+    setFormPenyerahJabatan(ba.giverDept || ba.penyerahJabatan || 'Tim Kerja Layanan Pemasaran');
+    setFormPenerimaName(ba.penerimaName || ba.receiverName || ba.penerima_name || '');
+    setFormPenerimaJabatan(ba.receiverTitle || ba.penerimaJabatan || '');
     setFormAnimalType(ba.animal_type || ba.animalType || 'SAPI');
     setFormUnit(ba.unit || 'Lt');
     setFormTotalProduksi((ba.total_produksi ?? ba.totalProduksi ?? 0).toString());
@@ -283,8 +257,6 @@ function BeritaAcaraContent() {
     setFormAfkir((ba.afkir || 0).toString());
     setFormLainLain((ba.lain_lain ?? ba.lainLain ?? 0).toString());
     setFormDiserahterimakan((ba.diserahterimakan || 0).toString());
-    setFormPenyerahName(ba.penyerah_name || ba.penyerahName || user?.name || 'Seksi Pemeliharaan');
-    setFormPenerimaName(ba.penerima_name || ba.penerimaName || 'Seksi Pemasaran');
     setFormNotes(ba.notes || '');
 
     if (targetType === 'PEMBELIAN') {
@@ -524,65 +496,78 @@ function BeritaAcaraContent() {
   // Remove blocking full-page loading spinner for instant render
 
   return (
-    <div className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden print:p-0 print:m-0">
+    <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden print:p-0 print:m-0">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* HEADER SECTION (Hidden on Print) */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 print:hidden">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#1E3F20] text-white flex items-center justify-center font-black text-xl shadow-md">
-            📄
-          </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
-              <span>Berita Acara</span>
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1E3F20] to-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-md">
-            📄
-          </div>
-          <div>
-            <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
-              <span>Berita Acara Serah Terima</span>
-            </h1>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">
-              Buat dan kelola berita acara serah terima susu
-            </p>
-          </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 py-1 px-1 print:hidden">
+        <div>
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <span>Berita Acara Serah Terima</span>
+          </h1>
+          <p className="text-xs text-slate-500 font-semibold mt-0.5">
+            Buat dan kelola berita acara serah terima susu
+          </p>
         </div>
+
+        {canCreate && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0 self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Buat Berita Acara</span>
+          </button>
+        )}
       </div>
 
       {/* SEARCH & FILTERS (Hidden on Print) */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0 print:hidden">
-        <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-2 rounded-2xl text-xs text-slate-600 flex-1 min-w-[220px]">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-end gap-3 shrink-0 print:hidden">
+        {/* Search Input */}
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-300 px-3.5 py-1.5 rounded-xl text-xs text-slate-600 w-full sm:w-64 md:w-72 shadow-xs">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Cari nomor BAST, pihak, lokasi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none outline-none w-full text-xs font-medium text-slate-800"
+            className="bg-transparent border-none outline-none w-full text-xs font-semibold text-slate-800"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Type Filter */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+        {/* Type Filter */}
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 cursor-pointer shadow-xs"
+        >
+          <option value="ALL">Semua Jenis</option>
+          <option value="PEMBELIAN">Pembelian</option>
+          <option value="HIBAH">Hibah</option>
+          <option value="SUSU_OLAHAN">Hasil Olahan</option>
+        </select>
+
+        {/* Date Filter */}
+        <input
+          type="date"
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 shadow-xs"
+        />
+
+        {(filterType !== 'ALL' || filterDate || searchQuery) && (
+          <button
+            onClick={() => {
+              setFilterType('ALL');
+              setFilterDate('');
+              setSearchQuery('');
+            }}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
-            <option value="ALL">Semua Jenis</option>
-            <option value="PEMBELIAN">Pembelian</option>
-            <option value="HIBAH">Hibah</option>
-          </select>
-
-          {/* Date Filter */}
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-          />
-        </div>
+            Reset
+          </button>
+        )}
       </div>
 
       {/* BERITA ACARA TABLE LIST (Hidden on Print) - Only inside of table scrolls */}
@@ -594,9 +579,17 @@ function BeritaAcaraContent() {
               <tr className="bg-[#1E3F20] text-white font-extrabold text-xs uppercase tracking-wider">
                 <th className="py-3.5 px-4 w-12 text-center rounded-tl-xl">No</th>
                 <th className="py-3.5 px-4">Nomor BA</th>
-                <th className="py-3.5 px-4">Tanggal & Shift</th>
-                <th className="py-3.5 px-4">Asal Farm</th>
-                <th className="py-3.5 px-4">Jenis Ternak</th>
+                <th className="py-3.5 px-4">
+                  {filterType === 'SUSU_OLAHAN' || user?.role === 'ADMIN_PENGEMASAN' ? 'Tanggal Pembuatan' : 'Tanggal & Shift'}
+                </th>
+                {filterType === 'SUSU_OLAHAN' || user?.role === 'ADMIN_PENGEMASAN' ? (
+                  <th className="py-3.5 px-4">Produk Olahan</th>
+                ) : (
+                  <>
+                    <th className="py-3.5 px-4">Asal Farm</th>
+                    <th className="py-3.5 px-4">Jenis Ternak</th>
+                  </>
+                )}
                 <th className="py-3.5 px-4 text-center">Diserahterimakan</th>
                 <th className="py-3.5 px-4">Pihak Penyerah</th>
                 <th className="py-3.5 px-4">Pihak Penerima</th>
@@ -606,6 +599,7 @@ function BeritaAcaraContent() {
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
               {(() => {
+                const isOlahanView = filterType === 'SUSU_OLAHAN' || user?.role === 'ADMIN_PENGEMASAN';
                 const sortedBaList = [...baList].sort((a, b) => {
                   const dateA = new Date(a.date || 0).getTime();
                   const dateB = new Date(b.date || 0).getTime();
@@ -618,7 +612,7 @@ function BeritaAcaraContent() {
                 if (sortedBaList.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={10} className="p-12 text-center text-slate-400 font-semibold">
+                      <td colSpan={isOlahanView ? 9 : 10} className="p-12 text-center text-slate-400 font-semibold">
                         Belum ada dokumen Berita Acara yang ditemukan.
                       </td>
                     </tr>
@@ -630,6 +624,25 @@ function BeritaAcaraContent() {
                     month: 'short',
                     year: 'numeric',
                   });
+                  const isOlahan = ba.type === 'SUSU_OLAHAN' || ba.nomorBa?.includes('BAST-OLAHAN');
+
+                  let olahanSummary = 'Susu Olahan Siap Jual';
+                  if (ba.items) {
+                    try {
+                      const parsed = typeof ba.items === 'string' ? JSON.parse(ba.items) : ba.items;
+                      if (Array.isArray(parsed) && parsed.length > 0) {
+                        olahanSummary = parsed.map(i => {
+                          const pName = i.product || i.name || i.productCategory || 'Produk';
+                          const sName = i.size || i.packageSize ? `(${i.size || i.packageSize})` : '';
+                          return `${pName} ${sName}`.trim();
+                        }).join(', ');
+                      }
+                    } catch (e) {}
+                  }
+
+                  const displayUnit = isOlahan
+                    ? (ba.unit && !['Liter', 'Lt', 'Kg', 'kg', 'LITER', 'KG'].includes(ba.unit) ? ba.unit : 'pcs')
+                    : (ba.unit || 'Liter');
 
                   return (
                     <tr key={ba.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'} hover:bg-emerald-50/30 transition-colors`}>
@@ -637,16 +650,33 @@ function BeritaAcaraContent() {
                       <td className="p-4 font-mono font-black text-slate-900">{ba.nomorBa}</td>
                       <td className="p-4">
                         <span className="font-bold block text-slate-900">{dateStr}</span>
-                        <span className="text-[10px] text-slate-500 font-semibold">{ba.shift}</span>
+                        {!isOlahanView && <span className="text-[10px] text-slate-500 font-semibold">{ba.shift}</span>}
                       </td>
-                      <td className="p-4 font-bold text-slate-800 whitespace-nowrap">
-                        {ba.farm_location || ba.farmLocation || 'Tegalsari'}
-                      </td>
-                      <td className="p-4 whitespace-nowrap text-slate-800 font-semibold">
-                        {(ba.animal_type || ba.animalType) === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
-                      </td>
+                      {isOlahanView ? (
+                        <td className="p-4 font-bold text-slate-800">
+                          {olahanSummary}
+                        </td>
+                      ) : (
+                        <>
+                          <td className="p-4 font-bold text-slate-800 whitespace-nowrap">
+                            {isOlahan ? olahanSummary : (ba.farm_location || ba.farmLocation || 'Tegalsari')}
+                          </td>
+                          <td className="p-4 whitespace-nowrap text-slate-800 font-semibold">
+                            {isOlahan ? '📦 Produk Olahan' : ((ba.animal_type || ba.animalType) === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi')}
+                          </td>
+                        </>
+                      )}
                       <td className="p-4 text-center font-black text-emerald-700 text-sm">
-                        {ba.diserahterimakan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">{ba.unit || 'Liter'}</span>
+                        {ba.diserahterimakan?.toLocaleString('id-ID') || 0} <span className="text-xs font-semibold text-slate-500">{displayUnit}</span>
+                      </td>
+                      <td className="p-4 text-slate-800 font-semibold">
+                        {ba.penyerahName || ba.giverName || ba.penyerah_name || '-'}
+                      </td>
+                      <td className="p-4 text-slate-800 font-semibold">
+                        {ba.receiverName || ba.penerimaName || ba.penerima_name || '-'}
+                      </td>
+                      <td className="p-4">
+                        {getStatusBadge(ba)}
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -688,8 +718,8 @@ function BeritaAcaraContent() {
                       </td>
                     </tr>
                   );
-                })
-              )}
+                });
+              })()}
             </tbody>
           </table>
         </div>
@@ -715,75 +745,49 @@ function BeritaAcaraContent() {
             </div>
 
             <div className="space-y-4">
-              {/* Option: SUSU OLAHAN SIAP JUAL (Khusus Admin Pengemasan) */}
+              {/* Option 1: HIBAH */}
               <div
-                onClick={() => selectTypeAndOpenForm('SUSU_OLAHAN')}
-                className="p-4 rounded-2xl border-2 border-amber-200 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50 transition-all cursor-pointer flex items-start gap-4 group"
+                onClick={() => selectTypeAndOpenForm('HIBAH')}
+                className="p-4 rounded-2xl border-2 border-purple-100 hover:border-purple-500 bg-purple-50/40 hover:bg-purple-50 transition-all cursor-pointer flex items-start gap-4 group"
               >
-                <div className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center font-bold text-xl shrink-0 group-hover:scale-105 transition-transform shadow-md">
-                  📦
+                <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold text-xl shrink-0 group-hover:scale-105 transition-transform shadow-md">
+                  🎁
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-black text-slate-900 text-sm">BERITA ACARA HASIL SUSU OLAHAN SIAP JUAL</h4>
-                    <ArrowRight className="w-4 h-4 text-amber-600 group-hover:translate-x-1 transition-transform" />
+                    <h4 className="font-black text-slate-900 text-sm">BERITA ACARA SERAH TERIMA SUSU HIBAH</h4>
+                    <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition-transform" />
                   </div>
-                  <span className="inline-block text-[10px] font-black uppercase text-amber-700 tracking-wider">
-                    DIBUAT OLEH ADMIN PENGEMASAN
+                  <span className="inline-block text-[10px] font-black uppercase text-purple-600 tracking-wider">
+                    FORMAT RESMI BAST HIBAH
                   </span>
                   <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                    Otomatis mengambil data hasil pengemasan produk siap jual (Susu Pasteurisasi & Yogurt) untuk diserahkan ke Admin Pemasaran.
+                    Buat dokumen berita acara serah terima susu hibah dari Tim Kerja Layanan Pemasaran.
                   </p>
                 </div>
               </div>
 
-              {user?.role !== 'ADMIN_PENGEMASAN' && (
-                <>
-                  {/* Option 1: HIBAH */}
-                  <div
-                    onClick={() => selectTypeAndOpenForm('HIBAH')}
-                    className="p-4 rounded-2xl border-2 border-purple-100 hover:border-purple-500 bg-purple-50/40 hover:bg-purple-50 transition-all cursor-pointer flex items-start gap-4 group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold text-xl shrink-0 group-hover:scale-105 transition-transform shadow-md">
-                      🎁
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-black text-slate-900 text-sm">BERITA ACARA SERAH TERIMA SUSU HIBAH</h4>
-                        <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                      <span className="inline-block text-[10px] font-black uppercase text-purple-600 tracking-wider">
-                        FORMAT RESMI BAST HIBAH
-                      </span>
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        Buat dokumen berita acara serah terima susu hibah dari Tim Kerja Layanan Pemasaran.
-                      </p>
-                    </div>
+              {/* Option 2: PEMBELIAN */}
+              <div
+                onClick={() => selectTypeAndOpenForm('PEMBELIAN')}
+                className="p-4 rounded-2xl border-2 border-blue-100 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 transition-all cursor-pointer flex items-start gap-4 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shrink-0 group-hover:scale-105 transition-transform shadow-md">
+                  🛒
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-slate-900 text-sm">BERITA ACARA SERAH TERIMA PEMBELIAN SUSU</h4>
+                    <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-1 transition-transform" />
                   </div>
-
-                  {/* Option 2: PEMBELIAN */}
-                  <div
-                    onClick={() => selectTypeAndOpenForm('PEMBELIAN')}
-                    className="p-4 rounded-2xl border-2 border-blue-100 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 transition-all cursor-pointer flex items-start gap-4 group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shrink-0 group-hover:scale-105 transition-transform shadow-md">
-                      🛒
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-black text-slate-900 text-sm">BERITA ACARA SERAH TERIMA PEMBELIAN SUSU</h4>
-                        <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                      <span className="inline-block text-[10px] font-black uppercase text-blue-600 tracking-wider">
-                        FORMAT RESMI BAST PEMBELIAN
-                      </span>
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        Buat dokumen berita acara serah terima susu hasil pembelian (Tegalsari, Limpakuwus, Manggala, Eduwisata).
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
+                  <span className="inline-block text-[10px] font-black uppercase text-blue-600 tracking-wider">
+                    FORMAT RESMI BAST PEMBELIAN
+                  </span>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    Buat dokumen berita acara serah terima susu hasil pembelian (Tegalsari, Limpakuwus, Manggala, Eduwisata).
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end pt-2 border-t border-slate-100">
@@ -816,7 +820,7 @@ function BeritaAcaraContent() {
                 </button>
                 <div>
                   <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                    <span>{baType === 'PEMBELIAN' ? '🛒 BAST PEMBELIAN SUSU' : '🎁 BAST SUSU HIBAH'}</span>
+                    <span>{baType === 'PEMBELIAN' ? '🛒 BAST PEMBELIAN SUSU' : (baType === 'SUSU_OLAHAN' ? '📦 BAST HASIL SUSU OLAHAN SIAP JUAL' : '🎁 BAST SUSU HIBAH')}</span>
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Lengkapi seluruh informasi dokumen resmi serah terima
@@ -1238,35 +1242,34 @@ function BeritaAcaraContent() {
 
       {/* PREVIEW / PRINT MODAL */}
       {previewBa && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto print:p-0 print:bg-white print:static print:block">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200 my-8 print:p-0 print:shadow-none print:m-0 print:rounded-none">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 print:hidden">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#1E3F20]" />
-                <span className="font-black text-slate-900 text-base">Preview Berita Acara</span>
-                <span className="text-xs font-bold text-slate-500 font-mono">({previewBa.nomorBa})</span>
-              </div>
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50 overflow-y-auto print:p-0 print:bg-white print:static print:block">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl animate-in fade-in zoom-in duration-200 print:p-0 print:shadow-none print:m-0 print:rounded-none print:max-h-none overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0 print:hidden">
+              <h3 className="font-bold text-slate-900 text-base">Preview Berita Acara</h3>
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => handlePrint(previewBa)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#1E3F20] text-white hover:bg-[#16331a] rounded-xl text-xs font-bold shadow transition-colors cursor-pointer"
+                  className="px-4 py-1.5 bg-[#00a86b] hover:bg-[#008f5b] text-white rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Cetak Dokumen</span>
+                  <span>Cetak / Print</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setPreviewBa(null)}
-                  className="text-slate-400 hover:text-slate-600 font-bold text-xl ml-2 cursor-pointer"
+                  className="text-slate-400 hover:text-slate-600 rounded-full cursor-pointer font-normal text-xl leading-none"
                 >
                   ✕
                 </button>
               </div>
             </div>
 
-            <BeritaAcaraDocument ba={previewBa} />
+            <div className="flex-1 overflow-y-auto my-4 pr-1 print:overflow-visible print:my-0 print:pr-0">
+              <BeritaAcaraDocument ba={previewBa} />
+            </div>
 
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 print:hidden">
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4 shrink-0 print:hidden">
               <div>
                 {previewBa.status === 'MENUNGGU_KONFIRMASI_PEMASARAN' && (user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN') && (
                   <button
@@ -1281,7 +1284,7 @@ function BeritaAcaraContent() {
               </div>
               <button
                 onClick={() => setPreviewBa(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
               >
                 Tutup
               </button>

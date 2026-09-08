@@ -149,43 +149,38 @@ export default function RequestSusuPengemasanPage() {
   const readyToReceiveCount = requests.filter((r) => r.status === 'SIAP_DITERIMA').length;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 space-y-6">
+    <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
-              <Truck className="w-6 h-6" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">Request Susu Bahan Baku</h1>
-          </div>
-          <p className="text-slate-500 text-sm pl-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 py-1 px-1">
+        <div>
+          <h1 className="text-xl md:text-2xl font-black text-slate-900">Request Susu Bahan Baku</h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Ajukan kebutuhan susu mentah kepada Admin Pemasaran untuk diolah menjadi produk olahan.
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition shadow-sm hover:shadow"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white text-xs font-bold rounded-2xl transition shadow-sm cursor-pointer shrink-0 self-start md:self-auto"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           <span>Buat Request Susu</span>
         </button>
       </div>
 
       {/* Ready To Receive Alert Banner */}
       {readyToReceiveCount > 0 && (
-        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm shrink-0">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-teal-500 text-white rounded-xl mt-0.5">
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-teal-900 text-base">
+              <h3 className="font-bold text-teal-900 text-sm">
                 Terdapat {readyToReceiveCount} Request Susu Siap Diterima!
               </h3>
-              <p className="text-teal-700 text-sm mt-0.5">
+              <p className="text-teal-700 text-xs mt-0.5">
                 Admin Pemasaran telah menyiapkan susu mentah. Silakan periksa daftar di bawah dan lakukan konfirmasi penerimaan.
               </p>
             </div>
@@ -194,38 +189,35 @@ export default function RequestSusuPengemasanPage() {
       )}
 
       {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative w-full md:w-80">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 justify-end items-center shrink-0">
+        <div className="relative w-full sm:w-72 md:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Cari No. Request / Kebutuhan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full md:w-56 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition text-slate-700 font-medium"
-          >
-            <option value="">Semua Status</option>
-            <option value="MENUNGGU_PERSETUJUAN">Menunggu Persetujuan</option>
-            <option value="DISETUJUI">Disetujui</option>
-            <option value="DIPROSES">Diproses / Disiapkan</option>
-            <option value="SIAP_DITERIMA">Siap Diterima</option>
-            <option value="DITERIMA">Diterima</option>
-            <option value="DITOLAK">Ditolak</option>
-          </select>
-        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="w-full md:w-56 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition text-slate-700 font-bold cursor-pointer shrink-0"
+        >
+          <option value="">Semua Status</option>
+          <option value="MENUNGGU_PERSETUJUAN">Menunggu Persetujuan</option>
+          <option value="DISETUJUI">Disetujui</option>
+          <option value="DIPROSES">Diproses / Disiapkan</option>
+          <option value="SIAP_DITERIMA">Siap Diterima</option>
+          <option value="DITERIMA">Diterima</option>
+          <option value="DITOLAK">Ditolak</option>
+        </select>
       </div>
 
       {/* Request Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
         {loading ? (
           <div className="py-16">
             <LoadingSpinner text="Memuat request susu..." />
@@ -235,16 +227,16 @@ export default function RequestSusuPengemasanPage() {
             <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Truck className="w-8 h-8" />
             </div>
-            <h3 className="text-slate-800 font-bold text-lg">Belum Ada Request Susu</h3>
-            <p className="text-slate-500 text-sm max-w-md mx-auto mt-1">
+            <h3 className="text-slate-800 font-bold text-base">Belum Ada Request Susu</h3>
+            <p className="text-slate-500 text-xs max-w-md mx-auto mt-1">
               Klik tombol "+ Buat Request Susu" di atas untuk mengajukan kebutuhan susu mentah ke Admin Pemasaran.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50/80 text-slate-600 font-semibold border-b border-slate-200/80">
+          <div className="overflow-auto flex-1 min-h-0">
+            <table className="w-full text-left border-collapse text-xs relative">
+              <thead className="sticky top-0 z-10 bg-[#1E3F20] text-white font-bold uppercase tracking-wider shadow-2xs">
+                <tr>
                   <th className="py-3.5 px-4">No. Request</th>
                   <th className="py-3.5 px-4">Tanggal</th>
                   <th className="py-3.5 px-4">Pemohon</th>

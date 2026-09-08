@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 @layer base {
-  body {
+  html, body {
+    height: 100%;
+    overflow: hidden;
     background-color: #F5F5F0;
     color: #1F2937;
-    min-height: 100vh;
   }
 }
 

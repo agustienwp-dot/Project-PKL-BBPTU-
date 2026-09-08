@@ -197,10 +197,10 @@ export default function DashboardLayout({ children }) {
   const isAllowed = isRouteAllowed(user?.role, pathname);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] text-slate-800 flex flex-col font-sans relative">
+    <div className="h-screen bg-[#F5F5F0] text-slate-800 flex flex-col font-sans relative overflow-hidden">
 
       {/* TOP NAVBAR HEADER MATCHING DESIGN */}
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200/70 shadow-2xs px-4 md:px-8 py-3.5 flex items-center justify-between print:hidden">
+      <header className="shrink-0 sticky top-0 z-30 bg-white border-b border-slate-200/70 shadow-2xs px-4 md:px-8 py-3.5 flex items-center justify-between print:hidden">
         <div className="flex items-center">
           {/* Menu Button Toggle */}
           <button
