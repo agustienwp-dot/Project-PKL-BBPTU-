@@ -143,11 +143,11 @@ export default function TerimaProdukOlahanPage() {
   const getShortFlavorName = (fullName = '') => {
     if (!fullName) return fullName;
     const lower = fullName.toLowerCase();
-    if (lower.includes('cokelat')) return '🍫 Cokelat';
-    if (lower.includes('stroberi') || lower.includes('strawberry')) return '🍓 Stroberi';
-    if (lower.includes('melon')) return '🍈 Melon';
-    if (lower.includes('mocca') || lower.includes('kopi')) return '☕ Mocca';
-    if (lower.includes('pisang') || lower.includes('banana')) return '🍌 Pisang';
+    if (lower.includes('cokelat')) return 'Cokelat';
+    if (lower.includes('stroberi') || lower.includes('strawberry')) return 'Stroberi';
+    if (lower.includes('melon')) return 'Melon';
+    if (lower.includes('mocca') || lower.includes('kopi')) return 'Mocca';
+    if (lower.includes('pisang') || lower.includes('banana')) return 'Pisang';
     return fullName.replace(/^Susu Pasteurisasi\s+/i, '');
   };
 
