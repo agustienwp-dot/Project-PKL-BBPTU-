@@ -69,9 +69,9 @@ export async function GET(request) {
       susuDiterima: 0,
       susuDiolah: 0,
       susu115: 0,
-      susu130: 0,
-      susu200: 0,
       susu250: 0,
+      cup: 0,
+      plastikBantal: 0,
       yogurt200: 0,
       keju: 0,
       totalProduk: 0
@@ -99,9 +99,9 @@ export async function GET(request) {
 
       let susuDiolah = 0;
       let susu115 = 0;
-      let susu130 = 0;
-      let susu200 = 0;
       let susu250 = 0;
+      let cup = 0;
+      let plastikBantal = 0;
       let yogurt200 = 0;
       let keju = 0;
       let totalProduk = 0;
@@ -138,20 +138,21 @@ export async function GET(request) {
               const key = `Keju (${sz || '100 gram'})`;
               dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
               monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
+            } else if (pkg.includes('cup')) {
+              cup += qty;
+              const key = `Susu Cup (${variant})`;
+              dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
+              monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
+            } else if (pkg.includes('bantal') || pkg.includes('plastik')) {
+              plastikBantal += qty;
+              const key = `Susu Plastik Bantal (${variant})`;
+              dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
+              monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
             } else {
+              // Botol
               if (sz.includes('115')) {
                 susu115 += qty;
                 const key = `Susu 115 ml (${variant})`;
-                dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
-                monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
-              } else if (sz.includes('130')) {
-                susu130 += qty;
-                const key = `Susu 130 ml (${variant})`;
-                dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
-                monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
-              } else if (sz.includes('200')) {
-                susu200 += qty;
-                const key = `Susu 200 ml (${variant})`;
                 dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
                 monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
               } else {
@@ -165,8 +166,11 @@ export async function GET(request) {
         } else {
           const qty = p.totalPackagedQty || 0;
           const cat = (p.productCategory || p.productSubtype || '').toLowerCase();
-          const isYog = cat.includes('yogurt');
-          const isKj = cat.includes('keju');
+          const pkg = (p.packagingType || '').toLowerCase();
+          const isYog = cat.includes('yogurt') || pkg.includes('yogurt');
+          const isKj = cat.includes('keju') || pkg.includes('keju');
+          const isCup = pkg.includes('cup') || (p.cupQty && p.cupQty > 0);
+          const isBantal = pkg.includes('bantal') || pkg.includes('plastik') || (p.plastikBantalQty && p.plastikBantalQty > 0);
           const variant = p.variant || 'Original';
 
           totalProduk += qty;
@@ -181,21 +185,21 @@ export async function GET(request) {
             const key = `Keju (${p.packageSize || '100 gram'})`;
             dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
             monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
+          } else if (isCup) {
+            cup += qty;
+            const key = `Susu Cup (${variant})`;
+            dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
+            monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
+          } else if (isBantal) {
+            plastikBantal += qty;
+            const key = `Susu Plastik Bantal (${variant})`;
+            dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
+            monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
           } else {
             const sz = (p.packageSize || '').toLowerCase();
             if (sz.includes('115')) {
               susu115 += qty;
               const key = `Susu 115 ml (${variant})`;
-              dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
-              monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
-            } else if (sz.includes('130')) {
-              susu130 += qty;
-              const key = `Susu 130 ml (${variant})`;
-              dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
-              monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
-            } else if (sz.includes('200')) {
-              susu200 += qty;
-              const key = `Susu 200 ml (${variant})`;
               dayVariantBreakdown[key] = (dayVariantBreakdown[key] || 0) + qty;
               monthlyVariantBreakdown[key] = (monthlyVariantBreakdown[key] || 0) + qty;
             } else {
@@ -211,9 +215,9 @@ export async function GET(request) {
       monthlyTotals.susuDiterima += susuDiterima;
       monthlyTotals.susuDiolah += susuDiolah;
       monthlyTotals.susu115 += susu115;
-      monthlyTotals.susu130 += susu130;
-      monthlyTotals.susu200 += susu200;
       monthlyTotals.susu250 += susu250;
+      monthlyTotals.cup += cup;
+      monthlyTotals.plastikBantal += plastikBantal;
       monthlyTotals.yogurt200 += yogurt200;
       monthlyTotals.keju += keju;
       monthlyTotals.totalProduk += totalProduk;
@@ -224,9 +228,9 @@ export async function GET(request) {
         susuDiterima,
         susuDiolah,
         susu115,
-        susu130,
-        susu200,
         susu250,
+        cup,
+        plastikBantal,
         yogurt200,
         keju,
         totalProduk,
@@ -247,7 +251,16 @@ export async function GET(request) {
       orderBy: { createdAt: 'desc' }
     }).catch(() => []);
 
-    const materialUsageList = (materials || []).map(mat => {
+    // Filter materials to match exactly the 5 items in menu 'Sisa Stok Bahan'
+    const targetSpecs = [
+      { name: 'Botol 250 ml', match: (m) => (m.code || '').includes('BOT-250') || (m.name || '').toLowerCase().includes('250') },
+      { name: 'Botol 115 ml', match: (m) => (m.code || '').includes('BOT-115') || (m.name || '').toLowerCase().includes('115') },
+      { name: 'Cup', match: (m) => (m.code || '').includes('CUP-200') || ((m.name || '').toLowerCase().includes('cup') && !(m.name || '').toLowerCase().includes('tutup')) },
+      { name: 'Plastik Bantal', match: (m) => (m.code || '').includes('PLASTIK') || (m.name || '').toLowerCase().includes('plastik') },
+      { name: 'Label', match: (m) => (m.code || '').includes('LBL') || (m.name || '').toLowerCase().includes('label') }
+    ];
+
+    const rawMaterialUsageList = (materials || []).map(mat => {
       const matMovements = (movements || []).filter(m => m.materialId === mat.id);
       const usedQty = matMovements
         .filter(m => m.source === 'PENGOLAHAN' || m.type === 'DEDUCTION')
@@ -269,6 +282,14 @@ export async function GET(request) {
         finalStock: mat.currentStock || 0
       };
     });
+
+    const matchedMaterials = targetSpecs.map(spec => {
+      const found = rawMaterialUsageList.find(spec.match);
+      if (!found) return null;
+      return { ...found, name: spec.name };
+    }).filter(Boolean);
+
+    const materialUsageList = matchedMaterials.length > 0 ? matchedMaterials : rawMaterialUsageList;
 
     // Real-time raw milk remaining balance
     const sisaStokSusuSegar = Math.max(0, totalRawMilkReceived - totalMilkProcessed);

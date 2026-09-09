@@ -698,22 +698,6 @@ function BeritaAcaraContent() {
                           >
                             <Printer className="w-4 h-4" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(ba)}
-                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
-                            title="Edit Data"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingBa(ba)}
-                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
-                            title="Hapus BAST"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1245,7 +1229,7 @@ function BeritaAcaraContent() {
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl animate-in fade-in zoom-in duration-200 print:p-0 print:shadow-none print:m-0 print:rounded-none print:max-h-none overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0 print:hidden">
               <h3 className="font-bold text-slate-900 text-base">Preview Berita Acara</h3>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handlePrint(previewBa)}
@@ -1257,9 +1241,9 @@ function BeritaAcaraContent() {
                 <button
                   type="button"
                   onClick={() => setPreviewBa(null)}
-                  className="text-slate-400 hover:text-slate-600 rounded-full cursor-pointer font-normal text-xl leading-none"
+                  className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 >
-                  ✕
+                  <span>Tutup</span>
                 </button>
               </div>
             </div>

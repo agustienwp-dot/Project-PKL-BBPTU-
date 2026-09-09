@@ -132,6 +132,8 @@ export default function ProduksiPage() {
             product_type: prType,
             fotoTimbangan: fFoto,
             foto_timbangan: fFoto,
+            createdAt: p.created_at || p.createdAt || null,
+            created_at: p.created_at || p.createdAt || null,
           };
         });
         setProductions(normProds);
@@ -314,10 +316,13 @@ export default function ProduksiPage() {
       const cat = categories.find(c => c.id === targetCatId);
       const pkg = cat?.defaultPackaging || cat?.default_packaging || 'botol';
 
+      const nowIso = new Date().toISOString();
       const payload = {
         date: formDate,
+        createdAt: nowIso,
+        created_at: nowIso,
         shift: formShift,
-        farmOrigin: formFarmOrigin,
+        farmOrigin: formAnimalType === 'KAMBING' ? '-' : formFarmOrigin,
         categoryId: targetCatId,
         productType: 'SEGAR',
         animalType: formAnimalType,
@@ -349,6 +354,8 @@ export default function ProduksiPage() {
         const savedObj = res.data?.data || payload;
         const normalizedObj = {
           ...savedObj,
+          createdAt: savedObj.createdAt || savedObj.created_at || editingProd.createdAt || editingProd.created_at || nowIso,
+          created_at: savedObj.createdAt || savedObj.created_at || editingProd.createdAt || editingProd.created_at || nowIso,
           fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
           foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
         };
@@ -364,6 +371,8 @@ export default function ProduksiPage() {
         const savedObj = res.data?.data || payload;
         const normalizedObj = {
           ...savedObj,
+          createdAt: savedObj.createdAt || savedObj.created_at || nowIso,
+          created_at: savedObj.createdAt || savedObj.created_at || nowIso,
           fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
           foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
         };
@@ -521,12 +530,27 @@ export default function ProduksiPage() {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs sm:text-sm">
               {(() => {
                 const sortedProductions = [...filteredProductions].sort((a, b) => {
-                  const dateA = new Date(a.date || 0).getTime();
-                  const dateB = new Date(b.date || 0).getTime();
-                  if (dateB !== dateA) return dateB - dateA;
-                  const timeA = new Date(a.created_at || a.createdAt || a.updated_at || a.updatedAt || 0).getTime();
-                  const timeB = new Date(b.created_at || b.createdAt || b.updated_at || b.updatedAt || 0).getTime();
+                  const dayA = typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date || 0).toISOString().split('T')[0];
+                  const dayB = typeof b.date === 'string' ? b.date.split('T')[0] : new Date(b.date || 0).toISOString().split('T')[0];
+                  if (dayB !== dayA) return dayB.localeCompare(dayA);
+
+                  const getTime = (item) => {
+                    const t = new Date(item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0).getTime();
+                    if (t > 0) return t;
+                    if (typeof item.id === 'string' && item.id.startsWith('prod-')) {
+                      const parsed = parseInt(item.id.replace('prod-', ''), 10);
+                      if (!isNaN(parsed)) return parsed;
+                    }
+                    return 0;
+                  };
+                  const timeA = getTime(a);
+                  const timeB = getTime(b);
                   if (timeB !== timeA) return timeB - timeA;
+
+                  const shiftWeight = (s) => (String(s).toLowerCase().includes('sore') ? 2 : 1);
+                  const shiftDiff = shiftWeight(b.shift) - shiftWeight(a.shift);
+                  if (shiftDiff !== 0) return shiftDiff;
+
                   return (b.id || '').localeCompare(a.id || '');
                 });
 
@@ -538,7 +562,7 @@ export default function ProduksiPage() {
                     const totalPotongInternal = pedetL + afkirL;
                     const feedLabel = p.animalType === 'KAMBING' ? 'Cempe' : 'Pedet';
                     const shiftDisplay = p.shift || 'Pagi';
-                    const farmDisplay = p.farmOrigin || 'Manggala';
+                    const farmDisplay = (p.animalType === 'KAMBING' || p.animal_type === 'KAMBING') ? '-' : (p.farmOrigin || 'Manggala');
                     const hStatus = p.handover_status || p.handoverStatus;
                     const isAccepted = ['DITERIMA', 'SUDAH_DITERIMA', 'ACC', 'CONFIRMED', 'VERIFIED'].includes(hStatus);
                     const isRejected = ['DITOLAK', 'REJECTED', 'DITOLAK_PEMASARAN', 'KOREKSI'].includes(hStatus);

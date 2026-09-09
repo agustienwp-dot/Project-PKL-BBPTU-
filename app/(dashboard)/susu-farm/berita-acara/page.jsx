@@ -142,6 +142,7 @@ function BeritaAcaraContent() {
           totalProduksi: b.total_produksi ?? b.totalProduksi ?? 0,
           diserahterimakan: b.diserahterimakan ?? 0,
           nomorBa: b.nomor_ba || b.nomorBa || '',
+          unit: (!b.unit || b.unit.toLowerCase() === 'kg') ? 'Lt' : b.unit,
           penyerahName: b.penyerah_name || b.giverName || b.penyerahName || 'Tim Kerja Layanan Pemasaran',
           penerimaName: b.penerima_name || b.receiverName || b.penerimaName || '-',
         }));
@@ -212,7 +213,7 @@ function BeritaAcaraContent() {
           shift: queryShift || 'Pagi',
           farmLocation: farmLoc,
           animalType: queryAnimal || 'SAPI',
-          unit: 'Kg',
+          unit: 'Lt',
           totalProduksi: parseFloat(queryTotal || 0),
           penggunaanPedet: parseFloat(queryPedet || 0),
           afkir: parseFloat(queryAfkir || 0),
@@ -233,7 +234,7 @@ function BeritaAcaraContent() {
           shift: queryShift || 'Pagi',
           farmLocation: farmLoc,
           animalType: queryAnimal || 'SAPI',
-          unit: 'Kg',
+          unit: 'Lt',
           totalProduksi: parseFloat(queryTotal || 0),
           penggunaanPedet: parseFloat(queryPedet || 0),
           afkir: parseFloat(queryAfkir || 0),
@@ -376,7 +377,7 @@ function BeritaAcaraContent() {
     setFormShift(ba.shift || 'Pagi');
     setFormFarmLocation(ba.farm_location || ba.farmLocation || 'Tegalsari');
     setFormAnimalType(ba.animal_type || ba.animalType || 'SAPI');
-    setFormUnit(ba.unit || 'Lt');
+    setFormUnit((!ba.unit || ba.unit.toLowerCase() === 'kg') ? 'Lt' : ba.unit);
     setFormTotalProduksi((ba.total_produksi ?? ba.totalProduksi ?? 0).toString());
     setFormPenggunaanPedet((ba.penggunaan_pedet ?? ba.penggunaanPedet ?? 0).toString());
     setFormAfkir((ba.afkir || 0).toString());
@@ -732,7 +733,7 @@ function BeritaAcaraContent() {
                         {(ba.animal_type || ba.animalType) === 'KAMBING' ? '🐐 Susu Kambing' : '🐄 Susu Sapi'}
                       </td>
                       <td className="p-4 text-center font-black text-emerald-700 text-sm">
-                        {ba.diserahterimakan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">{ba.unit || 'Liter'}</span>
+                        {ba.diserahterimakan.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">{(!ba.unit || ba.unit.toLowerCase() === 'kg') ? 'Lt' : ba.unit}</span>
                       </td>
                       <td className="p-4 whitespace-nowrap text-slate-800 font-medium">
                         {ba.penyerahName || ba.giverName || 'Seksi Pemeliharaan'}

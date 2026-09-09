@@ -46,7 +46,10 @@ export async function GET(request) {
     try {
       dbProductions = await prisma.milkProduction.findMany({
         where: whereClause,
-        orderBy: { date: 'desc' },
+        orderBy: [
+          { date: 'desc' },
+          { createdAt: 'desc' },
+        ],
         include: {
           category: true,
           createdBy: {
@@ -72,12 +75,27 @@ export async function GET(request) {
     }
 
     mergedList.sort((a, b) => {
-      const dateA = new Date(a.date || 0).getTime();
-      const dateB = new Date(b.date || 0).getTime();
-      if (dateB !== dateA) return dateB - dateA;
-      const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-      const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      const dayA = typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date || 0).toISOString().split('T')[0];
+      const dayB = typeof b.date === 'string' ? b.date.split('T')[0] : new Date(b.date || 0).toISOString().split('T')[0];
+      if (dayB !== dayA) return dayB.localeCompare(dayA);
+
+      const getTime = (item) => {
+        const t = new Date(item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0).getTime();
+        if (t > 0) return t;
+        if (typeof item.id === 'string' && item.id.startsWith('prod-')) {
+          const parsed = parseInt(item.id.replace('prod-', ''), 10);
+          if (!isNaN(parsed)) return parsed;
+        }
+        return 0;
+      };
+      const timeA = getTime(a);
+      const timeB = getTime(b);
       if (timeB !== timeA) return timeB - timeA;
+
+      const shiftWeight = (s) => (String(s).toLowerCase().includes('sore') ? 2 : 1);
+      const shiftDiff = shiftWeight(b.shift) - shiftWeight(a.shift);
+      if (shiftDiff !== 0) return shiftDiff;
+
       return (b.id || '').localeCompare(a.id || '');
     });
 
@@ -89,7 +107,7 @@ export async function GET(request) {
         grossVolumeLiters: gross,
         sisaVolumeLiters: sisa,
         fotoTimbangan: p.fotoTimbangan || null,
-        farmOrigin: p.farmOrigin || 'Manggala',
+        farmOrigin: (p.animalType === 'KAMBING' || p.animal_type === 'KAMBING') ? '-' : (p.farmOrigin || 'Manggala'),
       };
     });
 
@@ -190,7 +208,7 @@ export async function POST(request) {
         data: {
           date: date ? new Date(date) : new Date(),
           shift: shift || 'Pagi',
-          farmOrigin: farmOrigin || 'Manggala',
+          farmOrigin: aType === 'KAMBING' ? '-' : (farmOrigin || 'Manggala'),
           categoryId: targetCategoryId,
           productType: pType,
           animalType: aType,
@@ -230,7 +248,7 @@ export async function POST(request) {
         id: `prod-${Date.now()}`,
         date: date || new Date().toISOString(),
         shift: shift || 'Pagi',
-        farmOrigin: farmOrigin || 'Manggala',
+        farmOrigin: aType === 'KAMBING' ? '-' : (farmOrigin || 'Manggala'),
         categoryId: targetCategoryId,
         productType: pType,
         animalType: aType,
@@ -250,6 +268,10 @@ export async function POST(request) {
         pinVerifikasi: generatedPin,
         notes: notes || '',
         fotoTimbangan: fotoTimbangan || null,
+        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         category: category,
         createdBy: { id: authUser.id, name: authUser.name, email: authUser.email },
       };

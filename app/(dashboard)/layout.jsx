@@ -172,7 +172,7 @@ export default function DashboardLayout({ children }) {
     if (role === 'ADMIN_PENGEMASAN') {
       return [
         { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard, section: 'DASHBOARD' },
-        { label: 'Request Susu', path: '/uht/request-susu', icon: Truck, section: 'PENGOLAHAN' },
+        { label: 'Request Susu', path: '/uht/request-susu', icon: Milk, section: 'PENGOLAHAN' },
         { label: 'Input Hasil Pengolahan', path: '/uht/pengemasan', icon: Package, section: 'PENGOLAHAN' },
         { label: 'Sisa Stok Bahan', path: '/uht/stok-bahan', icon: Boxes, section: 'PENGOLAHAN' },
         { label: 'Berita Acara Olahan', path: '/uht/berita-acara', icon: FileCheck, section: 'PENGOLAHAN' },
