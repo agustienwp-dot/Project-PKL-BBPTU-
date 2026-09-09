@@ -163,7 +163,7 @@ export default function ProfilPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col space-y-6 min-h-0 overflow-y-auto pr-1 pb-8">
+    <div className="space-y-6 w-full pb-8 font-sans">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* HEADER SECTION */}

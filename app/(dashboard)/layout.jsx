@@ -375,8 +375,8 @@ export default function DashboardLayout({ children }) {
         </div>
       </aside>
 
-      {/* MAIN DASHBOARD CONTENT AREA - FULL WIDTH & FIXED VIEWPORT */}
-      <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden p-4 md:p-6 bg-[#F4F7FB] w-full">
+      {/* MAIN DASHBOARD CONTENT AREA - FULL WIDTH & SCROLLABLE VIEWPORT */}
+      <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto p-4 md:p-6 bg-[#F4F7FB] w-full">
         {isAllowed ? (
           children
         ) : (
