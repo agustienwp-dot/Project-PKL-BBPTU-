@@ -94,7 +94,7 @@ export async function PATCH(request, { params }) {
 
     const { id } = params;
     const body = await request.json().catch(() => ({}));
-    const { status, catatan } = body;
+    const { status, catatan, tanggal, volumeLiters, instansiPenerima, penerimaNama, sumber, jenisPermintaan } = body;
 
     const doc = await prisma.bastDocument.findUnique({ where: { id } });
     if (!doc) {
@@ -104,18 +104,33 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    const updateData = {};
+    if (status !== undefined) {
+      updateData.status = status;
+      updateData.confirmedAt = new Date();
+    }
+    if (catatan !== undefined) updateData.catatan = catatan;
+    if (tanggal !== undefined) updateData.tanggal = new Date(tanggal);
+    if (volumeLiters !== undefined) updateData.volumeLiters = parseFloat(volumeLiters) || 0;
+    if (instansiPenerima !== undefined) updateData.instansiPenerima = instansiPenerima;
+    if (penerimaNama !== undefined) updateData.penerimaNama = penerimaNama;
+    if (sumber !== undefined) updateData.sumber = sumber;
+    if (jenisPermintaan !== undefined) updateData.jenisPermintaan = jenisPermintaan;
+
+    // Fallback if empty payload sent for backward compatibility (e.g. mark sent)
+    if (Object.keys(updateData).length === 0) {
+      updateData.status = 'DIKIRIM_KE_FARM';
+      updateData.confirmedAt = new Date();
+    }
+
     const updated = await prisma.bastDocument.update({
       where: { id },
-      data: {
-        status: status || 'DIKIRIM_KE_FARM',
-        catatan: catatan ? `${doc.catatan || ''}\n${catatan}`.trim() : doc.catatan,
-        confirmedAt: new Date(),
-      },
+      data: updateData,
     });
 
     return NextResponse.json({
       success: true,
-      message: `Surat BAST No. ${doc.nomorBast} berhasil dikirim ke Admin Farm!`,
+      message: `Surat BAST No. ${doc.nomorBast} berhasil diperbarui!`,
       data: updated,
     });
   } catch (error) {

@@ -16,12 +16,17 @@ import {
   Clock,
   Printer,
   Trash2,
+  Pencil,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Gift,
   Building2,
   Milk,
-  Info
+  Info,
+  Archive,
+  Calendar,
+  Check
 } from 'lucide-react';
 
 export default function BeritaAcaraPage() {
@@ -37,15 +42,37 @@ export default function BeritaAcaraPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('desc'); // Default descending
 
-  // 3. Pagination States
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // 3. Table View Tab: 'ACTIVE' (Maks. 30 baris) | 'ARCHIVE' (Dokumen ke-31 dst.)
+  const [tableTab, setTableTab] = useState('ACTIVE');
+  const [archiveMonthFilter, setArchiveMonthFilter] = useState('ALL'); // 'ALL' | 'YYYY-MM'
+  const [showArchiveDropdown, setShowArchiveDropdown] = useState(false);
+  const archiveDropdownRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (archiveDropdownRef.current && !archiveDropdownRef.current.contains(event.target)) {
+        setShowArchiveDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 4. Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [submittingCreate, setSubmittingCreate] = useState(false);
   const [showBastPreviewModal, setShowBastPreviewModal] = useState(false);
   const [selectedBastForPreview, setSelectedBastForPreview] = useState(null);
+
+  // 5. Edit Modal States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBast, setEditingBast] = useState(null);
+  const [editDate, setEditDate] = useState('');
+  const [editAnimalType, setEditAnimalType] = useState('SAPI');
+  const [editInstansiPenerima, setEditInstansiPenerima] = useState('');
+  const [editVolume, setEditVolume] = useState('');
+  const [editCatatan, setEditCatatan] = useState('');
+  const [submittingEdit, setSubmittingEdit] = useState(false);
 
   // Form states for new BAST
   const [distributionDate, setDistributionDate] = useState(new Date().toISOString().slice(0, 10));
@@ -125,23 +152,133 @@ export default function BeritaAcaraPage() {
       });
   }, [activeCommodityBasts, sortOrder, searchTerm]);
 
+  // Batas maksimal baris dalam daftar aktif sebelum dialihkan ke arsip
+  const MAX_ACTIVE_ROWS = 30;
+
   // Hibah specific BAST list (since BAST official format is primarily for Hibah)
   const hibahBastList = useMemo(() => {
     return filteredBasts.filter((b) => b.jenisPermintaan === 'HIBAH');
   }, [filteredBasts]);
 
-  // Paginated BAST rows
-  const paginatedHibahBasts = useMemo(() => {
-    const startIdx = (currentPage - 1) * pageSize;
-    return hibahBastList.slice(startIdx, startIdx + pageSize);
-  }, [hibahBastList, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(hibahBastList.length / pageSize) || 1;
-
-  // KPI Calculations
-  const totalVolumeHibah = useMemo(() => {
-    return hibahBastList.reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
+  // Pemisahan daftar aktif (maksimal 30 baris) dan arsip
+  const activeHibahBasts = useMemo(() => {
+    return hibahBastList.slice(0, MAX_ACTIVE_ROWS);
   }, [hibahBastList]);
+
+  const archivedHibahBasts = useMemo(() => {
+    return hibahBastList.slice(MAX_ACTIVE_ROWS);
+  }, [hibahBastList]);
+
+  // Struktur periode arsip yang dikelompokkan per tahun & bulan
+  // Ketika 1 tahun selesai, sistem otomatis menyusun dan mengurutkan tahun berikutnya
+  const archivePeriodsData = useMemo(() => {
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const monthCounts = {};
+    const yearCounts = {};
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set([currentYear]);
+
+    archivedHibahBasts.forEach((b) => {
+      if (b.tanggal) {
+        const d = new Date(b.tanggal);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const ym = `${y}-${m}`;
+        monthCounts[ym] = (monthCounts[ym] || 0) + 1;
+        yearCounts[y] = (yearCounts[y] || 0) + 1;
+        yearsSet.add(y);
+      }
+    });
+
+    // Urutkan tahun (tahun terbaru di atas: 2027, 2026, dst.)
+    const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
+
+    const yearGroups = sortedYears.map((y) => {
+      const months = [];
+      const now = new Date();
+      for (let m = 12; m >= 1; m--) {
+        const ym = `${y}-${String(m).padStart(2, '0')}`;
+        const cnt = monthCounts[ym] || 0;
+        const isFuture = y === now.getFullYear() && m > (now.getMonth() + 1);
+        if (!isFuture || cnt > 0) {
+          months.push({
+            value: ym,
+            label: `${monthNames[m - 1]} ${y}`,
+            monthName: monthNames[m - 1],
+            monthNum: m,
+            year: y,
+            count: cnt,
+          });
+        }
+      }
+      return {
+        year: y,
+        yearValue: `YEAR:${y}`,
+        yearLabel: `Tahun ${y}`,
+        count: yearCounts[y] || 0,
+        months,
+      };
+    });
+
+    return {
+      yearGroups,
+      totalArchived: archivedHibahBasts.length,
+    };
+  }, [archivedHibahBasts]);
+
+  // Helper label filter arsip
+  const getArchiveFilterLabel = () => {
+    if (archiveMonthFilter === 'ALL') return 'Semua Periode Arsip';
+    if (archiveMonthFilter.startsWith('YEAR:')) {
+      return `Tahun ${archiveMonthFilter.replace('YEAR:', '')}`;
+    }
+    for (const yg of archivePeriodsData.yearGroups) {
+      const found = yg.months.find((m) => m.value === archiveMonthFilter);
+      if (found) return found.label;
+    }
+    return archiveMonthFilter;
+  };
+
+  // Filter arsip: per tahun atau per bulan terpilih.
+  // Diurutkan kronologis per tahun agar ketika 1 tahun selesai otomatis lanjut urut tahun berikutnya dari 001
+  const filteredArchivedHibahBasts = useMemo(() => {
+    let list = archivedHibahBasts;
+    if (archiveMonthFilter.startsWith('YEAR:')) {
+      const targetYear = parseInt(archiveMonthFilter.replace('YEAR:', ''), 10);
+      list = archivedHibahBasts.filter((b) => {
+        if (!b.tanggal) return false;
+        return new Date(b.tanggal).getFullYear() === targetYear;
+      });
+    } else if (archiveMonthFilter !== 'ALL') {
+      list = archivedHibahBasts.filter((b) => {
+        if (!b.tanggal) return false;
+        const d = new Date(b.tanggal);
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        return ym === archiveMonthFilter;
+      });
+    }
+
+    // Urutan arsip: urut kronologis (tahun & tanggal awal -> akhir tahun),
+    // sehingga ketika 1 tahun selesai otomatis lanjut urut tahun berikutnya dari 001
+    return [...list].sort((a, b) => {
+      const dateA = new Date(a.tanggal || 0).getTime();
+      const dateB = new Date(b.tanggal || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.nomorBast || '').localeCompare(b.nomorBast || '');
+    });
+  }, [archivedHibahBasts, archiveMonthFilter]);
+
+  const displayedBasts = useMemo(() => {
+    return tableTab === 'ACTIVE' ? activeHibahBasts : filteredArchivedHibahBasts;
+  }, [tableTab, activeHibahBasts, filteredArchivedHibahBasts]);
+
+  // KPI Calculations (Total volume dokumen yang sedang ditampilkan)
+  const displayedTotalVolume = useMemo(() => {
+    return displayedBasts.reduce((acc, b) => acc + (b.volumeLiters || 0), 0);
+  }, [displayedBasts]);
 
   // Modal Handlers
   const handleOpenCreateModal = () => {
@@ -274,6 +411,57 @@ export default function BeritaAcaraPage() {
     }
   };
 
+  const handleOpenEditModal = (bast) => {
+    setEditingBast(bast);
+    const dateStr = bast.tanggal ? new Date(bast.tanggal).toISOString().slice(0, 10) : '';
+    setEditDate(dateStr);
+    setEditAnimalType(getBastAnimal(bast));
+    setEditInstansiPenerima(bast.instansiPenerima || '');
+    setEditVolume(bast.volumeLiters != null ? String(bast.volumeLiters) : '');
+    setEditCatatan(bast.catatan || '');
+    setShowEditModal(true);
+  };
+
+  const handleUpdateBAST = async (e) => {
+    e.preventDefault();
+    if (!editingBast) return;
+
+    const numVol = parseFloat(editVolume);
+    if (isNaN(numVol) || numVol <= 0) {
+      setToast({ type: 'error', message: 'Volume susu (Liter) wajib bernilai lebih dari 0.' });
+      return;
+    }
+
+    setSubmittingEdit(true);
+    try {
+      const res = await api.patch(`/bast/${editingBast.id}`, {
+        tanggal: editDate,
+        volumeLiters: numVol,
+        instansiPenerima: editInstansiPenerima.trim() || 'Instansi / Yayasan Penerima',
+        penerimaNama: editInstansiPenerima.trim() || 'Pihak Penerima',
+        sumber: editAnimalType === 'KAMBING' ? 'SUSU_KAMBING' : 'SUSU_SAPI',
+        catatan: editCatatan.trim(),
+      });
+
+      if (res.data?.success) {
+        setToast({ type: 'success', message: 'Dokumen Berita Acara berhasil diperbarui!' });
+        setShowEditModal(false);
+        setEditingBast(null);
+        await fetchData();
+      } else {
+        setToast({ type: 'error', message: res.data?.message || 'Gagal memperbarui Berita Acara.' });
+      }
+    } catch (err) {
+      console.error('Error updating BAST:', err);
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || 'Gagal memperbarui Berita Acara.'
+      });
+    } finally {
+      setSubmittingEdit(false);
+    }
+  };
+
   if (loading && basts.length === 0) {
     return <LoadingSpinner text="Memuat Dokumen Berita Acara..." />;
   }
@@ -300,40 +488,7 @@ export default function BeritaAcaraPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Commodity Tabs (Matching Standard Clean Shape) */}
-          <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200/90 gap-1 print:hidden">
-            <button
-              type="button"
-              onClick={() => {
-                setCommodityTab('SAPI');
-                setCurrentPage(1);
-              }}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                commodityTab === 'SAPI'
-                  ? 'bg-[#14532D] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
-              }`}
-            >
-              <span>Susu Sapi Segar</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCommodityTab('KAMBING');
-                setCurrentPage(1);
-              }}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                commodityTab === 'KAMBING'
-                  ? 'bg-[#14532D] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
-              }`}
-            >
-              <span>Susu Kambing Segar</span>
-            </button>
-          </div>
-
+        <div className="flex items-center gap-3">
           {/* Action Button: Input BAST */}
           <button
             onClick={handleOpenCreateModal}
@@ -345,85 +500,249 @@ export default function BeritaAcaraPage() {
         </div>
       </div>
 
-
-
       {/* Tabel Dokumen Berita Acara */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-xs">
-              <FileCheck className="w-5 h-5 text-emerald-300" />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-slate-900">
-                Arsip Dokumen Berita Acara Susu {commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'} ({hibahBastList.length} Dokumen)
-              </h2>
-              <p className="text-xs text-slate-400">
-                Daftar surat Berita Acara Serah Terima (BAST) resmi penyaluran hibah dan serah terima balai.
-              </p>
-            </div>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-base font-black text-slate-900">
+              {tableTab === 'ARCHIVE' ? 'Arsip Dokumen BAST yang Terbit' : 'Daftar Dokumen BAST yang Terbit'}
+            </h2>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Search Box */}
+            {/* Search Box (Sebelah Kiri) */}
             <div className="relative w-48 sm:w-60">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="Cari nomor / penerima..."
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 shadow-2xs"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-semibold">Tampilkan:</span>
+            {/* Commodity Dropdown (Styled Custom Pill) */}
+            <div className="relative flex items-center bg-slate-50 hover:bg-white border border-slate-300 hover:border-slate-400 rounded-xl px-3 py-1.5 shadow-2xs transition-all focus-within:ring-2 focus-within:ring-emerald-600/30 focus-within:border-emerald-600 print:hidden">
               <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-700 shadow-2xs cursor-pointer"
+                value={commodityTab}
+                onChange={(e) => setCommodityTab(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer appearance-none pr-5"
               >
-                <option value={10}>10 Baris</option>
-                <option value={20}>20 Baris</option>
-                <option value={50}>50 Baris</option>
+                <option value="SAPI">Susu Sapi Segar</option>
+                <option value="KAMBING">Susu Kambing Segar</option>
               </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 pointer-events-none absolute right-2.5 top-2.5" />
+            </div>
+
+            {/* Tombol Arsip BAST dengan Dropdown Filter Periode (Tahun & Bulan) */}
+            <div className="relative" ref={archiveDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setTableTab('ARCHIVE');
+                  setShowArchiveDropdown((prev) => !prev);
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs ${
+                  tableTab === 'ARCHIVE'
+                    ? 'bg-[#1E3F20] text-white border-[#1E3F20]'
+                    : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-white'
+                }`}
+              >
+                <span>
+                  {tableTab === 'ARCHIVE' && archiveMonthFilter !== 'ALL'
+                    ? `Arsip: ${getArchiveFilterLabel()}`
+                    : `Arsip BAST (${archivedHibahBasts.length})`}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showArchiveDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu Filter Per Periode (Tahun & Bulan) */}
+              {showArchiveDropdown && (
+                <div className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3.5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                    <span>Pilih Periode Arsip</span>
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto p-1.5 space-y-1">
+                    {/* Semua Periode */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTableTab('ARCHIVE');
+                        setArchiveMonthFilter('ALL');
+                        setShowArchiveDropdown(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        archiveMonthFilter === 'ALL'
+                          ? 'bg-emerald-50 text-emerald-950 font-black'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {archiveMonthFilter === 'ALL' ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        ) : (
+                          <span className="w-3.5" />
+                        )}
+                        <span>Semua Periode Arsip</span>
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono font-bold">
+                        {archivedHibahBasts.length}
+                      </span>
+                    </button>
+
+                    {/* Grouping Per Tahun */}
+                    {archivePeriodsData.yearGroups.map((yg) => {
+                      const isYearSelected = archiveMonthFilter === yg.yearValue;
+                      return (
+                        <div key={yg.year} className="pt-1 border-t border-slate-100 first:border-0 first:pt-0">
+                          {/* Tombol Pilih Seluruh Tahun */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTableTab('ARCHIVE');
+                              setArchiveMonthFilter(yg.yearValue);
+                              setShowArchiveDropdown(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                              isYearSelected
+                                ? 'bg-emerald-100 text-emerald-950'
+                                : 'text-slate-800 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              {isYearSelected ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                              ) : (
+                                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              )}
+                              <span>📅 Arsip {yg.yearLabel}</span>
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono ${
+                              yg.count > 0 ? 'bg-amber-100 text-amber-900 font-bold' : 'bg-slate-100 text-slate-400'
+                            }`}>
+                              {yg.count}
+                            </span>
+                          </button>
+
+                          {/* List Bulan di bawah Tahun */}
+                          <div className="pl-4 pr-1 py-0.5 space-y-0.5">
+                            {yg.months.map((m) => {
+                              const isMonthSelected = archiveMonthFilter === m.value;
+                              return (
+                                <button
+                                  key={m.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setTableTab('ARCHIVE');
+                                    setArchiveMonthFilter(m.value);
+                                    setShowArchiveDropdown(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                                    isMonthSelected
+                                      ? 'bg-emerald-50 text-emerald-950 font-bold'
+                                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                  }`}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    {isMonthSelected ? (
+                                      <Check className="w-3 h-3 text-emerald-700 shrink-0" />
+                                    ) : (
+                                      <span className="w-3" />
+                                    )}
+                                    <span>{m.monthName}</span>
+                                  </span>
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                                    m.count > 0 ? 'bg-amber-50 text-amber-800 font-semibold' : 'text-slate-300'
+                                  }`}>
+                                    {m.count}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {hibahBastList.length === 0 ? (
+        {/* Bar info ketika di mode Arsip BAST */}
+        {tableTab === 'ARCHIVE' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Archive className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="font-semibold">
+                {archiveMonthFilter === 'ALL' && (
+                  <>Menampilkan seluruh dokumen arsip ({filteredArchivedHibahBasts.length} dokumen). Dokumen berurutan otomatis per tahun.</>
+                )}
+                {archiveMonthFilter.startsWith('YEAR:') && (
+                  <>Menampilkan seluruh arsip <strong className="text-slate-900">Tahun {archiveMonthFilter.replace('YEAR:', '')}</strong> ({filteredArchivedHibahBasts.length} dokumen). Urutan nomor berulang dari 001 setiap awal tahun.</>
+                )}
+                {!archiveMonthFilter.startsWith('YEAR:') && archiveMonthFilter !== 'ALL' && (
+                  <>Menampilkan arsip periode <strong className="text-slate-900">{getArchiveFilterLabel()}</strong> ({filteredArchivedHibahBasts.length} dokumen).</>
+                )}
+              </span>
+              {archiveMonthFilter !== 'ALL' && (
+                <button
+                  onClick={() => setArchiveMonthFilter('ALL')}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold hover:bg-rose-100 transition-colors cursor-pointer ml-1"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Semua Arsip</span>
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setTableTab('ACTIVE')}
+              className="font-bold underline text-emerald-800 hover:text-emerald-950 cursor-pointer ml-auto shrink-0"
+            >
+              &larr; Kembali ke Daftar Utama
+            </button>
+          </div>
+        )}
+
+        {displayedBasts.length === 0 ? (
           <div className="py-12 text-center">
             <EmptyState
-              title={`Belum Ada Dokumen Berita Acara Susu ${commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'}`}
-              description="Belum ada dokumen Berita Acara yang diterbitkan pada periode filter ini. Klik tombol 'Input Berita Acara' di atas untuk membuat dokumen baru."
+              title={
+                tableTab === 'ARCHIVE'
+                  ? (archiveMonthFilter !== 'ALL' ? 'Tidak Ada Arsip di Periode Ini' : 'Arsip BAST Masih Kosong')
+                  : `Belum Ada Dokumen Berita Acara Susu ${commodityTab === 'SAPI' ? 'Sapi' : 'Kambing'}`
+              }
+              description={
+                tableTab === 'ARCHIVE'
+                  ? (archiveMonthFilter !== 'ALL'
+                      ? `Tidak ada dokumen arsip pada periode ${getArchiveFilterLabel()}. Silakan pilih periode lain atau "Semua Periode Arsip".`
+                      : 'Daftar aktif menampung hingga 30 dokumen terbaru. Dokumen ke-31 dan seterusnya akan otomatis masuk ke dalam arsip ini.')
+                  : "Belum ada dokumen Berita Acara yang diterbitkan pada periode filter ini. Klik tombol 'Input Berita Acara' di atas untuk membuat dokumen baru."
+              }
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[580px] overflow-y-auto rounded-2xl border border-slate-200 shadow-2xs">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[11px] border-y border-slate-200 sticky top-0 z-10">
-                <tr>
-                  <th className="py-3.5 px-3 text-center w-[1%] whitespace-nowrap">No</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Nomor BAST</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Tanggal Penyaluran</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Jenis Susu</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Penerima Hibah</th>
-                  <th className="py-3.5 px-4 text-right font-black text-amber-950 bg-amber-50/60 whitespace-nowrap">Volume Hibah</th>
-                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Status Dokumen</th>
-                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Surat BAST</th>
-                  <th className="py-3.5 px-3 text-center whitespace-nowrap">Aksi</th>
+              <thead className="bg-[#1E3F20] text-white font-extrabold uppercase text-[11px] sticky top-0 z-10 shadow-2xs select-none" style={{ backgroundColor: '#1E3F20' }}>
+                <tr style={{ backgroundColor: '#1E3F20' }}>
+                  <th className="py-3.5 px-3 text-center w-[1%] whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>No</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>Nomor BAST</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>Tanggal Penyaluran</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>Jenis Susu</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>Penerima Hibah</th>
+                  <th className="py-3.5 px-4 text-right font-black text-white whitespace-nowrap" style={{ backgroundColor: '#1E3F20' }}>Volume Hibah</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>Status Dokumen</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap text-white font-bold" style={{ backgroundColor: '#1E3F20' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {paginatedHibahBasts.map((b, idx) => {
-                  const rowNum = (currentPage - 1) * pageSize + idx + 1;
+                {displayedBasts.map((b, idx) => {
+                  const rowNum = idx + 1;
                   const animal = getBastAnimal(b);
                   const isSent = b.status === 'DIKIRIM_KE_FARM' || b.status === 'DITERIMA';
 
@@ -447,100 +766,76 @@ export default function BeritaAcaraPage() {
                         {animal === 'SAPI' ? 'Susu Sapi' : 'Susu Kambing'}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap font-bold text-slate-900">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span>🎁</span>
-                          <span>{b.instansiPenerima || 'Yayasan / Instansi Penerima'}</span>
-                        </span>
+                        <span>{b.instansiPenerima || 'Yayasan / Instansi Penerima'}</span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-black text-amber-950 bg-amber-50/30 whitespace-nowrap font-mono text-sm">
-                        {b.volumeLiters?.toLocaleString('id-ID')} <span className="text-xs font-normal text-amber-700">Liter</span>
+                      <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap font-mono text-sm">
+                        {b.volumeLiters?.toLocaleString('id-ID')} Liter
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         {b.status === 'DITERIMA' || isSent ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                             <span>Selesai</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-                            <Clock className="w-3.5 h-3.5 text-amber-700" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                            <Clock className="w-4 h-4 text-amber-500" />
                             <span>Menunggu</span>
                           </span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedBastForPreview(b);
-                            setShowBastPreviewModal(true);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-2xs hover:shadow-sm cursor-pointer"
-                          title="Lihat & Cetak Surat BAST Resmi"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>Lihat BAST</span>
-                        </button>
-                      </td>
-                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteBAST(b.id, b.nomorBast)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Hapus Berita Acara"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedBastForPreview(b);
+                              setShowBastPreviewModal(true);
+                            }}
+                            className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+                            title="Cetak / Pratinjau Surat BAST"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(b)}
+                            className="p-1.5 rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                            title="Edit Berita Acara"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBAST(b.id, b.nomorBast)}
+                            className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-colors shadow-2xs cursor-pointer"
+                            title="Hapus Berita Acara"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-              <tfoot className="bg-slate-100 text-slate-900 font-extrabold border-t-2 border-slate-300">
+              <tfoot className="bg-slate-100 text-slate-900 font-extrabold border-t-2 border-slate-300 sticky bottom-0 z-10 shadow-2xs">
                 <tr>
-                  <td colSpan={5} className="py-3.5 px-4 text-center text-xs uppercase tracking-wider">
-                    TOTAL BERITA ACARA SUSU {commodityTab === 'SAPI' ? 'SAPI' : 'KAMBING'}
+                  <td colSpan={5} className="py-3.5 px-4 text-left text-xs uppercase tracking-wider bg-slate-100">
+                    TOTAL BERITA ACARA SUSU {commodityTab === 'SAPI' ? 'SAPI' : 'KAMBING'}{' '}
+                    {tableTab === 'ARCHIVE'
+                      ? `(ARSIP${archiveMonthFilter !== 'ALL' ? ` - ${getArchiveFilterLabel()}` : ''})`
+                      : ''}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-black text-amber-950 font-mono text-sm bg-amber-100/70 whitespace-nowrap">
-                    {totalVolumeHibah.toLocaleString('id-ID')} Liter
+                  <td className="py-3.5 px-4 text-right font-black text-slate-900 font-mono text-sm whitespace-nowrap bg-slate-100">
+                    {displayedTotalVolume.toLocaleString('id-ID')} Liter
                   </td>
-                  <td className="py-3.5 px-4 text-center text-xs font-semibold text-emerald-800">
-                    Resmi BAST
-                  </td>
-                  <td colSpan={2} className="py-3.5 px-4 text-center text-xs text-slate-400">
+                  <td colSpan={2} className="py-3.5 px-4 text-center text-xs text-slate-400 bg-slate-100">
                     -
                   </td>
                 </tr>
               </tfoot>
             </table>
-          </div>
-        )}
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 font-medium">
-              Menampilkan {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, hibahBastList.length)} dari {hibahBastList.length} dokumen BAST
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="p-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-lg">
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="p-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -743,6 +1038,170 @@ export default function BeritaAcaraPage() {
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL 2: EDIT BERITA ACARA                                                */}
+      {/* ========================================================================= */}
+      {showEditModal && editingBast && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-100 rounded-xl text-amber-800">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Edit Berita Acara Serah Terima (BAST)
+                  </h3>
+                  <p className="text-xs font-mono text-slate-500">
+                    {editingBast.nomorBast}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingBast(null);
+                }}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateBAST} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Tanggal Penyaluran */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Tanggal Penyaluran
+                  </label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+
+                {/* Jenis Komoditas Ternak */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Komoditas Ternak
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditAnimalType('SAPI')}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
+                        editAnimalType === 'SAPI'
+                          ? 'bg-emerald-50 border-emerald-600 text-emerald-800 ring-1 ring-emerald-600'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Sapi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditAnimalType('KAMBING')}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
+                        editAnimalType === 'KAMBING'
+                          ? 'bg-emerald-50 border-emerald-600 text-emerald-800 ring-1 ring-emerald-600'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Kambing
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Penerima Hibah */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Instansi / Yayasan Penerima
+                </label>
+                <input
+                  type="text"
+                  value={editInstansiPenerima}
+                  onChange={(e) => setEditInstansiPenerima(e.target.value)}
+                  placeholder="Contoh: Posyandu Melati / Panti Asuhan Al-Hikmah"
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              {/* Volume Susu (Liter) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Volume Susu (Liter)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.1"
+                    value={editVolume}
+                    onChange={(e) => setEditVolume(e.target.value)}
+                    placeholder="Contoh: 120"
+                    required
+                    className="w-full p-2.5 pr-14 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-600"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">
+                    Liter
+                  </span>
+                </div>
+              </div>
+
+              {/* Catatan / Keterangan */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Catatan / Keterangan
+                </label>
+                <textarea
+                  value={editCatatan}
+                  onChange={(e) => setEditCatatan(e.target.value)}
+                  placeholder="Keterangan acara atau keperluan..."
+                  rows={2}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingBast(null);
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submittingEdit}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#14532D] hover:bg-[#0f3e22] text-white rounded-xl text-xs font-black transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {submittingEdit ? (
+                    <span>Menyimpan...</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>Simpan Perubahan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL 2: PREVIEW SURAT BAST RESMI FORMAT CETAK BBPTUHPT                   */}
       {/* ========================================================================= */}
       {showBastPreviewModal && selectedBastForPreview && (() => {
@@ -867,7 +1326,7 @@ export default function BeritaAcaraPage() {
                       Dari Seksi Pelayanan Teknik ke Seksi Pemasaran
                     </p>
                     <p className="text-xs font-bold font-mono text-slate-900 pt-1">
-                      Nomor: {selectedBastForPreview.nomorBast || 'BA-MG-20260901-008'}
+                      Nomor: {selectedBastForPreview.nomorBast || 'BA-FS-20260907-006'}
                     </p>
                   </div>
 
@@ -976,7 +1435,7 @@ export default function BeritaAcaraPage() {
               {/* Modal Footer Bar */}
               <div className="no-print p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                 <span className="text-slate-500 font-medium">
-                  Nomor Dokumen: <span className="font-mono font-bold text-slate-800">{selectedBastForPreview.nomorBast || 'BA-MG-20260901-008'}</span>
+                  Nomor Dokumen: <span className="font-mono font-bold text-slate-800">{selectedBastForPreview.nomorBast || 'BA-FS-20260907-006'}</span>
                 </span>
 
                 <div className="flex items-center gap-2">

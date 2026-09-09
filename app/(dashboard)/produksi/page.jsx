@@ -348,15 +348,15 @@ export default function ProduksiPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Tanggal Produksi</th>
-                  <th className="py-3.5 px-4">Produk</th>
-                  <th className="py-3.5 px-4">Produksi susu (Gross)</th>
-                  <th className="py-3.5 px-4">Potongan (Pedet & Afkir)</th>
-                  <th className="py-3.5 px-4">Susu siap olah</th>
-                  <th className="py-3.5 px-4">Catatan</th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
+              <thead className="bg-[#1E3F20] text-white select-none">
+                <tr className="border-b border-[#2d5e31] font-bold uppercase tracking-wider text-white">
+                  <th className="py-3.5 px-4 text-white font-bold">Tanggal Produksi</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Produk</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Produksi susu (Gross)</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Potongan (Pedet & Afkir)</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Susu siap olah</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Catatan</th>
+                  <th className="py-3.5 px-4 text-center text-white font-bold">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">

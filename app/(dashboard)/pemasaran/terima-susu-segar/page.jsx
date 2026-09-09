@@ -27,7 +27,9 @@ import {
   Sun,
   Sunset,
   Sparkles,
-  Info
+  Info,
+  Check,
+  Clock
 } from 'lucide-react';
 
 export default function TerimaSusuSegarPage() {
@@ -283,10 +285,10 @@ export default function TerimaSusuSegarPage() {
 
       {/* 3 Summary KPI Cards strictly for the active commodity */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Susu Segar Masuk (Menarik & Segar) */}
-        <div className="bg-white rounded-3xl p-6 border border-emerald-300 shadow-2xs space-y-3 hover:shadow-xs transition-shadow bg-emerald-50/20">
+        {/* Card 1: Susu Segar Masuk */}
+        <div className="bg-white rounded-3xl p-6 border border-emerald-300 shadow-2xs space-y-3 hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-emerald-900 uppercase tracking-wider">
+            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               1. Susu Segar Masuk
             </span>
             <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-2xs">
@@ -294,54 +296,54 @@ export default function TerimaSusuSegarPage() {
             </div>
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
               {totalDailyGross.toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
+              <span className="text-xs font-bold text-slate-900 font-sans">Liter</span>
             </h3>
-            <p className="text-[11px] text-emerald-800 font-medium">
+            <p className="text-[11px] text-slate-700 font-bold">
               Total perah kandang ({commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'})
             </p>
           </div>
         </div>
 
         {/* Card 2: Potongan Farm */}
-        <div className="bg-white rounded-3xl p-6 border border-rose-200/90 shadow-2xs space-y-3 hover:shadow-xs transition-shadow bg-rose-50/20">
+        <div className="bg-white rounded-3xl p-6 border border-emerald-300 shadow-2xs space-y-3 hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-rose-800 uppercase tracking-wider">
+            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               2. Potongan Farm
             </span>
-            <div className="p-2.5 bg-rose-100 text-rose-700 rounded-2xl shadow-2xs">
-              <TrendingDown className="w-4 h-4 text-rose-600" />
+            <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-2xs">
+              <TrendingDown className="w-4 h-4 text-emerald-300" />
             </div>
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-2xl sm:text-3xl font-black text-rose-950 font-mono tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
               {(totalDailyPedet + totalDailyAfkir).toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-bold text-rose-700 font-sans">Liter</span>
+              <span className="text-xs font-bold text-slate-900 font-sans">Liter</span>
             </h3>
-            <p className="text-[11px] text-rose-700 font-medium">
+            <p className="text-[11px] text-rose-600 font-bold">
               {totalDailyPedet} L {commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'} • {totalDailyAfkir} L Afkir
             </p>
           </div>
         </div>
 
         {/* Card 3: Diterima Pemasaran (Net) */}
-        <div className="bg-white rounded-3xl p-6 border border-emerald-400 shadow-2xs space-y-3 hover:shadow-xs transition-shadow bg-emerald-50/40">
+        <div className="bg-white rounded-3xl p-6 border border-emerald-300 shadow-2xs space-y-3 hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-emerald-950 uppercase tracking-wider">
+            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
               3. Diterima Pemasaran
             </span>
-            <div className="p-2.5 bg-emerald-700 text-white rounded-2xl shadow-2xs">
-              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+            <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
             </div>
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
               {totalDailyBersihSiapOlah.toLocaleString('id-ID')}{' '}
-              <span className="text-xs font-bold text-emerald-700 font-sans">Liter</span>
+              <span className="text-xs font-bold text-slate-900 font-sans">Liter</span>
             </h3>
             <p className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline stroke-[2.5]" />
               <span>Susu siap olah (100% Pas)</span>
             </p>
           </div>
@@ -468,17 +470,9 @@ export default function TerimaSusuSegarPage() {
       {viewTab === 'daily' ? (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
-                <span>{commodityTab === 'KAMBING' ? 'Data Susu Segar (Kambing)' : 'Data Susu Segar (Sapi)'}</span>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  {filteredDailyList.length} Hari
-                </span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Pencatatan harian penerimaan susu segar dari kandang setelah dikurangi potongan farm.
-              </p>
-            </div>
+            <h2 className="font-extrabold text-slate-800 text-base">
+              {commodityTab === 'KAMBING' ? 'Data Susu Segar (Kambing)' : 'Data Susu Segar (Sapi)'}
+            </h2>
           </div>
 
           {filteredDailyList.length === 0 ? (
@@ -489,18 +483,18 @@ export default function TerimaSusuSegarPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-y border-slate-200 text-[11px]">
+                <thead className="bg-[#1E3F20] text-white uppercase font-bold border-b border-[#2d5e31] text-[11px] select-none" style={{ backgroundColor: '#1E3F20' }}>
                   <tr>
-                    <th className="px-3 py-3.5 text-center w-10">No</th>
-                    <th className="px-3 py-3.5 whitespace-nowrap">Tanggal</th>
-                    <th className="px-3 py-3.5 text-right font-black text-slate-900 whitespace-nowrap">Susu Segar Masuk</th>
-                    <th className="px-3 py-3.5 text-right text-slate-700 whitespace-nowrap">
+                    <th className="px-3 py-3.5 text-center w-10 text-white font-bold">No</th>
+                    <th className="px-3 py-3.5 whitespace-nowrap text-white font-bold">Tanggal</th>
+                    <th className="px-3 py-3.5 text-right font-black text-white whitespace-nowrap">Susu Segar Masuk</th>
+                    <th className="px-3 py-3.5 text-right text-white font-bold whitespace-nowrap">
                       {commodityTab === 'KAMBING' ? 'Cempe' : 'Pedet'} (L)
                     </th>
-                    <th className="px-3 py-3.5 text-right font-bold text-slate-700 whitespace-nowrap">Susu Afkir (L)</th>
-                    <th className="px-3 py-3.5 text-right font-black text-emerald-950 bg-emerald-100 whitespace-nowrap">Diterima Pemasaran</th>
-                    <th className="px-3 py-3.5 text-center font-bold text-slate-700 whitespace-nowrap">Rekonsiliasi</th>
-                    <th className="px-3 py-3.5 text-center whitespace-nowrap">Status</th>
+                    <th className="px-3 py-3.5 text-right font-bold text-white whitespace-nowrap">Susu Afkir (L)</th>
+                    <th className="px-3 py-3.5 text-right font-black text-white whitespace-nowrap">Diterima Pemasaran</th>
+                    <th className="px-3 py-3.5 text-center font-bold text-white whitespace-nowrap">Rekonsiliasi</th>
+                    <th className="px-3 py-3.5 text-center text-white font-bold whitespace-nowrap">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -524,24 +518,30 @@ export default function TerimaSusuSegarPage() {
                         <td className="px-3 py-3.5 text-right font-mono text-slate-900 font-bold">
                           {day.totalAfkir} L
                         </td>
-                        <td className="px-3 py-3.5 text-right font-black font-mono text-emerald-950 bg-emerald-50 text-sm">
+                        <td className="px-3 py-3.5 text-right font-black font-mono text-slate-900 text-sm">
                           {netSiapOlah.toLocaleString('id-ID')} Liter
                         </td>
                         <td className="px-3 py-3.5 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 text-emerald-700 stroke-[3]" />
+                            </span>
                             <span>Pas (0 L)</span>
                           </span>
                         </td>
                         <td className="px-3 py-3.5 text-center whitespace-nowrap">
                           {day.status === 'MENUNGGU_VERIFIKASI' ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
-                              <AlertCircle className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                                <Clock className="w-2.5 h-2.5 text-amber-700 stroke-[2.5]" />
+                              </span>
                               <span>Menunggu</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-emerald-700 flex items-center justify-center shrink-0">
+                                <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+                              </span>
                               <span>Diterima</span>
                             </span>
                           )}
@@ -552,23 +552,28 @@ export default function TerimaSusuSegarPage() {
                 </tbody>
 
                 {/* Footer Akumulasi */}
-                <tfoot className="bg-emerald-100 font-black text-slate-900 border-t-2 border-slate-300">
+                <tfoot className="bg-slate-50 font-black text-slate-900 border-t-2 border-slate-200">
                   <tr>
-                    <td colSpan={2} className="px-3 py-3 text-center bg-emerald-200 text-xs uppercase tracking-wider">
+                    <td colSpan={2} className="px-3 py-3 text-center bg-slate-100 text-xs uppercase tracking-wider font-black text-slate-800">
                       TOTAL AKUMULASI ({filteredDailyList.length} HARI)
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-black">{totalDailyGross.toLocaleString('id-ID')} L</td>
+                    <td className="px-3 py-3 text-right font-mono font-black text-slate-900">{totalDailyGross.toLocaleString('id-ID')} L</td>
                     <td className="px-3 py-3 text-right font-mono text-slate-900 font-bold">
                       {totalDailyPedet.toLocaleString('id-ID')} L
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-slate-900 font-bold">
                       {totalDailyAfkir.toLocaleString('id-ID')} L
                     </td>
-                    <td className="px-3 py-3 text-right font-black font-mono bg-emerald-200 text-emerald-950 text-sm">
+                    <td className="px-3 py-3 text-right font-black font-mono text-slate-900 text-sm">
                       {totalDailyBersihSiapOlah.toLocaleString('id-ID')} Liter
                     </td>
-                    <td className="px-3 py-3 text-center text-emerald-900 text-[11px] font-bold">
-                      ✓ 0 L Selisih
+                    <td className="px-3 py-3 text-center text-slate-800 text-[11px] font-bold">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                          <Check className="w-2.5 h-2.5 text-emerald-700 stroke-[3]" />
+                        </span>
+                        <span>Pas (0 L)</span>
+                      </span>
                     </td>
                     <td></td>
                   </tr>
@@ -590,17 +595,17 @@ export default function TerimaSusuSegarPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 text-slate-600 uppercase font-bold border-y border-slate-200 text-[11px]">
+              <thead className="bg-[#1E3F20] text-white uppercase font-bold border-b border-[#2d5e31] text-[11px] select-none" style={{ backgroundColor: '#1E3F20' }}>
                 <tr>
-                  <th className="px-4 py-3.5 text-center w-12">No</th>
-                  <th className="px-4 py-3.5 whitespace-nowrap">Tanggal</th>
-                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Sesi</th>
-                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Ternak</th>
-                  <th className="px-4 py-3.5 text-right font-black text-slate-900 whitespace-nowrap">Susu Segar Masuk (L)</th>
-                  <th className="px-4 py-3.5 text-right text-slate-500 whitespace-nowrap">{commodityTab === 'KAMBING' ? 'Cempe (L)' : 'Pedet (L)'}</th>
-                  <th className="px-4 py-3.5 text-right font-bold text-slate-700 whitespace-nowrap">Afkir (L)</th>
-                  <th className="px-4 py-3.5 text-right font-black text-emerald-950 bg-emerald-50 whitespace-nowrap">Susu Siap Olah</th>
-                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3.5 text-center w-12 text-white font-bold">No</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap text-white font-bold">Tanggal</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap text-white font-bold">Sesi</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap text-white font-bold">Ternak</th>
+                  <th className="px-4 py-3.5 text-right font-black text-white whitespace-nowrap">Susu Segar Masuk (L)</th>
+                  <th className="px-4 py-3.5 text-right text-white font-bold whitespace-nowrap">{commodityTab === 'KAMBING' ? 'Cempe (L)' : 'Pedet (L)'}</th>
+                  <th className="px-4 py-3.5 text-right font-bold text-white whitespace-nowrap">Afkir (L)</th>
+                  <th className="px-4 py-3.5 text-right font-black text-white whitespace-nowrap">Susu Siap Olah</th>
+                  <th className="px-4 py-3.5 text-center text-white font-bold whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -614,11 +619,7 @@ export default function TerimaSusuSegarPage() {
                         year: 'numeric',
                       })}
                     </td>
-                    <td
-                      className={`px-4 py-3.5 text-center whitespace-nowrap font-black ${
-                        r.kegiatanPerah === 'Pagi' ? 'text-sky-500' : 'text-orange-500'
-                      }`}
-                    >
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap font-bold text-slate-800">
                       {r.kegiatanPerah === 'Pagi' ? 'Pagi' : 'Sore'}
                     </td>
                     <td className="px-4 py-3.5 text-center whitespace-nowrap font-bold text-slate-800">
@@ -627,18 +628,22 @@ export default function TerimaSusuSegarPage() {
                     <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{r.produksiSusu} L</td>
                     <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">{r.susuPedet} L</td>
                     <td className="px-4 py-3.5 text-right font-mono text-slate-900 font-bold">{r.susuAfkir} L</td>
-                    <td className="px-4 py-3.5 text-right font-mono font-black text-emerald-950 bg-emerald-50/70 text-sm">
+                    <td className="px-4 py-3.5 text-right font-mono font-black text-slate-900 text-sm">
                       {r.susuSiapOlah} Liter
                     </td>
                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
                       {r.status === 'MENUNGGU_VERIFIKASI' ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
-                          <AlertCircle className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                          <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <Clock className="w-2.5 h-2.5 text-amber-700 stroke-[2.5]" />
+                          </span>
                           <span>Menunggu</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                          <span className="w-4 h-4 rounded-full bg-emerald-700 flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+                          </span>
                           <span>Diterima</span>
                         </span>
                       )}
@@ -663,7 +668,7 @@ export default function TerimaSusuSegarPage() {
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Konfirmasi data perah <strong>{selectedFresh.kegiatanPerah} ({selectedFresh.jenisTernak === 'KAMBING' ? '🐐 Kambing' : '🐄 Sapi'})</strong> tanggal{' '}
+              Konfirmasi data perah <strong>{selectedFresh.kegiatanPerah} ({selectedFresh.jenisTernak === 'KAMBING' ? 'Kambing' : 'Sapi'})</strong> tanggal{' '}
               <strong>{new Date(selectedFresh.tanggal).toLocaleDateString('id-ID')}</strong> sejumlah{' '}
               <strong>{selectedFresh.susuSiapOlah} Liter</strong> susu siap olah.
             </p>

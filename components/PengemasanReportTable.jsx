@@ -17,7 +17,9 @@ import {
   Package,
   Milk,
   ChevronDown,
-  Info
+  Info,
+  Check,
+  X
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 
@@ -497,32 +499,9 @@ export default function PengemasanReportTable({
       {/* Control Bar (Search, Filters, Export & Actions) */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Time Filter Pills matching Susu Fresh style */}
-          <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl">
-            {[
-              { id: 'ALL', label: 'Semua' },
-              { id: 'TODAY', label: 'Hari Ini' },
-              { id: '7DAYS', label: '7 Hari' },
-              { id: 'MONTH', label: 'Bulan Ini' },
-              { id: 'CUSTOM', label: 'Custom' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTimeFilter(t.id)}
-                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
-                  timeFilter === t.id
-                    ? 'bg-white text-emerald-800 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Right Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            {!readOnly && onAddNewReport && (
+          {/* Action Buttons (Left) */}
+          {!readOnly && onAddNewReport && (
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => {
                   setFormData({
@@ -549,38 +528,34 @@ export default function PengemasanReportTable({
                   });
                   setShowAddModal(true);
                 }}
-                className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+                className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Simulasi / Input Laporan</span>
               </button>
-            )}
+            </div>
+          )}
 
-            <button
-              onClick={exportToExcel}
-              className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+          {/* Dropdown Filters & Search (Right) */}
+          <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+            {/* Dropdown Periode */}
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-white transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-600"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Excel</span>
-            </button>
+              <option value="ALL">Periode</option>
+              <option value="TODAY">Hari Ini</option>
+              <option value="7DAYS">7 Hari Terakhir</option>
+              <option value="MONTH">Bulan Ini</option>
+              <option value="CUSTOM">Custom Rentang</option>
+            </select>
 
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Second Row: Dropdown Filters & Search */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          <div className="flex flex-wrap items-center gap-2">
+            {/* Dropdown Status */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-white transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-600"
             >
               <option value="ALL">Semua Status</option>
               <option value="MENUNGGU_PENERIMAAN">Menunggu Penerimaan</option>
@@ -588,15 +563,7 @@ export default function PengemasanReportTable({
               <option value="PERLU_KOREKSI">Perlu Koreksi</option>
             </select>
 
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900"
-            >
-              <option value="asc">📅 Tanggal 1 s/d 31 (Urut Naik)</option>
-              <option value="desc">📅 Tanggal 31 s/d 1 (Urut Turun)</option>
-            </select>
-
+            {/* Search Input */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2" />
               <input
@@ -608,44 +575,47 @@ export default function PengemasanReportTable({
               />
             </div>
 
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
-                title="Segarkan Data"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+            {/* Custom Date Range Picker */}
+            {timeFilter === 'CUSTOM' && (
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                <span className="text-[11px] font-bold text-slate-600">Rentang:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+                <span className="text-xs text-slate-400">s/d</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+            )}
+
+            {/* Actions if showActions enabled */}
+            {showActions && (
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                <button
+                  onClick={exportToExcel}
+                  className="inline-flex items-center gap-1.5 bg-[#14532D] hover:bg-[#1e7240] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  onClick={handlePrint}
+                  className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak</span>
+                </button>
+              </div>
             )}
           </div>
-
-          {/* Custom Date Range Picker */}
-          {timeFilter === 'CUSTOM' && (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-600">Rentang:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-              />
-              <span className="text-xs text-slate-400">s/d</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Info Notification Note */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-emerald-950 print:hidden">
-        <Info className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold">Format Standar Laporan Pengemasan & Distribusi (27 Kolom):</span> Kolom <strong>Pengambilan Susu Segar (Liter)</strong> merupakan bahan baku masuk yang <strong>sama persis & terintegrasi dengan data Susu Siap Olah dari Admin Farm</strong> (0 Liter selisih), yang kemudian diproses menjadi hasil olahan (kemasan & yogurt), didistribusikan, hingga sisa stok harian.
         </div>
       </div>
 
@@ -852,7 +822,7 @@ export default function PengemasanReportTable({
                     <td className="border-r border-slate-200 px-2 py-2 text-right">{row.sisaYogurt || 0}</td>
 
                     {/* Jumlah Stok */}
-                    <td className="border-r border-slate-200 px-2 py-2 text-right font-black text-emerald-900 bg-emerald-50/80">
+                    <td className="border-r border-slate-200 px-2 py-2 text-right font-black text-slate-900">
                       {row.jumlahStok || 0}
                     </td>
 
@@ -881,14 +851,18 @@ export default function PengemasanReportTable({
                             </button>
                           </div>
                         ) : row.status === 'DITERIMA' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Diterima
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <span className="w-4 h-4 rounded-full bg-emerald-700 flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+                            </span>
+                            <span>Diterima</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                            <Clock className="w-3 h-3" />
-                            Perlu Koreksi
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                              <Clock className="w-2.5 h-2.5 text-amber-700 stroke-[2.5]" />
+                            </span>
+                            <span>Perlu Koreksi</span>
                           </span>
                         )}
                       </td>
@@ -941,7 +915,7 @@ export default function PengemasanReportTable({
                 <td className="border-r border-slate-300 px-2 py-2 text-right">{(activeSummary.sisaSusu250ml || 0).toLocaleString('id-ID')}</td>
                 <td className="border-r border-slate-300 px-2 py-2 text-right">{(activeSummary.sisaYogurt || 0).toLocaleString('id-ID')}</td>
 
-                <td className="border-r border-slate-300 px-2 py-2 text-right bg-emerald-200 text-emerald-950 font-black">
+                <td className="border-r border-slate-300 px-2 py-2 text-right text-slate-900 font-black">
                   {(activeSummary.jumlahStok || 0).toLocaleString('id-ID')}
                 </td>
                 {showActions && <td className="print:hidden"></td>}
@@ -1065,9 +1039,9 @@ export default function PengemasanReportTable({
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

@@ -352,15 +352,15 @@ export default function RiwayatPengemasanPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4 whitespace-nowrap">Tanggal</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Produk</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Kategori</th>
-                  <th className="py-3.5 px-4 min-w-[160px]">Kemasan & Ukuran</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Jumlah</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Status Transfer</th>
-                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Aksi</th>
+              <thead className="bg-[#1E3F20] text-white select-none">
+                <tr className="border-b border-[#2d5e31] font-bold uppercase tracking-wider text-white">
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Tanggal</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Produk</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Kategori</th>
+                  <th className="py-3.5 px-4 min-w-[160px] text-white font-bold">Kemasan & Ukuran</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Jumlah</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Status Transfer</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap text-white font-bold">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">

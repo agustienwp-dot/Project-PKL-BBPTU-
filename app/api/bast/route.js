@@ -88,13 +88,83 @@ export async function POST(request) {
     const receiverName = (body.penerimaNama || (isUhtReq ? 'Unit Pengolahan (UHT)' : (isPemasaran ? 'Unit Farm Produksi BBPTUHPT' : 'Bagian Pemasaran & Stok'))).trim();
     const receiverRole = body.penerimaRole || (isUhtReq ? 'UNIT_PENGOLAHAN_UHT' : (isPemasaran ? 'ADMIN_FARM' : 'ADMIN_PEMASARAN'));
 
-    // Generate unique nomor BAST if not explicitly passed
+    // Generate unique nomor BAST if not explicitly passed: BA-[TUJUAN]-[YYYYMMDD]-[XXX]
     const dateObj = tanggal ? new Date(tanggal) : new Date();
-    const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const isHibah = jenisPermintaan === 'HIBAH';
-    const prefix = isUhtReq ? 'BA-UHT' : (isHibah ? 'BA-HB' : (isPemasaran ? 'BAST/PEMASARAN' : 'BAST/BBPTU'));
-    const nomorBast = body.nomorBast || `${prefix}-${dateStr}-${randomSuffix}`;
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+
+    let nomorBast = body.nomorBast;
+    if (!nomorBast) {
+      const rawTujuan = (
+        instansiPenerima ||
+        body.tujuan ||
+        (isUhtReq ? 'UHT' : (jenisPermintaan === 'HIBAH' ? 'HIBAH' : 'PEMASARAN'))
+      ).trim();
+
+      const getTujuanCode = (str) => {
+        if (!str) return 'UMUM';
+        const clean = str.trim().toUpperCase();
+        if (/^[A-Z0-9]{2,8}$/.test(clean)) return clean;
+        
+        if (clean.includes('SPPG')) return 'SPPG';
+        if (clean.includes('EDUKASI') || clean.includes('EDUKAS')) return 'EDUKASI';
+        if (clean.includes('KANTIN')) return 'KANTIN';
+        if (clean.includes('UHT')) return 'UHT';
+        if (clean.includes('POSYANDU')) return 'POSYANDU';
+        if (clean.includes('YAYASAN') || clean.includes('PANTI')) return 'YAYASAN';
+        if (clean.includes('DINAS') || clean.includes('TAMU')) return 'DINAS';
+        if (clean.includes('UMUM')) return 'UMUM';
+
+        const words = clean.split(/[\s\-_/]+/).filter(Boolean);
+        if (words.length > 1) {
+          const initials = words.map(w => w[0]).join('');
+          if (initials.length >= 2 && initials.length <= 5) return initials;
+        }
+
+        return clean.replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'UMUM';
+      };
+
+      const codeTujuan = getTujuanCode(rawTujuan);
+
+      // Hitung urutan tahunan: ulang dari 1 per tahun
+      const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
+      const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
+
+      const bastDocsInYear = await prisma.bastDocument.findMany({
+        where: {
+          tanggal: {
+            gte: startOfYear,
+            lte: endOfYear,
+          },
+        },
+        select: {
+          nomorBast: true,
+        },
+      });
+
+      let maxSeq = 0;
+      for (const d of bastDocsInYear) {
+        if (!d.nomorBast) continue;
+        const match = d.nomorBast.match(/[-/](\d{3,})$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxSeq && num < 100000) {
+            maxSeq = num;
+          }
+        }
+      }
+
+      let nextSeq = Math.max(maxSeq + 1, 1);
+      nomorBast = `BA-${codeTujuan}-${dateStr}-${String(nextSeq).padStart(3, '0')}`;
+
+      // Pastikan unik jika terdapat collision
+      while (await prisma.bastDocument.findUnique({ where: { nomorBast } })) {
+        nextSeq++;
+        nomorBast = `BA-${codeTujuan}-${dateStr}-${String(nextSeq).padStart(3, '0')}`;
+      }
+    }
 
     let validUserId = authUser.userId || authUser.id || null;
     if (validUserId) {

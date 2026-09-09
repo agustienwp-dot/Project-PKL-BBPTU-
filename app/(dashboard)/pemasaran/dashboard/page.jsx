@@ -267,21 +267,11 @@ export default function DashboardPemasaranPage() {
         />
       )}
 
-      {/* Page Title (Tanpa Bar / Kotak) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+      {/* Page Title */}
+      <div className="pt-1">
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
           DASHBOARD
         </h1>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Link
-            href="/pemasaran/laporan"
-            className="inline-flex items-center gap-2 bg-[#1E3F20] hover:bg-[#16331a] text-white px-4 py-2 rounded-2xl font-bold text-xs transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-            <span>Buka Laporan 27 Kolom</span>
-          </Link>
-        </div>
       </div>
 
       {/* 4 Quick Action Navigation Cards */}

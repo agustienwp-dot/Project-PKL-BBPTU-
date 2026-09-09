@@ -21,7 +21,6 @@ import {
   Layers,
   Calendar,
   Filter,
-  ArrowLeft,
   ArrowRight,
   TrendingDown,
   Building2,
@@ -35,7 +34,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  BarChart3,
   TrendingUp,
   Warehouse,
   Trash2
@@ -52,21 +50,11 @@ export default function DistribusiSusuSegarPage() {
   // 1. Commodity Tab: 'SAPI' | 'KAMBING'
   const [commodityTab, setCommodityTab] = useState('SAPI');
 
-  const [expandedDays, setExpandedDays] = useState({});
-
-  const toggleDayAccordion = (key) => {
-    setExpandedDays((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
+  const [selectedDayDetail, setSelectedDayDetail] = useState(null);
 
   // 3. Filter States
   const [demandTypeFilter, setDemandTypeFilter] = useState('ALL'); // 'ALL' | 'PENJUALAN_LANGSUNG' | 'HIBAH'
-  const [destinationFilter, setDestinationFilter] = useState('ALL'); // 'ALL' | 'SPPG' | 'EDUKASI' | 'UMUM' | 'HIBAH'
-  const [timeFilter, setTimeFilter] = useState('ALL'); // 'ALL' | 'TODAY' | '7DAYS' | 'MONTH' | 'CUSTOM'
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [timeFilter, setTimeFilter] = useState('ALL'); // 'ALL' | 'TODAY' | '7DAYS' | 'MONTH'
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('asc'); // Default ascending 1-31
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,23 +161,8 @@ export default function DistribusiSusuSegarPage() {
         if (timeFilter === 'TODAY') matchTime = dStr === today;
         else if (timeFilter === '7DAYS') matchTime = dStr >= d7Str;
         else if (timeFilter === 'MONTH') matchTime = dStr >= monthStart && dStr <= monthEnd;
-        else if (timeFilter === 'CUSTOM') {
-          if (startDate && dStr < startDate) matchTime = false;
-          if (endDate && dStr > endDate) matchTime = false;
-        }
 
         const matchDemand = demandTypeFilter === 'ALL' || b.jenisPermintaan === demandTypeFilter;
-
-        let matchDest = true;
-        if (destinationFilter === 'SPPG') {
-          matchDest = (b.instansiPenerima || '').toLowerCase().includes('sppg');
-        } else if (destinationFilter === 'EDUKASI') {
-          matchDest = (b.instansiPenerima || '').toLowerCase().includes('edukasi') || (b.instansiPenerima || '').toLowerCase().includes('eduwisata') || (b.instansiPenerima || '').toLowerCase().includes('kantin');
-        } else if (destinationFilter === 'UMUM') {
-          matchDest = (b.instansiPenerima || '').toLowerCase().includes('umum') || (b.instansiPenerima || '').toLowerCase().includes('konsumen') || (b.instansiPenerima || '').toLowerCase().includes('mitra');
-        } else if (destinationFilter === 'HIBAH') {
-          matchDest = b.jenisPermintaan === 'HIBAH';
-        }
 
         const matchStatus = statusFilter === 'ALL' || b.status === statusFilter;
         const matchSearch =
@@ -200,13 +173,13 @@ export default function DistribusiSusuSegarPage() {
           (b.jenisPermintaan === 'HIBAH' ? 'hibah' : 'penjualan').includes(searchTerm.toLowerCase()) ||
           dStr.includes(searchTerm);
 
-        return matchTime && matchDemand && matchDest && matchStatus && matchSearch;
+        return matchTime && matchDemand && matchStatus && matchSearch;
       })
       .sort((a, b) => {
         const cmp = new Date(a.tanggal) - new Date(b.tanggal);
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [activeCommodityBasts, demandTypeFilter, destinationFilter, timeFilter, startDate, endDate, statusFilter, sortOrder, searchTerm]);
+  }, [activeCommodityBasts, demandTypeFilter, timeFilter, statusFilter, sortOrder, searchTerm]);
 
   // Filtered Daily List according to time, search, and filters
   const filteredDailyList = useMemo(() => {
@@ -226,10 +199,6 @@ export default function DistribusiSusuSegarPage() {
         if (timeFilter === 'TODAY') matchTime = dStr === today;
         else if (timeFilter === '7DAYS') matchTime = dStr >= d7Str;
         else if (timeFilter === 'MONTH') matchTime = dStr >= monthStart && dStr <= monthEnd;
-        else if (timeFilter === 'CUSTOM') {
-          if (startDate && dStr < startDate) matchTime = false;
-          if (endDate && dStr > endDate) matchTime = false;
-        }
 
         const allocations = day.bastAllocations || [];
         let matchDemand = true;
@@ -239,27 +208,18 @@ export default function DistribusiSusuSegarPage() {
           matchDemand = allocations.some((a) => a.jenisPermintaan === 'HIBAH');
         }
 
-        let matchDest = true;
-        if (destinationFilter !== 'ALL') {
-          matchDest = allocations.some(
-            (a) =>
-              (a.instansiPenerima && a.instansiPenerima.toLowerCase().includes(destinationFilter.toLowerCase())) ||
-              (a.catatan && a.catatan.toLowerCase().includes(destinationFilter.toLowerCase()))
-          );
-        }
-
         const matchSearch =
           !searchTerm ||
           day.tanggal.includes(searchTerm) ||
           day.bastUsageDescriptions?.some((desc) => desc.toLowerCase().includes(searchTerm.toLowerCase()));
 
-        return matchTime && matchDemand && matchDest && matchSearch;
+        return matchTime && matchDemand && matchSearch;
       })
       .sort((a, b) => {
         const cmp = new Date(a.tanggal) - new Date(b.tanggal);
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [activeCommodityDaily, timeFilter, startDate, endDate, demandTypeFilter, destinationFilter, sortOrder, searchTerm]);
+  }, [activeCommodityDaily, timeFilter, demandTypeFilter, sortOrder, searchTerm]);
 
   // KPI Calculations for active commodity
   const currentTotalGross = useMemo(() => {
@@ -388,9 +348,15 @@ export default function DistribusiSusuSegarPage() {
     );
   };
 
+  const parseVolume = (vol) => {
+    if (!vol) return 0;
+    const clean = vol.toString().replace(',', '.');
+    return parseFloat(clean) || 0;
+  };
+
   const totalComputedVolume = useMemo(() => {
     return distributionItems.reduce((acc, item) => {
-      const v = parseFloat(item.volume) || 0;
+      const v = parseVolume(item.volume);
       return acc + Math.max(0, v);
     }, 0);
   }, [distributionItems]);
@@ -398,20 +364,20 @@ export default function DistribusiSusuSegarPage() {
   const totalPenjualanVolume = useMemo(() => {
     return distributionItems
       .filter(i => i.jenis !== 'HIBAH')
-      .reduce((acc, item) => acc + (parseFloat(item.volume) || 0), 0);
+      .reduce((acc, item) => acc + parseVolume(item.volume), 0);
   }, [distributionItems]);
 
   const totalHibahVolume = useMemo(() => {
     return distributionItems
       .filter(i => i.jenis === 'HIBAH')
-      .reduce((acc, item) => acc + (parseFloat(item.volume) || 0), 0);
+      .reduce((acc, item) => acc + parseVolume(item.volume), 0);
   }, [distributionItems]);
 
   // Handle Create BAST Distribusi (Mencatat banyak tujuan sekaligus & potong stok harian)
   const handleCreateBAST = async (e) => {
     e.preventDefault();
 
-    const invalidItems = distributionItems.filter(item => !item.volume || parseFloat(item.volume) <= 0);
+    const invalidItems = distributionItems.filter(item => !item.volume || parseVolume(item.volume) <= 0);
     if (invalidItems.length > 0) {
       setToast({ type: 'error', message: 'Pastikan seluruh baris tujuan distribusi memiliki volume susu (> 0 Liter).' });
       return;
@@ -428,7 +394,7 @@ export default function DistribusiSusuSegarPage() {
       let createdHibahDoc = null;
 
       for (const item of distributionItems) {
-        const numVol = parseFloat(item.volume) || 0;
+        const numVol = parseVolume(item.volume);
         const finalTujuan = item.isCustomTujuan ? item.customTujuan.trim() : item.tujuan.trim();
         const jenisText = item.jenis === 'HIBAH' ? 'HIBAH' : 'PENJUALAN_LANGSUNG';
 
@@ -475,16 +441,13 @@ export default function DistribusiSusuSegarPage() {
   const handleClearAllFilters = () => {
     setSearchTerm('');
     setDemandTypeFilter('ALL');
-    setDestinationFilter('ALL');
     setTimeFilter('ALL');
-    setStartDate('');
-    setEndDate('');
     setStatusFilter('ALL');
     setSortOrder('asc');
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = searchTerm || demandTypeFilter !== 'ALL' || destinationFilter !== 'ALL' || timeFilter !== 'ALL' || statusFilter !== 'ALL' || startDate || endDate;
+  const hasActiveFilters = searchTerm || demandTypeFilter !== 'ALL' || timeFilter !== 'ALL' || statusFilter !== 'ALL';
 
   if (loading) {
     return <LoadingSpinner text="Memuat Data Distribusi Susu Segar..." />;
@@ -652,7 +615,7 @@ export default function DistribusiSusuSegarPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="Cari Nomor BAST, tujuan distribusi, atau tanggal..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -681,21 +644,6 @@ export default function DistribusiSusuSegarPage() {
               </select>
             </div>
 
-            {/* Tujuan Distribusi */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
-              <span className="text-slate-400 text-[11px] font-semibold">Tujuan:</span>
-              <select
-                value={destinationFilter}
-                onChange={(e) => {
-                  setDestinationFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
-              >
-                <option value="ALL">Semua Tujuan</option>
-              </select>
-            </div>
-
             {/* Periode */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -711,71 +659,11 @@ export default function DistribusiSusuSegarPage() {
                 <option value="TODAY">Hari Ini</option>
                 <option value="7DAYS">7 Hari Terakhir</option>
                 <option value="MONTH">Bulan Ini</option>
-                <option value="CUSTOM">Rentang Kustom</option>
               </select>
             </div>
 
-            {/* Status */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
-              <span className="text-slate-400 text-[11px] font-semibold">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="DIKIRIM_KE_FARM">Selesai</option>
-                <option value="MENUNGGU_KONFIRMASI">Menunggu</option>
-              </select>
-            </div>
-
-            {/* Urutan */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
-              <select
-                value={sortOrder}
-                onChange={(e) => {
-                  setSortOrder(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
-              >
-                <option value="asc">Tanggal (1-31)</option>
-                <option value="desc">Tanggal Terbaru</option>
-              </select>
-            </div>
           </div>
         </div>
-
-        {/* Rentang Kustom */}
-        {timeFilter === 'CUSTOM' && (
-          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 animate-in fade-in duration-150">
-            <span className="text-xs font-bold text-slate-600">Rentang Tanggal:</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="p-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600"
-              />
-              <span className="text-xs text-slate-400 font-bold">s/d</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="p-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Active Filter Chips */}
         {hasActiveFilters && (
@@ -792,7 +680,7 @@ export default function DistribusiSusuSegarPage() {
             )}
 
             {demandTypeFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 text-blue-800 font-bold border border-blue-200">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 font-bold border border-slate-300">
                 {demandTypeFilter === 'HIBAH' ? 'Hibah' : 'Penjualan'}
                 <button onClick={() => setDemandTypeFilter('ALL')} className="hover:text-rose-500">
                   <X className="w-3.5 h-3.5" />
@@ -800,28 +688,10 @@ export default function DistribusiSusuSegarPage() {
               </span>
             )}
 
-            {destinationFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                Tujuan: {destinationFilter}
-                <button onClick={() => setDestinationFilter('ALL')} className="hover:text-rose-500">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            )}
-
             {timeFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 text-purple-800 font-bold border border-purple-200">
-                {timeFilter === 'TODAY' ? 'Hari Ini' : timeFilter === '7DAYS' ? '7 Hari' : timeFilter === 'MONTH' ? 'Bulan Ini' : 'Kustom'}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 font-bold border border-slate-300">
+                {timeFilter === 'TODAY' ? 'Hari Ini' : timeFilter === '7DAYS' ? '7 Hari' : 'Bulan Ini'}
                 <button onClick={() => setTimeFilter('ALL')} className="hover:text-rose-500">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            )}
-
-            {statusFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                Status: {statusFilter === 'MENUNGGU_KONFIRMASI' ? 'Menunggu' : 'Selesai'}
-                <button onClick={() => setStatusFilter('ALL')} className="hover:text-rose-500">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </span>
@@ -844,15 +714,10 @@ export default function DistribusiSusuSegarPage() {
           {/* Tabel Rekap Harian */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-xs">
-                  <BarChart3 className="w-5 h-5 text-emerald-300" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-slate-900">
-                    Distribusi Penjualan & Hibah
-                  </h2>
-                </div>
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  Distribusi Penjualan & Hibah
+                </h2>
               </div>
             </div>
 
@@ -864,26 +729,24 @@ export default function DistribusiSusuSegarPage() {
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[11px] border-y border-slate-200 sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3.5 px-3 text-center w-[1%] whitespace-nowrap">No</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Tanggal</th>
-                      <th className="py-3.5 px-4 text-right font-bold text-slate-800 whitespace-nowrap">Susu Masuk (L)</th>
-                      <th className="py-3.5 px-4 text-right font-bold text-blue-900 bg-blue-50/40 whitespace-nowrap">Total Penjualan (L)</th>
-                      <th className="py-3.5 px-4 text-right font-bold text-amber-900 bg-amber-50/40 whitespace-nowrap">Total Hibah (L)</th>
-                      <th className="py-3.5 px-4 text-right font-black text-emerald-950 bg-emerald-50/60 whitespace-nowrap">Total Distribusi (L)</th>
-                      <th className="py-3.5 px-4 text-right font-black text-emerald-950 bg-emerald-100/50 whitespace-nowrap">Sisa Stok (L)</th>
-                      <th className="py-3.5 px-4 text-center whitespace-nowrap">Status Distribusi</th>
-                      <th className="py-3.5 px-4 text-center whitespace-nowrap">Detail Distribusi</th>
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left text-xs border-collapse bg-white">
+                  <thead className="bg-[#1E3F20] text-white font-black uppercase text-[11px] sticky top-0 z-10" style={{ backgroundColor: '#1E3F20' }}>
+                    <tr style={{ backgroundColor: '#1E3F20' }}>
+                      <th className="py-3.5 px-3 text-center w-[1%] whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>No</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Tanggal</th>
+                      <th className="py-3.5 px-4 text-right font-bold whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Susu Masuk (L)</th>
+                      <th className="py-3.5 px-4 text-right font-bold whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Total Penjualan (L)</th>
+                      <th className="py-3.5 px-4 text-right font-bold whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Total Hibah (L)</th>
+                      <th className="py-3.5 px-4 text-right font-black whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Total Distribusi (L)</th>
+                      <th className="py-3.5 px-4 text-right font-black whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Sisa Stok (L)</th>
+                      <th className="py-3.5 px-4 text-center whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Detail Distribusi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
                     {filteredDailyList.map((day, idx) => {
                       const allocations = day.bastAllocations || [];
                       const rowKey = day.tanggal || `day-${idx}`;
-                      const isExpanded = !!expandedDays[rowKey];
 
                       const penjualanList = allocations.filter((a) => a.jenisPermintaan !== 'HIBAH');
                       const hibahList = allocations.filter((a) => a.jenisPermintaan === 'HIBAH');
@@ -894,232 +757,91 @@ export default function DistribusiSusuSegarPage() {
                       const susuMasuk = day.totalSusuSiapOlah || 0;
                       const sisaStok = day.sisaBersihSiapOlah ?? (susuMasuk - totalDistribusi);
 
-                      const hasDistribution = totalDistribusi > 0;
-
                       return (
-                        <React.Fragment key={rowKey}>
-                          <tr className={`hover:bg-slate-50/90 transition-colors ${isExpanded ? 'bg-slate-50/80 font-semibold' : ''}`}>
-                            <td className="py-3.5 px-3 text-center text-slate-400 font-bold w-[1%] whitespace-nowrap">
-                              {idx + 1}
-                            </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                <span>
-                                  {new Date(day.tanggal).toLocaleDateString('id-ID', {
-                                    weekday: 'short',
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-800 whitespace-nowrap">
-                              {susuMasuk.toLocaleString('id-ID')} L
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-blue-900 bg-blue-50/30 whitespace-nowrap">
-                              {totalPenjualan > 0 ? (
-                                <span>{totalPenjualan.toLocaleString('id-ID')} L</span>
-                              ) : (
-                                <span className="text-slate-300">-</span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-amber-900 bg-amber-50/30 whitespace-nowrap">
-                              {totalHibah > 0 ? (
-                                <span>{totalHibah.toLocaleString('id-ID')} L</span>
-                              ) : (
-                                <span className="text-slate-300">-</span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-950 bg-emerald-50/40 whitespace-nowrap">
-                              {hasDistribution ? (
-                                <span>{totalDistribusi.toLocaleString('id-ID')} L</span>
-                              ) : (
-                                <span className="text-slate-400 font-normal">0 L</span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-950 bg-emerald-100/40 whitespace-nowrap text-sm">
-                              {sisaStok.toLocaleString('id-ID')} L
-                            </td>
-                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              {hasDistribution && totalDistribusi >= susuMasuk && susuMasuk > 0 ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  <span>Tersalurkan</span>
-                                </span>
-                              ) : hasDistribution ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                  <Clock className="w-3 h-3 text-amber-600" />
-                                  <span>Sebagian</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                  <span>Belum Ada Distribusi</span>
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => toggleDayAccordion(rowKey)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95 ${
-                                  isExpanded
-                                    ? 'bg-slate-900 text-white'
-                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                }`}
+                        <tr key={rowKey} className="hover:bg-slate-50/80 transition-colors bg-white">
+                          <td className="py-3.5 px-3 text-center text-slate-400 font-bold w-[1%] whitespace-nowrap bg-white">
+                            {idx + 1}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap bg-white">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                              <span>
+                                {new Date(day.tanggal).toLocaleDateString('id-ID', {
+                                  weekday: 'short',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-800 whitespace-nowrap bg-white">
+                            {susuMasuk.toLocaleString('id-ID')} L
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-800 whitespace-nowrap bg-white">
+                            {totalPenjualan > 0 ? (
+                              <span>{totalPenjualan.toLocaleString('id-ID')} L</span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">0 L</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-800 whitespace-nowrap bg-white">
+                            {totalHibah > 0 ? (
+                              <span>{totalHibah.toLocaleString('id-ID')} L</span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">0 L</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap bg-white">
+                            {totalDistribusi > 0 ? (
+                              <span>{totalDistribusi.toLocaleString('id-ID')} L</span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">0 L</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap bg-white">
+                            {sisaStok.toLocaleString('id-ID')} L
+                          </td>
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap bg-white">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDayDetail(day)}
+                              className="group inline-flex items-center gap-2 text-xs font-bold text-slate-800 hover:text-black transition-colors cursor-pointer bg-transparent"
+                            >
+                              <span
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-white bg-slate-900 shadow-2xs group-hover:scale-105 transition-transform shrink-0"
                               >
-                                <span>{isExpanded ? 'Tutup Rincian' : 'Lihat Rincian'}</span>
-                                {isExpanded ? (
-                                  <ChevronUp className="w-3.5 h-3.5" />
-                                ) : (
-                                  <ChevronDown className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Accordion Detail Row */}
-                          {isExpanded && (
-                            <tr className="bg-slate-50/90 border-y border-slate-200 animate-fadeIn">
-                              <td colSpan={9} className="p-4 sm:p-5">
-                                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4">
-                                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono text-xs font-black px-2.5 py-1 rounded-xl bg-slate-900 text-white">
-                                        {new Date(day.tanggal).toLocaleDateString('id-ID', {
-                                          weekday: 'long',
-                                          day: 'numeric',
-                                          month: 'long',
-                                          year: 'numeric',
-                                        })}
-                                      </span>
-                                      <span className="text-xs font-bold text-slate-600">
-                                        Rincian Tujuan Alokasi Penjualan & Hibah
-                                      </span>
-                                    </div>
-                                    <span className="text-xs font-mono font-bold text-slate-600">
-                                      Total Distribusi:{' '}
-                                      <strong className="text-emerald-900 text-sm">
-                                        {totalDistribusi.toLocaleString('id-ID')} Liter
-                                      </strong>
-                                    </span>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Kolom Kiri: Penjualan (Biru) */}
-                                    <div className="rounded-2xl border border-blue-200 bg-blue-50/20 p-4 space-y-3">
-                                      <div className="flex items-center justify-between border-b border-blue-100 pb-2">
-                                        <div className="flex items-center gap-2 text-xs font-black text-blue-950 uppercase tracking-wide">
-                                          <ShoppingCart className="w-4 h-4 text-blue-700" />
-                                          <span>Alokasi Penjualan</span>
-                                        </div>
-                                        <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-lg bg-blue-100 text-blue-900">
-                                          {totalPenjualan.toLocaleString('id-ID')} Liter
-                                        </span>
-                                      </div>
-
-                                      {penjualanList.length === 0 ? (
-                                        <p className="text-xs text-slate-400 italic py-2">
-                                          Tidak ada alokasi penjualan pada tanggal ini.
-                                        </p>
-                                      ) : (
-                                        <div className="space-y-1.5">
-                                          {penjualanList.map((item, pIdx) => (
-                                            <div
-                                              key={item.id || pIdx}
-                                              className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-blue-100 text-xs shadow-2xs hover:border-blue-300 transition-colors"
-                                            >
-                                              <div className="space-y-0.5">
-                                                <span className="font-bold text-slate-900 block">
-                                                  {item.instansiPenerima || 'Penjualan'}
-                                                </span>
-                                                <span className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
-                                                  Penjualan Langsung
-                                                </span>
-                                              </div>
-                                              <span className="font-mono font-black text-blue-950 text-sm bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-                                                {item.volumeLiters?.toLocaleString('id-ID')} Liter
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Kolom Kanan: Hibah (Orange) */}
-                                    <div className="rounded-2xl border border-amber-200 bg-amber-50/20 p-4 space-y-3">
-                                      <div className="flex items-center justify-between border-b border-amber-100 pb-2">
-                                        <div className="flex items-center gap-2 text-xs font-black text-amber-950 uppercase tracking-wide">
-                                          <Gift className="w-4 h-4 text-amber-700" />
-                                          <span>Hibah</span>
-                                        </div>
-                                        <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900">
-                                          {totalHibah.toLocaleString('id-ID')} Liter
-                                        </span>
-                                      </div>
-
-                                      {hibahList.length === 0 ? (
-                                        <p className="text-xs text-slate-400 italic py-2">
-                                          Tidak ada hibah pada tanggal ini.
-                                        </p>
-                                      ) : (
-                                        <div className="space-y-1.5">
-                                          {hibahList.map((item, hIdx) => (
-                                            <div
-                                              key={item.id || hIdx}
-                                              className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-amber-100 text-xs shadow-2xs hover:border-amber-300 transition-colors"
-                                            >
-                                              <div className="space-y-0.5">
-                                                <span className="font-bold text-slate-900 block">
-                                                  {item.instansiPenerima || 'Penerima Hibah'}
-                                                </span>
-                                                {item.nomorBast && (
-                                                  <span className="font-mono text-[10px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-semibold inline-flex items-center gap-1">
-                                                    <FileText className="w-3 h-3 text-amber-700" />
-                                                    BAST: {item.nomorBast}
-                                                  </span>
-                                                )}
-                                              </div>
-                                              <span className="font-mono font-black text-amber-950 text-sm bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                                                {item.volumeLiters?.toLocaleString('id-ID')} Liter
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
+                                <FileText className="w-3.5 h-3.5 text-white" />
+                              </span>
+                              <span>Rincian</span>
+                            </button>
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
-                  <tfoot className="bg-slate-100 text-slate-900 font-extrabold border-t-2 border-slate-300">
-                    <tr>
-                      <td colSpan={2} className="py-3.5 px-4 text-center text-xs uppercase tracking-wider">
+                  <tfoot className="bg-white text-slate-900 font-extrabold border-t-2 border-slate-200">
+                    <tr className="bg-white">
+                      <td colSpan={2} className="py-3.5 px-4 text-left text-xs uppercase tracking-wider bg-white font-black text-slate-900">
                         TOTAL REKAP HARIAN
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 whitespace-nowrap bg-white">
                         {currentTotalMasukFarm.toLocaleString('id-ID')} L
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-blue-900 bg-blue-100/60 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 whitespace-nowrap bg-white">
                         {currentVolumePenjualan.toLocaleString('id-ID')} L
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-amber-900 bg-amber-100/60 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 whitespace-nowrap bg-white">
                         {currentVolumeHibah.toLocaleString('id-ID')} L
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-950 bg-emerald-100/70 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 whitespace-nowrap bg-white">
                         {currentTotalDistribusi.toLocaleString('id-ID')} L
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-950 bg-emerald-200/60 whitespace-nowrap text-sm">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 whitespace-nowrap bg-white">
                         {currentSisaStokDistribusi.toLocaleString('id-ID')} L
                       </td>
-                      <td colSpan={2} className="py-3.5 px-4 text-center text-xs font-bold text-emerald-800 whitespace-nowrap">
-                        100% Sesuai
+                      <td className="py-3.5 px-4 text-center text-xs text-slate-400 whitespace-nowrap bg-white">
+                        -
                       </td>
                     </tr>
                   </tfoot>
@@ -1295,30 +1017,16 @@ export default function DistribusiSusuSegarPage() {
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 p-6 sm:p-7 space-y-5 my-8">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all active:scale-95"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Kembali</span>
-                </button>
-                <div>
-                  <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
-                    <ShoppingCart className="w-4 h-4 text-emerald-700" />
-                    <span>Input Distribusi Susu Segar</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Input penjualan Eduwisata, SPPG, Hibah, dan Lain-lain dalam satuan Liter
-                  </p>
-                </div>
-              </div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight uppercase">
+                Input Distribusi Susu Segar
+              </h3>
               <button
+                type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition-colors"
+                className="p-2 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 transition-all active:scale-95 cursor-pointer"
+                title="Tutup"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 stroke-[2.5]" />
               </button>
             </div>
 
@@ -1352,7 +1060,7 @@ export default function DistribusiSusuSegarPage() {
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      <span>🐮</span> Susu Sapi
+                      Susu Sapi
                     </button>
                     <button
                       type="button"
@@ -1363,7 +1071,7 @@ export default function DistribusiSusuSegarPage() {
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      <span>🐐</span> Susu Kambing
+                      Susu Kambing
                     </button>
                   </div>
                 </div>
@@ -1377,9 +1085,9 @@ export default function DistribusiSusuSegarPage() {
                 <button
                   type="button"
                   onClick={handleAddDistributionItem}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-black transition-all active:scale-95 shadow-2xs"
+                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-300 hover:border-amber-400 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-2xs cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5 text-amber-700" />
+                  <Plus className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-colors" />
                   <span>Tambah Tujuan</span>
                 </button>
               </div>
@@ -1418,8 +1126,8 @@ export default function DistribusiSusuSegarPage() {
                           onChange={(e) => handleUpdateDistributionItem(item.id, 'jenis', e.target.value)}
                           className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-600 cursor-pointer"
                         >
-                          <option value="PENJUALAN_LANGSUNG">🛒 Penjualan</option>
-                          <option value="HIBAH">🎁 Hibah</option>
+                          <option value="PENJUALAN_LANGSUNG">Penjualan</option>
+                          <option value="HIBAH">Hibah</option>
                         </select>
                       </div>
 
@@ -1439,7 +1147,7 @@ export default function DistribusiSusuSegarPage() {
                               <option value="Dinas / Tamu">Dinas / Tamu</option>
                               <option value="Yayasan Sosial / Panti">Yayasan Sosial / Panti</option>
                               <option value="Kegiatan Edukasi">Kegiatan Edukasi</option>
-                              <option value="LAINNYA">✏️ Lainnya (Ketik Manual)</option>
+                              <option value="LAINNYA">Lainnya (Ketik Manual)</option>
                             </>
                           ) : (
                             <>
@@ -1447,7 +1155,7 @@ export default function DistribusiSusuSegarPage() {
                               <option value="Kantin Eduwisata">Kantin Eduwisata</option>
                               <option value="Pembeli Umum">Pembeli Umum</option>
                               <option value="Mitra Peternak">Mitra Peternak</option>
-                              <option value="LAINNYA">✏️ Lainnya (Ketik Manual)</option>
+                              <option value="LAINNYA">Lainnya (Ketik Manual)</option>
                             </>
                           )}
                         </select>
@@ -1460,13 +1168,18 @@ export default function DistribusiSusuSegarPage() {
                         </label>
                         <div className="relative">
                           <input
-                            type="number"
-                            step="any"
-                            min="0.1"
+                            type="text"
+                            inputMode="decimal"
                             required
                             placeholder="0"
                             value={item.volume}
-                            onChange={(e) => handleUpdateDistributionItem(item.id, 'volume', e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9.,]/g, '');
+                              const parts = val.split(/[.,]/);
+                              if (parts.length <= 2) {
+                                handleUpdateDistributionItem(item.id, 'volume', val);
+                              }
+                            }}
                             className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-900 pr-12 focus:ring-2 focus:ring-emerald-600 font-mono"
                           />
                           <span className="absolute right-2.5 top-2 text-[11px] font-bold text-slate-400 pointer-events-none">
@@ -1493,14 +1206,12 @@ export default function DistribusiSusuSegarPage() {
                     {/* Helper text: BAST vs Penjualan */}
                     <div className="pt-0.5 flex items-center justify-between text-[11px]">
                       {item.jenis === 'HIBAH' ? (
-                        <span className="text-amber-800 font-semibold inline-flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-amber-600" />
-                          <span>Menerbitkan Surat BAST Resmi</span>
+                        <span className="text-amber-800 font-semibold">
+                          Menerbitkan Surat BAST Resmi
                         </span>
                       ) : (
-                        <span className="text-blue-700 font-semibold inline-flex items-center gap-1">
-                          <ShoppingCart className="w-3 h-3 text-blue-600" />
-                          <span>Penjualan Langsung (Tanpa Surat BAST)</span>
+                        <span className="text-blue-700 font-semibold">
+                          Penjualan Langsung (Tanpa Surat BAST)
                         </span>
                       )}
                     </div>
@@ -1563,6 +1274,177 @@ export default function DistribusiSusuSegarPage() {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* MODAL POP-UP: RINCIAN ALOKASI PENJUALAN & HIBAH (KOTAK DI TENGAH)          */}
+      {/* ========================================================================= */}
+      {selectedDayDetail && (() => {
+        const allocations = selectedDayDetail.bastAllocations || [];
+        const penjualanList = allocations.filter((a) => a.jenisPermintaan !== 'HIBAH');
+        const hibahList = allocations.filter((a) => a.jenisPermintaan === 'HIBAH');
+
+        const totalPenjualan = penjualanList.reduce((acc, a) => acc + (a.volumeLiters || 0), 0);
+        const totalHibah = hibahList.reduce((acc, a) => acc + (a.volumeLiters || 0), 0);
+        const totalDistribusi = selectedDayDetail.totalBastDeduction ?? (totalPenjualan + totalHibah);
+        const susuMasuk = selectedDayDetail.totalSusuSiapOlah || 0;
+        const sisaStok = selectedDayDetail.sisaBersihSiapOlah ?? (susuMasuk - totalDistribusi);
+
+        return (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => setSelectedDayDetail(null)}
+          >
+            <div 
+              className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-mono text-xs font-black px-3 py-1 rounded-xl bg-slate-900 text-white shadow-2xs">
+                    {new Date(selectedDayDetail.tanggal).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">
+                    Rincian Tujuan Alokasi Penjualan & Hibah
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-slate-600 mr-1">
+                    Total Distribusi:{' '}
+                    <strong className="text-emerald-600 text-sm font-black">
+                      {totalDistribusi.toLocaleString('id-ID')} Liter
+                    </strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDayDetail(null)}
+                    className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Ringkasan Ringkas */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+                <div>
+                  <span className="text-[11px] text-slate-500 font-semibold block">Susu Masuk</span>
+                  <span className="font-mono font-bold text-slate-900">{susuMasuk.toLocaleString('id-ID')} L</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 font-semibold block">Total Penjualan</span>
+                  <span className="font-mono font-bold text-slate-900">{totalPenjualan.toLocaleString('id-ID')} L</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 font-semibold block">Total Hibah</span>
+                  <span className="font-mono font-bold text-slate-900">{totalHibah.toLocaleString('id-ID')} L</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 font-semibold block">Sisa Stok</span>
+                  <span className="font-mono font-black text-slate-900">{sisaStok.toLocaleString('id-ID')} L</span>
+                </div>
+              </div>
+
+              {/* 2 Kolom Konten: Penjualan & Hibah */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                {/* Kolom Kiri: Penjualan */}
+                <div className="w-full flex flex-col h-full rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                  <div className="w-full flex items-center justify-between border-b border-slate-200 pb-2.5">
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                      Alokasi Penjualan
+                    </span>
+                    <span className="text-sm font-mono font-black text-emerald-600 text-right shrink-0">
+                      {totalPenjualan.toLocaleString('id-ID')} Liter
+                    </span>
+                  </div>
+
+                  {penjualanList.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center py-8 text-xs text-slate-400 italic text-center">
+                      Tidak ada alokasi penjualan pada tanggal ini.
+                    </div>
+                  ) : (
+                    <div className="w-full space-y-2.5 max-h-64 overflow-y-auto pr-1 flex-1">
+                      {penjualanList.map((item, pIdx) => (
+                        <div
+                          key={item.id || pIdx}
+                          className="w-full min-h-[64px] flex items-center justify-between gap-4 p-4 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs hover:border-slate-300 transition-colors"
+                        >
+                          <div className="space-y-1.5 min-w-0 flex-1">
+                            <span className="font-bold text-slate-900 block truncate text-xs sm:text-sm">
+                              {item.instansiPenerima || 'Penjualan'}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block">
+                              Penjualan Langsung
+                            </span>
+                          </div>
+                          <span className="font-mono font-black text-emerald-600 text-sm sm:text-base text-right shrink-0">
+                            {item.volumeLiters?.toLocaleString('id-ID')} Liter
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Kolom Kanan: Hibah */}
+                <div className="w-full flex flex-col h-full rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                  <div className="w-full flex items-center justify-between border-b border-slate-200 pb-2.5">
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                      Alokasi Hibah
+                    </span>
+                    <span className="text-sm font-mono font-black text-emerald-600 text-right shrink-0">
+                      {totalHibah.toLocaleString('id-ID')} Liter
+                    </span>
+                  </div>
+
+                  {hibahList.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center py-8 text-xs text-slate-400 italic text-center">
+                      Tidak ada alokasi hibah pada tanggal ini.
+                    </div>
+                  ) : (
+                    <div className="w-full space-y-2.5 max-h-64 overflow-y-auto pr-1 flex-1">
+                      {hibahList.map((item, hIdx) => (
+                        <div
+                          key={item.id || hIdx}
+                          className="w-full min-h-[64px] flex items-center justify-between gap-4 p-4 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs hover:border-slate-300 transition-colors"
+                        >
+                          <div className="space-y-1.5 min-w-0 flex-1">
+                            <span className="font-bold text-slate-900 block truncate text-xs sm:text-sm">
+                              {item.instansiPenerima || 'Penerima Hibah'}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 font-mono block truncate">
+                              {item.nomorBast ? `BAST: ${item.nomorBast}` : 'Penyaluran Hibah'}
+                            </span>
+                          </div>
+                          <span className="font-mono font-black text-emerald-600 text-sm sm:text-base text-right shrink-0">
+                            {item.volumeLiters?.toLocaleString('id-ID')} Liter
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDayDetail(null)}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

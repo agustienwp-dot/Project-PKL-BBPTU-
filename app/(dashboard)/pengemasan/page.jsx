@@ -431,17 +431,17 @@ export default function PengemasanPage() {
         {loading ? (
           <div className="p-8 text-center"><LoadingSpinner text="Memuat data pengemasan..." /></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4 whitespace-nowrap">Tanggal</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Produk</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Kategori</th>
-                  <th className="py-3.5 px-4 min-w-[160px]">Kemasan & Ukuran</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Jumlah</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
-                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Aksi</th>
+              <thead className="bg-[#1E3F20] text-white select-none">
+                <tr className="bg-[#1E3F20] text-white font-bold uppercase tracking-wider text-[11px]" style={{ backgroundColor: '#1E3F20' }}>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Tanggal</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Produk</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Kategori</th>
+                  <th className="py-3.5 px-4 min-w-[160px] text-white" style={{ backgroundColor: '#1E3F20' }}>Kemasan & Ukuran</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Jumlah</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Status</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap text-white" style={{ backgroundColor: '#1E3F20' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -501,27 +501,36 @@ export default function PengemasanPage() {
                         </td>
                         <td className="py-3.5 px-4">
                           {pStatus === 'DRAFT' && (
-                            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[10px] inline-flex items-center gap-1">
-                              📋 DRAFT
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                                <Clock className="w-2.5 h-2.5 text-slate-600 stroke-[2.5]" />
+                              </span>
+                              <span>DRAFT</span>
                             </span>
                           )}
                           {pStatus === 'MENUNGGU_PENERIMAAN' && (
-                            <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-amber-600" />
-                              Menunggu
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                                <Clock className="w-2.5 h-2.5 text-amber-700 stroke-[2.5]" />
+                              </span>
+                              <span>Menunggu</span>
                             </span>
                           )}
                           {pStatus === 'DITERIMA' && (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Diterima Pemasaran
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-emerald-700 flex items-center justify-center shrink-0">
+                                <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+                              </span>
+                              <span>Diterima Pemasaran</span>
                             </span>
                           )}
                           {pStatus === 'PERLU_KOREKSI' && (
                             <div className="space-y-1">
-                              <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-[10px] inline-flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                Perlu Koreksi
+                              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <span className="w-4 h-4 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                                  <AlertTriangle className="w-2.5 h-2.5 text-rose-700 stroke-[2.5]" />
+                                </span>
+                                <span>Perlu Koreksi</span>
                               </span>
                               {p.receptionNotes && (
                                 <div className="text-[10px] font-medium text-rose-900 bg-rose-50 border border-rose-200 p-2 rounded-xl max-w-[200px] leading-snug">

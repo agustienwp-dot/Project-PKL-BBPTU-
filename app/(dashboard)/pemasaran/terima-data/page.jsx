@@ -862,8 +862,8 @@ export default function TerimaProdukOlahanPage() {
     const list = [];
     if (activeTab) {
       const catLabels = {
-        susu_original: 'Susu Original',
-        susu_rasa: 'Susu Rasa',
+        susu_original: 'Susu Pasteurisasi Original',
+        susu_rasa: 'Susu Pasteurisasi Rasa',
         yogurt: 'Yogurt',
         keju: 'Keju'
       };
@@ -1016,23 +1016,13 @@ export default function TerimaProdukOlahanPage() {
               setSelectedVariantFilter('ALL');
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
               activeTab === 'susu_original'
                 ? 'bg-[#14532D] text-white border-[#14532D] shadow-md ring-2 ring-emerald-600/20'
                 : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
             }`}
           >
-            <Milk className={`w-4 h-4 ${activeTab === 'susu_original' ? 'text-emerald-300' : 'text-slate-500'}`} />
-            <span>Susu Original</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                activeTab === 'susu_original'
-                  ? 'bg-emerald-900/80 text-emerald-200'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {susuOriginalStats.totalSisa.toLocaleString('id-ID')}
-            </span>
+            Susu Pasteurisasi Original
           </button>
 
           {/* Tab 2: Susu Rasa */}
@@ -1044,23 +1034,13 @@ export default function TerimaProdukOlahanPage() {
               setSelectedVariantFilter('ALL');
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
               activeTab === 'susu_rasa'
                 ? 'bg-[#14532D] text-white border-[#14532D] shadow-md ring-2 ring-emerald-600/20'
                 : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
             }`}
           >
-            <Sparkles className={`w-4 h-4 ${activeTab === 'susu_rasa' ? 'text-emerald-300' : 'text-slate-500'}`} />
-            <span>Susu Rasa</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                activeTab === 'susu_rasa'
-                  ? 'bg-emerald-900/80 text-emerald-200'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {susuRasaStats.totalSisa.toLocaleString('id-ID')}
-            </span>
+            Susu Pasteurisasi Rasa
           </button>
 
           {/* Tab 3: Yogurt */}
@@ -1072,23 +1052,13 @@ export default function TerimaProdukOlahanPage() {
               setSelectedVariantFilter('ALL');
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
               activeTab === 'yogurt'
                 ? 'bg-[#14532D] text-white border-[#14532D] shadow-md ring-2 ring-emerald-600/20'
                 : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
             }`}
           >
-            <Layers className={`w-4 h-4 ${activeTab === 'yogurt' ? 'text-emerald-300' : 'text-slate-500'}`} />
-            <span>Yogurt</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                activeTab === 'yogurt'
-                  ? 'bg-emerald-900/80 text-emerald-200'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {yogurtStats.totalSisa.toLocaleString('id-ID')}
-            </span>
+            Yogurt
           </button>
 
           {/* Tab 4: Keju */}
@@ -1100,23 +1070,13 @@ export default function TerimaProdukOlahanPage() {
               setSelectedVariantFilter('ALL');
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${
               activeTab === 'keju'
                 ? 'bg-[#14532D] text-white border-[#14532D] shadow-md ring-2 ring-emerald-600/20'
                 : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
             }`}
           >
-            <Package className={`w-4 h-4 ${activeTab === 'keju' ? 'text-emerald-300' : 'text-slate-500'}`} />
-            <span>Keju</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                activeTab === 'keju'
-                  ? 'bg-emerald-900/80 text-emerald-200'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {kejuStats.totalSisa.toLocaleString('id-ID')}
-            </span>
+            Keju
           </button>
         </div>
       )}
@@ -1145,10 +1105,10 @@ export default function TerimaProdukOlahanPage() {
             <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-emerald-50/50 pointer-events-none" />
           </div>
 
-          {/* Card 2 — Biru (Sudah Terjual) */}
-          <div className="bg-white p-5 rounded-3xl border border-blue-200/80 shadow-xs flex items-center justify-between relative overflow-hidden group hover:border-blue-400 transition-all">
+          {/* Card 2 — Sudah Terjual */}
+          <div className="bg-white p-5 rounded-3xl border border-emerald-200/80 shadow-xs flex items-center justify-between relative overflow-hidden group hover:border-emerald-400 transition-all">
             <div className="space-y-1 z-10">
-              <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">
+              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
                 Sudah Terjual
               </span>
               <div className="flex items-baseline gap-2">
@@ -1164,10 +1124,10 @@ export default function TerimaProdukOlahanPage() {
             <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-emerald-50/50 pointer-events-none" />
           </div>
 
-          {/* Card 3 — Kuning (Total Produksi) */}
-          <div className="bg-white p-5 rounded-3xl border border-amber-200/80 shadow-xs flex items-center justify-between relative overflow-hidden group hover:border-amber-400 transition-all">
+          {/* Card 3 — Total Produksi */}
+          <div className="bg-white p-5 rounded-3xl border border-emerald-200/80 shadow-xs flex items-center justify-between relative overflow-hidden group hover:border-emerald-400 transition-all">
             <div className="space-y-1 z-10">
-              <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
                 Total Produksi
               </span>
               <div className="flex items-baseline gap-2">
@@ -1183,15 +1143,15 @@ export default function TerimaProdukOlahanPage() {
             <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-emerald-50/50 pointer-events-none" />
           </div>
 
-          {/* Card 4 — Orange (Bahan Baku Digunakan) */}
+          {/* Card 4 — Bahan Baku Digunakan */}
           <div
             onClick={() => setShowMilkRequestsModal(true)}
-            className="bg-white p-5 rounded-3xl border border-orange-200/80 shadow-xs flex items-center justify-between relative overflow-hidden group hover:border-orange-400 transition-all cursor-pointer"
+            className="bg-white p-5 rounded-3xl border border-emerald-200/80 shadow-xs flex items-center justify-between relative overflow-hidden group hover:border-emerald-400 transition-all cursor-pointer"
             title="Klik untuk melihat rincian permintaan susu dari unit pengolahan"
           >
             <div className="space-y-1 z-10">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-orange-800 uppercase tracking-wider block">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
                   Bahan Baku Digunakan
                 </span>
                 {totalLitersMenunggu > 0 && (
@@ -1218,535 +1178,71 @@ export default function TerimaProdukOlahanPage() {
         </div>
       )}
 
+
+
       {/* ========================================================================= */}
-      {/* 4. RINGKASAN ALUR PRODUKSI (HORIZONTAL VISUAL FLOW)                      */}
+      {/* 5. PROGRESS DISTRIBUSI PENJUALAN                                          */}
       {/* ========================================================================= */}
       {viewMode === 'STOK' && (
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
-                <Truck className="w-4 h-4 text-emerald-700" />
+              <div className="p-1.5 rounded-xl bg-blue-100 text-blue-800">
+                <TrendingUp className="w-4 h-4 text-blue-700" />
               </div>
               <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                Ringkasan Alur Produksi & Distribusi
+                Distribusi Penjualan ({getActiveTabTitle()})
               </h3>
             </div>
-            <span className="text-[11px] text-slate-400 font-semibold hidden sm:inline">
-              Aliran Bahan Baku Susu Mentah hingga Produk Tersedia
+            <span className="text-xs font-black text-blue-800 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+              Terjual {tabTotalQty > 0 ? ((tabSoldQty / tabTotalQty) * 100).toFixed(0) : 0}%
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-            {/* Step 1: Susu Segar */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-white text-orange-700 shadow-2xs border border-slate-100">
-                  <Milk className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">1. Bahan Baku</span>
-                  <span className="text-sm font-black text-slate-800">
-                    {totalLitersDiserahkan.toLocaleString('id-ID')} Liter
-                  </span>
-                  <span className="text-[10px] text-slate-500 block">Susu Segar</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 hidden lg:block" />
+          {/* Progress Bar Full Width */}
+          <div className="space-y-2">
+            <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200">
+              <div
+                className="bg-gradient-to-r from-[#14532D] via-[#16A34A] to-[#22C55E] h-full rounded-full transition-all duration-700 shadow-xs"
+                style={{
+                  width: `${tabTotalQty > 0 ? Math.min(100, (tabSoldQty / tabTotalQty) * 100) : 0}%`,
+                }}
+              />
             </div>
-
-            {/* Step 2: Produk Diproduksi */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-white text-amber-700 shadow-2xs border border-slate-100">
-                  <Factory className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">2. Pengolahan</span>
-                  <span className="text-sm font-black text-slate-800">
-                    {tabTotalQty.toLocaleString('id-ID')} Pcs
-                  </span>
-                  <span className="text-[10px] text-slate-500 block">Diproduksi</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 hidden lg:block" />
-            </div>
-
-            {/* Step 3: Produk Terjual */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-white text-blue-700 shadow-2xs border border-slate-100">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">3. Penyaluran</span>
-                  <span className="text-sm font-black text-blue-900">
-                    {tabSoldQty.toLocaleString('id-ID')} Pcs
-                  </span>
-                  <span className="text-[10px] text-slate-500 block">Produk Terjual</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 hidden lg:block" />
-            </div>
-
-            {/* Step 4: Produk Tersedia */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-white text-emerald-700 shadow-2xs border border-emerald-100">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">4. Stok Pemasaran</span>
-                  <span className="text-sm font-black text-emerald-950">
-                    {tabRemainingStock.toLocaleString('id-ID')} Pcs
-                  </span>
-                  <span className="text-[10px] text-emerald-700 block">Produk Tersedia</span>
-                </div>
-              </div>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+              <span>0 Pcs</span>
+              <span>Target: {tabTotalQty.toLocaleString('id-ID')} Pcs</span>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* 5. PROGRESS DISTRIBUSI PENJUALAN + 6. ALERT STOK MENIPIS (DUAL SECTION)   */}
-      {/* ========================================================================= */}
-      {viewMode === 'STOK' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Section 5: Progress Distribusi Penjualan (2 Kolom di Desktop) */}
-          <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-xl bg-blue-100 text-blue-800">
-                  <TrendingUp className="w-4 h-4 text-blue-700" />
-                </div>
-                <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                  Distribusi Penjualan ({getActiveTabTitle()})
-                </h3>
-              </div>
-              <span className="text-xs font-black text-blue-800 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                Terjual {tabTotalQty > 0 ? ((tabSoldQty / tabTotalQty) * 100).toFixed(0) : 0}%
+          {/* 3 Metrics: Produksi, Terjual, Sisa */}
+          <div className="grid grid-cols-3 gap-3 pt-1 border-t border-slate-100">
+            <div className="p-3 bg-slate-50 rounded-2xl text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Produksi</span>
+              <span className="text-base font-black text-slate-900 block mt-0.5">
+                {tabTotalQty.toLocaleString('id-ID')}
               </span>
+              <span className="text-[9px] text-slate-500 font-semibold">Pcs</span>
             </div>
-
-            {/* Progress Bar Full Width */}
-            <div className="space-y-2">
-              <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200">
-                <div
-                  className="bg-gradient-to-r from-[#14532D] via-[#16A34A] to-[#22C55E] h-full rounded-full transition-all duration-700 shadow-xs"
-                  style={{
-                    width: `${tabTotalQty > 0 ? Math.min(100, (tabSoldQty / tabTotalQty) * 100) : 0}%`,
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] text-slate-400 font-medium">
-                <span>0 Pcs</span>
-                <span>Target: {tabTotalQty.toLocaleString('id-ID')} Pcs</span>
-              </div>
+            <div className="p-3 bg-blue-50/60 rounded-2xl text-center">
+              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">Terjual</span>
+              <span className="text-base font-black text-blue-900 block mt-0.5">
+                {tabSoldQty.toLocaleString('id-ID')}
+              </span>
+              <span className="text-[9px] text-blue-600 font-semibold">Pcs</span>
             </div>
-
-            {/* 3 Metrics: Produksi, Terjual, Sisa */}
-            <div className="grid grid-cols-3 gap-3 pt-1 border-t border-slate-100">
-              <div className="p-3 bg-slate-50 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Produksi</span>
-                <span className="text-base font-black text-slate-900 block mt-0.5">
-                  {tabTotalQty.toLocaleString('id-ID')}
-                </span>
-                <span className="text-[9px] text-slate-500 font-semibold">Pcs</span>
-              </div>
-              <div className="p-3 bg-blue-50/60 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">Terjual</span>
-                <span className="text-base font-black text-blue-900 block mt-0.5">
-                  {tabSoldQty.toLocaleString('id-ID')}
-                </span>
-                <span className="text-[9px] text-blue-600 font-semibold">Pcs</span>
-              </div>
-              <div className="p-3 bg-emerald-50/60 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Sisa Stok</span>
-                <span className="text-base font-black text-emerald-950 block mt-0.5">
-                  {tabRemainingStock.toLocaleString('id-ID')}
-                </span>
-                <span className="text-[9px] text-emerald-700 font-semibold">Pcs Ready</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 6: Alert Stok Menipis (1 Kolom di Desktop) */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-3">
-            <div>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-xl ${lowStockItems.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                    {lowStockItems.length > 0 ? <AlertTriangle className="w-4 h-4 text-amber-700" /> : <CheckCircle2 className="w-4 h-4 text-emerald-700" />}
-                  </div>
-                  <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                    Perhatian Stok
-                  </h3>
-                </div>
-                {lowStockItems.length > 0 ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
-                    {lowStockItems.length} Menipis
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
-                    Aman
-                  </span>
-                )}
-              </div>
-
-              {/* Content List / Status Message */}
-              <div className="pt-3 space-y-2">
-                {lowStockItems.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    <p className="text-xs text-amber-900 font-medium">
-                      Batch berikut memiliki stok di bawah batas minimum (≤ 50 pcs) atau habis:
-                    </p>
-                    {lowStockItems.slice(0, 4).map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-2.5 bg-amber-50/60 border border-amber-200 rounded-xl flex items-center justify-between text-xs"
-                      >
-                        <div className="min-w-0 pr-2">
-                          <span className="font-extrabold text-slate-800 truncate block">
-                            {item.jenisProduk}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            {item.kemasan} • Batch: {new Date(item.tanggal || item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          </span>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-black whitespace-nowrap ${
-                            item.remainingStock === 0
-                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                              : 'bg-amber-200 text-amber-950 border border-amber-300'
-                          }`}
-                        >
-                          {item.remainingStock === 0 ? 'Habis' : `${item.remainingStock} Pcs`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl text-center space-y-2 my-auto">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                    <div>
-                      <h4 className="text-xs font-black text-emerald-950">Semua Stok Aman</h4>
-                      <p className="text-[11px] text-emerald-700 mt-0.5">
-                        Seluruh batch produk olahan memiliki ketersediaan yang mencukupi untuk distribusi.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {lowStockItems.length > 0 && (
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400 font-medium">Prioritaskan restock / produksi</span>
-                <button
-                  onClick={() => setShowMilkRequestsModal(true)}
-                  className="font-black text-amber-800 hover:text-amber-950 flex items-center gap-1"
-                >
-                  <span>Minta Bahan Baku</span>
-                  <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 7. GRAFIK PENJUALAN UHT + 8. DISTRIBUSI PENJUALAN CHANNEL                */}
-      {/* ========================================================================= */}
-      {viewMode === 'STOK' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Section 7: Grafik Penjualan (Line Chart Modern - 2 Kolom) */}
-          <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
-                    <BarChart3 className="w-4 h-4 text-emerald-700" />
-                  </div>
-                  <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                    Grafik Penjualan UHT
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Tren volume penjualan harian produk olahan UHT
-                </p>
-              </div>
-
-              {/* Timeframe Filter Buttons */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => setChartTimeframe('7')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    chartTimeframe === '7'
-                      ? 'bg-[#14532D] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  7 Hari
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartTimeframe('30')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    chartTimeframe === '30'
-                      ? 'bg-[#14532D] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  30 Hari
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartTimeframe('ALL')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    chartTimeframe === 'ALL'
-                      ? 'bg-[#14532D] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Semua
-                </button>
-              </div>
-            </div>
-
-            {/* Interactive SVG Line / Area Chart */}
-            <div className="pt-2">
-              {chartData.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  Belum ada rekaman riwayat penjualan olahan untuk divisualisasikan.
-                </div>
-              ) : (
-                (() => {
-                  const maxVal = Math.max(...chartData.map((d) => d.value), 10);
-                  const width = 600;
-                  const height = 180;
-                  const padding = 25;
-                  const chartW = width - padding * 2;
-                  const chartH = height - padding * 2;
-
-                  const points = chartData.map((d, i) => {
-                    const x = padding + (chartData.length === 1 ? chartW / 2 : (i / (chartData.length - 1)) * chartW);
-                    const y = height - padding - (d.value / maxVal) * chartH;
-                    return { ...d, x, y };
-                  });
-
-                  const linePath = points.reduce((acc, p, i) => {
-                    return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
-                  }, '');
-
-                  const areaPath = points.length > 0
-                    ? `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
-                    : '';
-
-                  return (
-                    <div className="space-y-3">
-                      <div className="relative w-full h-48">
-                        <svg
-                          viewBox={`0 0 ${width} ${height}`}
-                          className="w-full h-full overflow-visible"
-                          preserveAspectRatio="none"
-                        >
-                          <defs>
-                            <linearGradient id="chartGreenBlue" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#22C55E" stopOpacity="0.35" />
-                              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
-                            </linearGradient>
-                          </defs>
-
-                          {/* Horizontal Grid Guidelines */}
-                          <line
-                            x1={padding}
-                            y1={padding}
-                            x2={width - padding}
-                            y2={padding}
-                            stroke="#E2E8F0"
-                            strokeDasharray="4 4"
-                          />
-                          <line
-                            x1={padding}
-                            y1={padding + chartH / 2}
-                            x2={width - padding}
-                            y2={padding + chartH / 2}
-                            stroke="#E2E8F0"
-                            strokeDasharray="4 4"
-                          />
-                          <line
-                            x1={padding}
-                            y1={height - padding}
-                            x2={width - padding}
-                            y2={height - padding}
-                            stroke="#CBD5E1"
-                          />
-
-                          {/* Gradient Area Fill */}
-                          {areaPath && (
-                            <path d={areaPath} fill="url(#chartGreenBlue)" />
-                          )}
-
-                          {/* Smooth Line */}
-                          {linePath && (
-                            <path
-                              d={linePath}
-                              fill="none"
-                              stroke="#16A34A"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          )}
-
-                          {/* Interactive Points */}
-                          {points.map((p, idx) => (
-                            <g
-                              key={p.date || idx}
-                              onMouseEnter={() => setHoveredPoint(p)}
-                              onMouseLeave={() => setHoveredPoint(null)}
-                              className="cursor-pointer"
-                            >
-                              <circle
-                                cx={p.x}
-                                cy={p.y}
-                                r={hoveredPoint?.date === p.date ? 6 : 4}
-                                fill={hoveredPoint?.date === p.date ? '#14532D' : '#22C55E'}
-                                stroke="#FFFFFF"
-                                strokeWidth="2"
-                                className="transition-all duration-150"
-                              />
-                            </g>
-                          ))}
-                        </svg>
-
-                        {/* Hover Tooltip Overlay */}
-                        {hoveredPoint && (
-                          <div
-                            className="absolute bg-slate-900 text-white text-[10px] px-3 py-1.5 rounded-xl shadow-xl border border-slate-700 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2 z-20 whitespace-nowrap"
-                            style={{
-                              left: `${(hoveredPoint.x / width) * 100}%`,
-                              top: `${(hoveredPoint.y / height) * 100}%`,
-                            }}
-                          >
-                            <span className="font-bold text-slate-300 block">{hoveredPoint.label}</span>
-                            <span className="text-emerald-400 font-black text-xs">{hoveredPoint.value.toLocaleString('id-ID')} Pcs Terjual</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* X-Axis Date Labels */}
-                      <div className="flex justify-between text-[10px] text-slate-400 font-semibold px-2">
-                        {chartData.length > 0 && <span>{chartData[0].label}</span>}
-                        {chartData.length > 2 && (
-                          <span>{chartData[Math.floor(chartData.length / 2)].label}</span>
-                        )}
-                        {chartData.length > 1 && (
-                          <span>{chartData[chartData.length - 1].label}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()
-              )}
-            </div>
-          </div>
-
-          {/* Section 8: Tiga Mini Cards Saluran Distribusi Penjualan */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-3">
-            <div>
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <div className="p-1.5 rounded-xl bg-blue-100 text-blue-800">
-                  <Store className="w-4 h-4 text-blue-700" />
-                </div>
-                <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                  Saluran Distribusi
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Proporsi penyaluran produk berdasarkan pembeli & channel
-              </p>
-
-              {/* 3 Mini Cards */}
-              <div className="space-y-2.5 pt-3">
-                {/* Mini Card 1: SPPG */}
-                <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-2xs">
-                      <Building2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black text-emerald-950 block">SPPG</span>
-                      <span className="text-[10px] text-emerald-700 font-medium">Mitra Langganan</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-emerald-950 block font-mono">
-                      {channelStats.sppg.toLocaleString('id-ID')} Pcs
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700">
-                      {channelStats.sppgPct}% dari total
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mini Card 2: Eduwisata */}
-                <div className="p-3 bg-blue-50/60 border border-blue-200/80 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-600 text-white rounded-xl shadow-2xs">
-                      <Compass className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black text-blue-950 block">Eduwisata</span>
-                      <span className="text-[10px] text-blue-700 font-medium">Wisatawan & Edukasi</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-blue-950 block font-mono">
-                      {channelStats.eduwisata.toLocaleString('id-ID')} Pcs
-                    </span>
-                    <span className="text-[10px] font-bold text-blue-700">
-                      {channelStats.eduwisataPct}% dari total
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mini Card 3: Penjualan Umum */}
-                <div className="p-3 bg-purple-50/60 border border-purple-200/80 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-600 text-white rounded-xl shadow-2xs">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black text-purple-950 block">Penjualan Umum</span>
-                      <span className="text-[10px] text-purple-700 font-medium">Konsumen & Mitra Lain</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-purple-950 block font-mono">
-                      {channelStats.umum.toLocaleString('id-ID')} Pcs
-                    </span>
-                    <span className="text-[10px] font-bold text-purple-700">
-                      {channelStats.umumPct}% dari total
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-              <span>Total Penjualan:</span>
-              <strong className="text-slate-900 font-black font-mono">
-                {channelStats.total.toLocaleString('id-ID')} Pcs
-              </strong>
+            <div className="p-3 bg-emerald-50/60 rounded-2xl text-center">
+              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Sisa Stok</span>
+              <span className="text-base font-black text-emerald-950 block mt-0.5">
+                {tabRemainingStock.toLocaleString('id-ID')}
+              </span>
+              <span className="text-[9px] text-emerald-700 font-semibold">Pcs Ready</span>
             </div>
           </div>
         </div>
       )}
+
+
 
       {/* ========================================================================= */}
       {/* 9. FILTER TOOLBAR + CHIPS FILTER AKTIF                                   */}
@@ -1849,22 +1345,6 @@ export default function TerimaProdukOlahanPage() {
                   <option value="EMPTY">Habis (0)</option>
                 </select>
               </div>
-
-              {/* Dropdown Urutkan */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-white transition-all">
-                <span className="text-slate-400 text-[11px] font-semibold">Urutkan:</span>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => {
-                    setSortOrder(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1"
-                >
-                  <option value="asc">Tanggal 1 - 31 (Awal ke Akhir)</option>
-                  <option value="desc">Terbaru ke Terlama</option>
-                </select>
-              </div>
             </div>
           </div>
 
@@ -1935,22 +1415,9 @@ export default function TerimaProdukOlahanPage() {
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden space-y-4">
           {/* Header Info Tabel */}
           <div className="p-5 sm:p-6 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-xs">
-                <PackageCheck className="w-5 h-5 text-emerald-300" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <span>Tabel Batch Produk ({getActiveTabTitle()})</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
-                    {unifiedStockRows.length} Batch
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Data penerimaan batch kemasan, penyaluran penjualan, dan akumulasi sisa stok harian
-                </p>
-              </div>
-            </div>
+            <h3 className="text-base font-black text-slate-900">
+              Daftar Susu Olahan
+            </h3>
 
             {/* Page Size Selector */}
             <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold self-start sm:self-auto">
@@ -1982,24 +1449,23 @@ export default function TerimaProdukOlahanPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[11px] border-y border-slate-200 sticky top-0 z-10">
+                <thead className="bg-[#1E3F20] text-white font-extrabold uppercase text-[11px] border-b border-[#2d5e31] sticky top-0 z-10 select-none shadow-2xs" style={{ backgroundColor: '#1E3F20' }}>
                   <tr>
-                    <th className="py-3 px-3 text-center w-[1%] whitespace-nowrap">No</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Tanggal / Batch</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Produk & Varian</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Kemasan</th>
-                    <th className="py-3 px-4 text-right whitespace-nowrap bg-amber-50/50 text-amber-900">Stok Awal</th>
-                    <th className="py-3 px-4 text-right whitespace-nowrap bg-blue-50/50 text-blue-900">Masuk</th>
-                    <th className="py-3 px-4 text-right whitespace-nowrap bg-slate-100 text-slate-900">Total</th>
-                    <th className="py-3 px-4 text-right whitespace-nowrap bg-rose-50/50 text-rose-900">Terjual</th>
-                    <th className="py-3 px-4 text-right whitespace-nowrap bg-emerald-50 text-emerald-950 font-black">Stok Akhir</th>
-                    <th className="py-3 px-3 text-center w-[1%] whitespace-nowrap">Status</th>
+                    <th className="py-3.5 px-3 text-center w-[1%] whitespace-nowrap text-white font-bold">No</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Tanggal / Batch</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Produk & Varian</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Kemasan</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap text-white font-bold">Stok Awal</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap text-white font-bold">Masuk</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap text-white font-bold">Total</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap text-white font-bold">Terjual</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap font-black text-white">Stok Akhir</th>
+                    <th className="py-3.5 px-3 text-center w-[1%] whitespace-nowrap text-white font-bold">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   {paginatedStockRows.map((pkg, idx) => {
                     const rowNumber = (currentPage - 1) * pageSize + idx + 1;
-                    const badgeTheme = getFlavorBadgeClass(pkg.jenisProduk);
                     const unitLabel = pkg.kemasan?.toLowerCase().includes('cup')
                       ? 'Cup'
                       : pkg.kemasan?.toLowerCase().includes('bantal')
@@ -2032,7 +1498,7 @@ export default function TerimaProdukOlahanPage() {
 
                         {/* Produk / Varian */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2.5 py-1 rounded-xl text-xs font-black border ${badgeTheme}`}>
+                          <span className="inline-flex px-2.5 py-1 rounded-xl text-xs font-bold text-slate-800 bg-slate-100/70 border border-slate-200/80">
                             {pkg.jenisProduk}
                           </span>
                         </td>
@@ -2043,11 +1509,11 @@ export default function TerimaProdukOlahanPage() {
                         </td>
 
                         {/* Stok Awal */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap bg-amber-50/20">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           {pkg.sisaKemarin > 0 ? (
-                            <span className="font-bold text-amber-900 font-mono">
+                            <span className="font-semibold text-slate-700 font-mono">
                               {pkg.sisaKemarin.toLocaleString('id-ID')}{' '}
-                              <span className="text-[10px] font-normal text-amber-700">{unitLabel}</span>
+                              <span className="text-[10px] font-normal text-slate-400">{unitLabel}</span>
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -2055,25 +1521,25 @@ export default function TerimaProdukOlahanPage() {
                         </td>
 
                         {/* Masuk */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap bg-blue-50/20">
-                          <span className="font-bold text-blue-900 font-mono">
-                            +{pkg.masukBaru.toLocaleString('id-ID')}{' '}
-                            <span className="text-[10px] font-normal text-blue-600">{unitLabel}</span>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <span className="font-semibold text-slate-800 font-mono">
+                            {pkg.masukBaru.toLocaleString('id-ID')}{' '}
+                            <span className="text-[10px] font-normal text-slate-400">{unitLabel}</span>
                           </span>
                         </td>
 
                         {/* Total */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap bg-slate-50/60 font-black text-slate-900 font-mono">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap font-bold text-slate-900 font-mono">
                           {pkg.totalStok.toLocaleString('id-ID')}{' '}
-                          <span className="text-[10px] font-normal text-slate-500">{unitLabel}</span>
+                          <span className="text-[10px] font-normal text-slate-400">{unitLabel}</span>
                         </td>
 
                         {/* Terjual */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap bg-rose-50/20">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           {pkg.terjual > 0 ? (
-                            <span className="font-bold text-rose-700 font-mono">
-                              -{pkg.terjual.toLocaleString('id-ID')}{' '}
-                              <span className="text-[10px] font-normal text-rose-500">{unitLabel}</span>
+                            <span className="font-semibold text-slate-700 font-mono">
+                              {pkg.terjual.toLocaleString('id-ID')}{' '}
+                              <span className="text-[10px] font-normal text-slate-400">{unitLabel}</span>
                             </span>
                           ) : (
                             <span className="text-slate-300">0</span>
@@ -2081,29 +1547,34 @@ export default function TerimaProdukOlahanPage() {
                         </td>
 
                         {/* Stok Akhir */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap bg-emerald-50/40">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-xl text-xs font-black font-mono ${
-                            pkg.sisaHariIni > 0
-                              ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                              : 'bg-rose-100 text-rose-800 border border-rose-200'
-                          }`}>
-                            {pkg.sisaHariIni.toLocaleString('id-ID')} {unitLabel}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <span className="font-bold text-slate-900 font-mono">
+                            {pkg.sisaHariIni.toLocaleString('id-ID')}{' '}
+                            <span className="text-[10px] font-normal text-slate-500">{unitLabel}</span>
                           </span>
                         </td>
 
                         {/* Status Badge */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap w-[1%]">
                           {isEmptyStock ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                              <span className="w-4 h-4 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                                <X className="w-2.5 h-2.5 text-rose-700 stroke-[3]" />
+                              </span>
                               <span>Habis</span>
                             </span>
                           ) : isLowStock ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                              <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                                <AlertTriangle className="w-2.5 h-2.5 text-amber-700 stroke-[2.5]" />
+                              </span>
                               <span>Menipis</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                              <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                <Check className="w-2.5 h-2.5 text-emerald-700 stroke-[3]" />
+                              </span>
                               <span>Tersedia</span>
                             </span>
                           )}
@@ -2114,24 +1585,24 @@ export default function TerimaProdukOlahanPage() {
                 </tbody>
 
                 {/* Table Footer with Summary */}
-                <tfoot className="bg-slate-100 text-slate-900 font-extrabold border-t-2 border-slate-300">
+                <tfoot className="bg-slate-50 text-slate-800 font-extrabold border-t-2 border-slate-200">
                   <tr>
-                    <td colSpan={4} className="py-3.5 px-4 text-center text-xs uppercase tracking-wider">
-                      TOTAL KESELURUHAN ({unifiedStockRows.length} BATCH)
+                    <td colSpan={4} className="py-3.5 px-4 text-center text-xs uppercase tracking-wider text-slate-600">
+                      TOTAL KESELURUHAN
                     </td>
-                    <td className="py-3.5 px-4 text-right text-xs bg-amber-100/60 text-amber-950 font-mono">
+                    <td className="py-3.5 px-4 text-right text-xs font-mono text-slate-500">
                       -
                     </td>
-                    <td className="py-3.5 px-4 text-right text-xs bg-blue-100/60 text-blue-950 font-mono">
-                      +{unifiedTotalMasuk.toLocaleString('id-ID')} Pcs
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-xs bg-slate-200 text-slate-900 font-mono">
+                    <td className="py-3.5 px-4 text-right text-xs font-mono text-slate-800">
                       {unifiedTotalMasuk.toLocaleString('id-ID')} Pcs
                     </td>
-                    <td className="py-3.5 px-4 text-right text-xs bg-rose-100/60 text-rose-950 font-mono">
-                      -{unifiedTotalTerjual.toLocaleString('id-ID')} Pcs
+                    <td className="py-3.5 px-4 text-right text-xs font-mono text-slate-900 font-black">
+                      {unifiedTotalMasuk.toLocaleString('id-ID')} Pcs
                     </td>
-                    <td className="py-3.5 px-4 text-right text-xs bg-emerald-200/80 text-emerald-950 font-black font-mono">
+                    <td className="py-3.5 px-4 text-right text-xs font-mono text-slate-700">
+                      {unifiedTotalTerjual.toLocaleString('id-ID')} Pcs
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-xs font-mono text-slate-900 font-black">
                       {unifiedTotalSisaAkhir.toLocaleString('id-ID')} Pcs
                     </td>
                     <td className="py-3.5 px-3 text-center text-[11px] text-slate-500 font-semibold">
@@ -2176,28 +1647,216 @@ export default function TerimaProdukOlahanPage() {
       )}
 
       {/* ========================================================================= */}
+      {/* GRAFIK PENJUALAN UHT (DI BAGIAN PALING BAWAH)                             */}
+      {/* ========================================================================= */}
+      {viewMode === 'STOK' && (
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
+                  <BarChart3 className="w-4 h-4 text-emerald-700" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                  Grafik Penjualan UHT
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Tren volume penjualan harian produk olahan UHT
+              </p>
+            </div>
+
+            {/* Timeframe Filter Buttons */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setChartTimeframe('7')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  chartTimeframe === '7'
+                    ? 'bg-[#14532D] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                7 Hari
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartTimeframe('30')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  chartTimeframe === '30'
+                    ? 'bg-[#14532D] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                30 Hari
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartTimeframe('ALL')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  chartTimeframe === 'ALL'
+                    ? 'bg-[#14532D] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Semua
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive SVG Line / Area Chart */}
+          <div className="pt-2">
+            {chartData.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                Belum ada rekaman riwayat penjualan olahan untuk divisualisasikan.
+              </div>
+            ) : (
+              (() => {
+                const maxVal = Math.max(...chartData.map((d) => d.value), 10);
+                const width = 600;
+                const height = 180;
+                const padding = 25;
+                const chartW = width - padding * 2;
+                const chartH = height - padding * 2;
+
+                const points = chartData.map((d, i) => {
+                  const x = padding + (chartData.length === 1 ? chartW / 2 : (i / (chartData.length - 1)) * chartW);
+                  const y = height - padding - (d.value / maxVal) * chartH;
+                  return { ...d, x, y };
+                });
+
+                const linePath = points.reduce((acc, p, i) => {
+                  return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
+                }, '');
+
+                const areaPath = points.length > 0
+                  ? `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
+                  : '';
+
+                return (
+                  <div className="space-y-3">
+                    <div className="relative w-full h-48">
+                      <svg
+                        viewBox={`0 0 ${width} ${height}`}
+                        className="w-full h-full overflow-visible"
+                        preserveAspectRatio="none"
+                      >
+                        <defs>
+                          <linearGradient id="chartGreenBlue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#22C55E" stopOpacity="0.35" />
+                            <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* Horizontal Grid Guidelines */}
+                        <line
+                          x1={padding}
+                          y1={padding}
+                          x2={width - padding}
+                          y2={padding}
+                          stroke="#E2E8F0"
+                          strokeDasharray="4 4"
+                        />
+                        <line
+                          x1={padding}
+                          y1={padding + chartH / 2}
+                          x2={width - padding}
+                          y2={padding + chartH / 2}
+                          stroke="#E2E8F0"
+                          strokeDasharray="4 4"
+                        />
+                        <line
+                          x1={padding}
+                          y1={height - padding}
+                          x2={width - padding}
+                          y2={height - padding}
+                          stroke="#CBD5E1"
+                        />
+
+                        {/* Gradient Area Fill */}
+                        {areaPath && (
+                          <path d={areaPath} fill="url(#chartGreenBlue)" />
+                        )}
+
+                        {/* Smooth Line */}
+                        {linePath && (
+                          <path
+                            d={linePath}
+                            fill="none"
+                            stroke="#16A34A"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        )}
+
+                        {/* Interactive Points */}
+                        {points.map((p, idx) => (
+                          <g
+                            key={p.date || idx}
+                            onMouseEnter={() => setHoveredPoint(p)}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                            className="cursor-pointer"
+                          >
+                            <circle
+                              cx={p.x}
+                              cy={p.y}
+                              r={hoveredPoint?.date === p.date ? 6 : 4}
+                              fill={hoveredPoint?.date === p.date ? '#14532D' : '#22C55E'}
+                              stroke="#FFFFFF"
+                              strokeWidth="2"
+                              className="transition-all duration-150"
+                            />
+                          </g>
+                        ))}
+                      </svg>
+
+                      {/* Hover Tooltip Overlay */}
+                      {hoveredPoint && (
+                        <div
+                          className="absolute bg-slate-900 text-white text-[10px] px-3 py-1.5 rounded-xl shadow-xl border border-slate-700 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2 z-20 whitespace-nowrap"
+                          style={{
+                            left: `${(hoveredPoint.x / width) * 100}%`,
+                            top: `${(hoveredPoint.y / height) * 100}%`,
+                          }}
+                        >
+                          <span className="font-bold text-slate-300 block">{hoveredPoint.label}</span>
+                          <span className="text-emerald-400 font-black text-xs">{hoveredPoint.value.toLocaleString('id-ID')} Pcs Terjual</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* X-Axis Date Labels */}
+                    <div className="flex justify-between text-[10px] text-slate-400 font-semibold px-2">
+                      {chartData.length > 0 && <span>{chartData[0].label}</span>}
+                      {chartData.length > 2 && (
+                        <span>{chartData[Math.floor(chartData.length / 2)].label}</span>
+                      )}
+                      {chartData.length > 1 && (
+                        <span>{chartData[chartData.length - 1].label}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODE 2: RIWAYAT PENJUALAN PRODUK OLAHAN                                   */}
       {/* ========================================================================= */}
       {viewMode === 'PENJUALAN' && (
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden p-5 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-600 text-white rounded-2xl shadow-xs">
-                <ShoppingCart className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-black text-slate-900">
-                  Daftar Transaksi Penjualan Olahan ({sortedSalesHistory.length} Transaksi)
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Riwayat transaksi penjualan produk olahan ke pembeli, mitra, maupun umum.
-                </p>
-              </div>
-            </div>
+            <h2 className="text-base font-black text-slate-900">
+              Daftar Transaksi Penjualan Olahan
+            </h2>
 
             <button
               onClick={() => handleOpenSaleModal()}
-              className="inline-flex items-center gap-2 bg-[#14532D] hover:bg-[#0f3e22] text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center gap-2 bg-[#14532D] hover:bg-[#0f3e22] text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4 text-emerald-300" />
               <span>+ Input Penjualan</span>
@@ -2214,17 +1873,17 @@ export default function TerimaProdukOlahanPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[11px] border-y border-slate-200">
+                <thead className="bg-[#1E3F20] text-white font-extrabold uppercase text-[11px] border-b border-[#2d5e31] select-none" style={{ backgroundColor: '#1E3F20' }}>
                   <tr>
-                    <th className="py-3 px-3 text-center w-[1%] whitespace-nowrap">No</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Tanggal</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Produk</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Kemasan</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Ukuran</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Tujuan</th>
-                    <th className="py-3 px-4 text-right font-black text-blue-900 bg-blue-50/60 whitespace-nowrap">Jumlah</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Catatan</th>
-                    <th className="py-3 px-4 whitespace-nowrap">Petugas</th>
+                    <th className="py-3 px-3 text-center w-[1%] whitespace-nowrap text-white font-bold">No</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Tanggal</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Produk</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Kemasan</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Ukuran</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Tujuan</th>
+                    <th className="py-3 px-4 text-right font-black whitespace-nowrap text-white">Jumlah</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Catatan</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-white font-bold">Petugas</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -2250,7 +1909,6 @@ export default function TerimaProdukOlahanPage() {
                     }
 
                     const tujuan = s.pembeli || 'SPPG';
-                    const badgeTheme = getFlavorBadgeClass(productName);
                     const qty = s.jumlah || s.quantity || 0;
 
                     return (
@@ -2263,26 +1921,16 @@ export default function TerimaProdukOlahanPage() {
                             year: 'numeric',
                           })}
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-xl text-xs font-black border ${badgeTheme}`}>
-                            {productName}
-                          </span>
+                        <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
+                          {productName}
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">{kemasanType}</td>
                         <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">{ukuran}</td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-black ${
-                            tujuan.toLowerCase().includes('sppg')
-                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                              : tujuan.toLowerCase().includes('eduwisata')
-                              ? 'bg-blue-100 text-blue-900 border border-blue-300'
-                              : 'bg-purple-100 text-purple-900 border border-purple-300'
-                          }`}>
-                            {tujuan}
-                          </span>
+                        <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                          {tujuan}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-black text-blue-900 bg-blue-50/30 whitespace-nowrap font-mono">
-                          {qty.toLocaleString('id-ID')} <span className="text-[10px] font-normal text-blue-700">{kemasanType}</span>
+                        <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap font-mono">
+                          {qty.toLocaleString('id-ID')} <span className="text-[10px] font-normal text-slate-500">{kemasanType}</span>
                         </td>
                         <td className="py-3.5 px-4 text-slate-500 text-xs">
                           {s.catatan || s.notes || '-'}
@@ -2296,10 +1944,10 @@ export default function TerimaProdukOlahanPage() {
                 </tbody>
                 <tfoot className="bg-slate-100 text-slate-900 font-extrabold border-t-2 border-slate-300">
                   <tr>
-                    <td colSpan={6} className="py-3.5 px-4 text-center text-xs uppercase tracking-wider">
-                      TOTAL ({sortedSalesHistory.length} TRANSAKSI PENJUALAN)
+                    <td colSpan={6} className="py-3.5 px-4 text-center text-xs font-black uppercase tracking-wider">
+                      TOTAL KESELURUHAN
                     </td>
-                    <td className="py-3.5 px-4 text-right font-black text-blue-950 text-xs bg-blue-100/60 font-mono">
+                    <td className="py-3.5 px-4 text-right font-black text-slate-950 text-xs font-mono">
                       {totalSalesQty.toLocaleString('id-ID')} Pcs
                     </td>
                     <td colSpan={2} className="py-3.5 px-4 text-xs text-slate-500 font-semibold text-left">
@@ -2350,26 +1998,17 @@ export default function TerimaProdukOlahanPage() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl border border-slate-100 space-y-5 my-8 animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-100 text-emerald-800 rounded-2xl">
-                  <ShoppingCart className="w-5 h-5 text-emerald-700" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                    INPUT PENJUALAN PRODUK OLAHAN
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Input penjualan Eduwisata, SPPG, dan Penjualan Umum
-                  </p>
-                </div>
-              </div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                INPUT PENJUALAN PRODUK OLAHAN
+              </h3>
 
               <button
                 type="button"
                 onClick={() => setShowSaleModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition-colors"
+                className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-slate-900 transition-all cursor-pointer"
+                title="Tutup"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 stroke-[2.5]" />
               </button>
             </div>
 
@@ -2479,7 +2118,7 @@ export default function TerimaProdukOlahanPage() {
                           <option value="Susu Pasteurisasi Rasa Stroberi">Susu Pasteurisasi Rasa Stroberi</option>
                           <option value="Susu Pasteurisasi Original">Susu Pasteurisasi Original</option>
                           <option value="Yogurt Strawberry">Yogurt Strawberry</option>
-                          <option value="Keju Mozzarella">Keju Mozzarella</option>
+                          <option value="Keju">Keju</option>
                           <option value="Susu Pasteurisasi">Susu Pasteurisasi (Umum)</option>
                         </select>
                       </div>
@@ -2590,76 +2229,47 @@ export default function TerimaProdukOlahanPage() {
       {/* ========================================================================= */}
       {showMilkRequestsModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 bg-[#14532D] text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white">
-                  <Milk className="w-5 h-5 text-emerald-300" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black tracking-tight">
-                    Permintaan Susu Segar Masuk dari Unit Pengolahan (UHT)
-                  </h3>
-                  <p className="text-xs text-emerald-100">
-                    Daftar pengajuan kebutuhan bahan baku susu mentah dari Admin Pengolahan untuk disetujui & diserahterimakan oleh Seksi Pemasaran
-                  </p>
-                </div>
-              </div>
+            <div className="px-6 py-5 bg-[#14532D] text-white flex items-center justify-between">
+              <h3 className="text-base font-black tracking-tight">
+                Permintaan Susu Segar Masuk dari Unit Pengolahan (UHT)
+              </h3>
 
               <button
                 onClick={() => setShowMilkRequestsModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-black/30 transition-all cursor-pointer"
+                title="Tutup"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5 stroke-[2.5]" />
               </button>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setMilkReqTab('ALL')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    milkReqTab === 'ALL'
-                      ? 'bg-[#14532D] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Semua ({milkRequests.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMilkReqTab('PENDING')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
-                    milkReqTab === 'PENDING'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'text-amber-800 hover:bg-amber-50'
-                  }`}
-                >
-                  <span>Menunggu Persetujuan ({pendingRequestsCount})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMilkReqTab('CONFIRMED')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    milkReqTab === 'CONFIRMED'
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Disetujui ({milkRequests.filter(r => r.status === 'DITERIMA').length})
-                </button>
+            {/* Filter Bar */}
+            <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:border-slate-400 transition-all">
+                  <span className="text-slate-400 text-xs font-medium">Status:</span>
+                  <select
+                    value={milkReqTab}
+                    onChange={(e) => setMilkReqTab(e.target.value)}
+                    className="bg-transparent focus:outline-none cursor-pointer font-bold text-slate-800 pr-1 text-xs"
+                  >
+                    <option value="ALL">Semua ({milkRequests.length})</option>
+                    <option value="PENDING">Menunggu Persetujuan ({pendingRequestsCount})</option>
+                    <option value="CONFIRMED">Disetujui ({milkRequests.filter(r => r.status === 'DITERIMA').length})</option>
+                  </select>
+                </div>
               </div>
 
-              <span className="text-[11px] text-slate-500 font-bold hidden sm:inline">
-                Total Diserahkan: <span className="text-emerald-950 font-mono font-black">{totalLitersDiserahkan.toLocaleString('id-ID')} Liter</span>
-              </span>
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
+                <span className="text-[11px] text-emerald-800 font-bold">Total Diserahkan:</span>
+                <span className="text-emerald-950 font-mono font-black text-xs sm:text-sm">{totalLitersDiserahkan.toLocaleString('id-ID')} Liter</span>
+              </div>
             </div>
 
             {/* Request List */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-3.5 flex-1">
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-3 flex-1">
               {(() => {
                 const filteredReqs = milkRequests.filter((r) => {
                   if (milkReqTab === 'PENDING') return r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM';
@@ -2670,9 +2280,6 @@ export default function TerimaProdukOlahanPage() {
                 if (filteredReqs.length === 0) {
                   return (
                     <div className="text-center py-12 space-y-3">
-                      <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
-                        <Milk className="w-7 h-7 text-slate-400" />
-                      </div>
                       <p className="text-xs font-bold text-slate-600">
                         {milkReqTab === 'PENDING'
                           ? 'Tidak ada permintaan susu mentah yang menunggu konfirmasi.'
@@ -2694,40 +2301,40 @@ export default function TerimaProdukOlahanPage() {
                   return (
                     <div
                       key={req.id}
-                      className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      className={`p-3.5 sm:px-5 sm:py-3.5 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 ${
                         isPending
-                          ? 'bg-amber-50/50 border-amber-200 shadow-2xs'
+                          ? 'bg-amber-50/40 border-amber-200 shadow-2xs'
                           : 'bg-white border-slate-200/90 hover:border-emerald-300 shadow-2xs'
                       }`}
                     >
-                      {/* Info Sederhana */}
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200">
+                      {/* Info Kiri - Rata & Sejajar Presisi (Lebar Tetap Tiap Kolom) */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                        <span
+                          className="w-[215px] shrink-0 text-center font-mono text-xs font-bold py-1.5 px-2 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 truncate"
+                          title={req.nomorBast || 'BA-UHT-20260901-008'}
+                        >
                           {req.nomorBast || 'BA-UHT-20260901-008'}
                         </span>
-                        <span className="text-xs font-bold text-slate-900">
+                        <span className="w-[90px] shrink-0 text-center text-xs font-bold text-slate-800">
                           {dateStr}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-50 text-slate-700 border border-slate-200">
-                          {req.sumber === 'SUSU_KAMBING' ? '🐐 Susu Kambing' : '🐮 Susu Sapi'}
+                        <span className="w-[115px] shrink-0 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
+                          {req.sumber === 'SUSU_KAMBING' ? 'Susu Kambing' : 'Susu Sapi'}
                         </span>
                         {isPending ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-xl">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Menunggu</span>
+                          <span className="w-[95px] shrink-0 text-center text-xs font-bold text-amber-600 flex items-center justify-center">
+                            Menunggu
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-xl">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Disetujui</span>
+                          <span className="w-[95px] shrink-0 text-center text-xs font-bold text-emerald-700 flex items-center justify-center">
+                            Disetujui
                           </span>
                         )}
                       </div>
 
-                      {/* Volume & Tombol Aksi */}
-                      <div className="flex items-center gap-3 self-end sm:self-center">
-                        <div className="px-3.5 py-1.5 bg-slate-100 text-slate-900 rounded-xl flex items-center gap-1.5 font-mono font-black text-sm border border-slate-200">
-                          <Milk className="w-3.5 h-3.5 text-emerald-700" />
+                      {/* Kotak Aksi Kanan - Simetris & Sejajar Presisi */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 self-end xl:self-center">
+                        <div className="w-28 h-9 px-2 flex items-center justify-center bg-slate-100 text-slate-900 rounded-xl font-mono font-black text-xs sm:text-sm border border-slate-200 shrink-0">
                           <span>{parseFloat(req.volumeLiters || 0).toLocaleString('id-ID')} Liter</span>
                         </div>
 
@@ -2737,23 +2344,23 @@ export default function TerimaProdukOlahanPage() {
                             setSelectedBastForPreview(details);
                             setShowBastPreviewModal(true);
                           }}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-95"
-                          title="Lihat Template Surat BAST Resmi"
+                          className="w-9 h-9 flex items-center justify-center bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 rounded-xl shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
+                          title="Lihat Surat BAST"
                         >
-                          <FileText className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Surat BAST</span>
+                          <Eye className="w-4 h-4 stroke-[2.2]" />
                         </button>
 
-                        {isPending && (
+                        {isPending ? (
                           <button
                             type="button"
                             disabled={confirmingRequestId === req.id}
                             onClick={() => handleConfirmMilkRequest(req.id)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#14532D] hover:bg-[#0f3e22] text-white rounded-xl font-bold text-xs transition-all shadow-xs active:scale-95 disabled:opacity-50"
+                            className="w-28 h-9 flex items-center justify-center bg-[#14532D] hover:bg-[#0f3e22] text-white rounded-xl font-bold text-xs transition-all shadow-xs active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
                           >
-                            <Check className="w-3.5 h-3.5 text-emerald-300" />
-                            <span>{confirmingRequestId === req.id ? 'Memproses...' : 'Setujui'}</span>
+                            {confirmingRequestId === req.id ? 'Memproses...' : 'Setujui'}
                           </button>
+                        ) : (
+                          <div className="w-28 h-9 hidden xl:block pointer-events-none opacity-0 shrink-0" />
                         )}
                       </div>
                     </div>
@@ -2770,7 +2377,7 @@ export default function TerimaProdukOlahanPage() {
               <button
                 type="button"
                 onClick={() => setShowMilkRequestsModal(false)}
-                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-2xl text-xs transition-colors"
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-2xl text-xs transition-colors cursor-pointer"
               >
                 Tutup
               </button>

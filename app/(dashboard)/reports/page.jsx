@@ -180,24 +180,24 @@ export default function ReportsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs print:text-[10px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider print:bg-gray-100 print:border-black">
-                  <th className="py-3 px-4 print:py-1 print:px-2">Tanggal</th>
-                  <th className="py-3 px-4 print:py-1 print:px-2">Perah (Liter)</th>
-                  <th className="py-3 px-4 print:py-1 print:px-2">Diproses (Liter)</th>
-                  <th className="py-3 px-4 print:py-1 print:px-2">Hasil Dikemas</th>
-                  <th className="py-3 px-4 print:py-1 print:px-2">Pengeluaran / Terjual</th>
+              <thead className="bg-[#1E3F20] text-white select-none print:bg-gray-100 print:text-black">
+                <tr className="border-b border-[#2d5e31] text-white font-bold uppercase tracking-wider print:border-black print:text-black">
+                  <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2">Tanggal</th>
+                  <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2">Perah (Liter)</th>
+                  <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2">Diproses (Liter)</th>
+                  <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2">Hasil Dikemas</th>
+                  <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2">Pengeluaran / Terjual</th>
                   {productType === 'OLAHAN' && (
-                    <th className="py-3 px-4 print:py-1 print:px-2">Rincian Kemasan (Dikemas / Keluar)</th>
+                    <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2">Rincian Kemasan (Dikemas / Keluar)</th>
                   )}
-                  <th className="py-3 px-4 print:py-1 print:px-2 text-right">Perubahan Stok Hari Ini</th>
+                  <th className="py-3 px-4 text-white font-bold print:text-black print:py-1 print:px-2 text-right">Perubahan Stok Hari Ini</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700 print:divide-black">
                 {dailyLogs.map((log) => {
                   const netDay = log.packagedQty - log.outflowQty;
                   return (
-                    <tr key={log.day} className={`hover:bg-slate-50 ${log.productionCount > 0 || log.outflowCount > 0 ? 'bg-emerald-50/20' : ''}`}>
+                    <tr key={log.day} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 font-bold text-slate-900 print:py-1 print:px-2">
                         {log.day} {monthNames[month - 1]} {year}
                       </td>
