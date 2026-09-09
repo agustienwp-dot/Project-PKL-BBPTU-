@@ -87,66 +87,7 @@ export function formatBaItem(item) {
   };
 }
 
-async function generateNomorBa(farmLocation = 'FS', targetDate = null, animalType = 'SAPI', type = 'SERAH_TERIMA_FARM') {
-  const dateObj = targetDate ? new Date(targetDate) : new Date();
-  const year = dateObj.getFullYear();
-  const monthStr = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-  const dayStr = dateObj.getDate().toString().padStart(2, '0');
-  const dateStr = `${year}${monthStr}${dayStr}`;
-
-  let maxSeq = 0;
-
-  try {
-    const list = await prisma.beritaAcara.findMany({
-      select: { nomorBA: true, date: true, createdAt: true },
-    });
-
-    list.forEach((item) => {
-      const n = (item.nomorBA || '').trim();
-      if (!n) return;
-      const d = item.date ? new Date(item.date) : (item.createdAt ? new Date(item.createdAt) : null);
-      const isSameMonth = (d && d.getFullYear() === year && (d.getMonth() + 1) === (dateObj.getMonth() + 1)) || n.includes(`${year}${monthStr}`);
-      if (isSameMonth) {
-        const match = n.match(/-(\d+)$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxSeq) maxSeq = num;
-        }
-      }
-    });
-  } catch (e) {
-    console.error('Failed to get BAST list for sequence count:', e);
-  }
-
-  if (global.__inMemoryBaList && Array.isArray(global.__inMemoryBaList)) {
-    global.__inMemoryBaList.forEach((item) => {
-      const n = (item.nomor_ba || item.nomorBA || '').trim();
-      if (!n) return;
-      const match = n.match(/-(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxSeq) maxSeq = num;
-      }
-    });
-  }
-
-  const nextNum = (maxSeq + 1).toString().padStart(3, '0');
-
-  if (type === 'HIBAH') {
-    return `BAST-HB-${dateStr}-${nextNum}`;
-  }
-  if (type === 'PEMBELIAN') {
-    return `BAST-PB-${dateStr}-${nextNum}`;
-  }
-  if (type === 'SUSU_OLAHAN') {
-    return `BAST-OLAHAN-${dateStr}-${nextNum}`;
-  }
-
-  const isKambing = (animalType || '').toUpperCase() === 'KAMBING';
-  if (isKambing) {
-    return `BA-${dateStr}-${nextNum}`;
-  }
-
+async function generateNomorBa(farmLocation = 'FS', targetDate = null) {
   let farmCode = 'FS';
   if (farmLocation && typeof farmLocation === 'string') {
     const loc = farmLocation.toUpperCase().trim();
@@ -154,9 +95,32 @@ async function generateNomorBa(farmLocation = 'FS', targetDate = null, animalTyp
     else if (loc.includes('LIMPA')) farmCode = 'LK';
     else if (loc.includes('MANGGALA')) farmCode = 'MG';
     else if (loc.includes('EDU')) farmCode = 'EW';
+    else farmCode = 'FS';
   }
 
-  return `BA-${farmCode}-${dateStr}-${nextNum}`;
+  const dateObj = targetDate ? new Date(targetDate) : new Date();
+  const year = dateObj.getFullYear();
+  const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+  const day = dateObj.getDate().toString().padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+
+  const yearPrefix = `BA-${farmCode}-${year}`;
+
+  try {
+    const count = await prisma.beritaAcara.count({
+      where: {
+        nomor_ba: { startsWith: yearPrefix },
+      },
+    });
+
+    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(yearPrefix)).length;
+    const nextNum = (Math.max(count, memCount) + 1).toString().padStart(3, '0');
+    return `BA-${farmCode}-${dateStr}-${nextNum}`;
+  } catch (err) {
+    const memCount = (global.__inMemoryBaList || []).filter((i) => (i.nomor_ba || i.nomorBa || '').startsWith(yearPrefix)).length;
+    const nextNum = (memCount + 1).toString().padStart(3, '0');
+    return `BA-${farmCode}-${dateStr}-${nextNum}`;
+  }
 }
 
 export async function GET(request) {
@@ -314,7 +278,7 @@ export async function POST(request) {
     }
 
     const validUserId = await resolveValidUserId(authUser);
-    const nomorBa = await generateNomorBa(farmLocation || location, date, animalType, bType);
+    const nomorBa = body.nomorBA || body.nomorBa || await generateNomorBa(farmLocation || location, date);
     const initialStatus = body.status || (bType === 'SUSU_OLAHAN' ? 'DRAFT' : 'TERKIRIM_KE_PEMASARAN');
     const itemsJson = typeof items === 'string' ? items : (items ? JSON.stringify(items) : null);
     const packagingId = body.packagingId || null;

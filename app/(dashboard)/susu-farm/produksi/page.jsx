@@ -716,8 +716,8 @@ export default function ProduksiPage() {
                         if (sapiCats.length > 0) setFormCategoryId(sapiCats[0].id);
                       }}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${formAnimalType === 'SAPI'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       <span>🐄 Sapi</span>
@@ -731,8 +731,8 @@ export default function ProduksiPage() {
                         if (kambingCats.length > 0) setFormCategoryId(kambingCats[0].id);
                       }}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${formAnimalType === 'KAMBING'
-                          ? 'bg-purple-600 text-white border-purple-600 shadow'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       <span>🐐 Kambing</span>
@@ -907,8 +907,8 @@ export default function ProduksiPage() {
                     <label
                       htmlFor="foto-timbangan-input"
                       className={`group border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-all duration-200 ${formErrors.formFotoTimbangan
-                          ? 'border-red-500 bg-red-50/40 hover:bg-red-50'
-                          : 'border-slate-300 hover:border-emerald-600 bg-slate-50 hover:bg-emerald-50/40'
+                        ? 'border-red-500 bg-red-50/40 hover:bg-red-50'
+                        : 'border-slate-300 hover:border-emerald-600 bg-slate-50 hover:bg-emerald-50/40'
                         }`}
                     >
                       <div className="w-10 h-10 rounded-full bg-emerald-100/80 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">

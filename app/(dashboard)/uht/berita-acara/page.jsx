@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
-import BeritaAcaraDocumentSusuFarm from '@/components/susu-farm/BeritaAcaraDocumentSusuFarm';
 import SignatureCanvas from '@/components/SignatureCanvas';
 
 import {
@@ -35,24 +34,16 @@ import {
   MapPin,
   Calendar as CalendarIcon
 } from 'lucide-react';
+import BeritaAcaraDocumentUht from '@/components/uht/BeritaAcaraDocumentUht';
 
 function BeritaAcaraContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const createForId = searchParams.get('createForId');
-  const queryDate = searchParams.get('date');
-  const queryShift = searchParams.get('shift');
-  const queryFarm = searchParams.get('farm');
-  const queryAnimal = searchParams.get('animal');
-  const queryTotal = searchParams.get('total');
-  const queryPedet = searchParams.get('pedet');
-  const queryAfkir = searchParams.get('afkir');
-  const queryDiserah = searchParams.get('diserah');
   const previewForProductionId = searchParams.get('previewForProductionId');
   const previewBaId = searchParams.get('previewBaId');
 
-  const [formProductionId, setFormProductionId] = useState('');
   const [loading, setLoading] = useState(true);
   const [baList, setBaList] = useState([]);
   const [toast, setToast] = useState(null);
@@ -79,7 +70,9 @@ function BeritaAcaraContent() {
   const [formFarmLocation, setFormFarmLocation] = useState('Tegalsari');
 
   // Common Pihak Serah Terima
+  const [formPenyerahName, setFormPenyerahName] = useState('Tim Kerja Layanan Pemasaran');
   const [formPenyerahJabatan, setFormPenyerahJabatan] = useState('Tim Kerja Layanan Pemasaran');
+  const [formPenerimaName, setFormPenerimaName] = useState('');
   const [formPenerimaJabatan, setFormPenerimaJabatan] = useState('');
 
   // Form Fields - Pembelian Specific
@@ -126,7 +119,7 @@ function BeritaAcaraContent() {
   const fetchBaList = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      let url = '/susu-farm/berita-acara?';
+      let url = '/berita-acara?';
       if (filterType !== 'ALL') url += `type=${filterType}&`;
       if (filterDate) url += `date=${filterDate}&`;
       if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
@@ -158,115 +151,6 @@ function BeritaAcaraContent() {
     const interval = setInterval(() => fetchBaList(false), 6000);
     return () => clearInterval(interval);
   }, [filterType, filterDate, searchQuery]);
-
-  const processedCreateIdRef = useRef(null);
-  const processedPreviewIdRef = useRef(null);
-
-  useEffect(() => {
-    if (createForId && processedCreateIdRef.current !== createForId) {
-      processedCreateIdRef.current = createForId;
-
-      const farmLoc = queryFarm || 'Tegalsari';
-      let farmCode = 'FS';
-      if (farmLoc.toUpperCase().includes('TEGAL')) farmCode = 'TS';
-      else if (farmLoc.toUpperCase().includes('LIMPA')) farmCode = 'LK';
-      else if (farmLoc.toUpperCase().includes('MANGGALA')) farmCode = 'MG';
-      else if (farmLoc.toUpperCase().includes('EDU')) farmCode = 'EW';
-
-      const dObj = queryDate ? new Date(queryDate) : new Date();
-      const y = dObj.getFullYear();
-      const m = (dObj.getMonth() + 1).toString().padStart(2, '0');
-      const d = dObj.getDate().toString().padStart(2, '0');
-      const dateStr = `${y}${m}${d}`;
-
-      // Calculate next sequence for current month across all BASTs
-      let maxSeq = 0;
-      baList.forEach((b) => {
-        const n = (b.nomor_ba || b.nomorBa || '').trim();
-        if (!n) return;
-        const bDate = b.date ? new Date(b.date) : null;
-        const isSameMonth = (bDate && bDate.getFullYear() === y && (bDate.getMonth() + 1) === (dObj.getMonth() + 1)) || n.includes(`${y}${m}`);
-        if (isSameMonth) {
-          const match = n.match(/-(\d+)$/);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            if (num > maxSeq) maxSeq = num;
-          }
-        }
-      });
-      const seqStr = (maxSeq + 1).toString().padStart(3, '0');
-      const isKambing = (queryAnimal || '').toUpperCase() === 'KAMBING';
-      const nomorBaGenerated = isKambing ? `BA-${dateStr}-${seqStr}` : `BA-${farmCode}-${dateStr}-${seqStr}`;
-
-      const existing = baList.find(b => b.productionId === createForId || b.production_id === createForId);
-      if (existing) {
-        setPreviewBa(existing);
-      } else {
-        const newBaObj = {
-          id: `ba-${createForId}`,
-          nomorBa: nomorBaGenerated,
-          type: 'SERAH_TERIMA_FARM',
-          productionId: createForId,
-          date: queryDate || new Date().toISOString(),
-          shift: queryShift || 'Pagi',
-          farmLocation: farmLoc,
-          animalType: queryAnimal || 'SAPI',
-          unit: 'Kg',
-          totalProduksi: parseFloat(queryTotal || 0),
-          penggunaanPedet: parseFloat(queryPedet || 0),
-          afkir: parseFloat(queryAfkir || 0),
-          diserahterimakan: parseFloat(queryDiserah || 0),
-          penyerahName: 'SEKSI YANTEK',
-          penerimaName: 'SEKSI PEMASARAN',
-          status: 'TERKIRIM_KE_PEMASARAN',
-          createdAt: new Date().toISOString(),
-        };
-
-        setPreviewBa(newBaObj);
-
-        api.post('/susu-farm/berita-acara', {
-          type: 'SERAH_TERIMA_FARM',
-          productionId: createForId,
-          nomorBA: nomorBaGenerated,
-          date: queryDate || new Date().toISOString(),
-          shift: queryShift || 'Pagi',
-          farmLocation: farmLoc,
-          animalType: queryAnimal || 'SAPI',
-          unit: 'Kg',
-          totalProduksi: parseFloat(queryTotal || 0),
-          penggunaanPedet: parseFloat(queryPedet || 0),
-          afkir: parseFloat(queryAfkir || 0),
-          diserahterimakan: parseFloat(queryDiserah || 0),
-          penyerahName: 'SEKSI YANTEK',
-          penerimaName: 'SEKSI PEMASARAN',
-          status: 'TERKIRIM_KE_PEMASARAN',
-        }).then((res) => {
-          if (res.data.success && res.data.data) {
-            setPreviewBa(res.data.data);
-            fetchBaList(true);
-          }
-        }).catch((e) => console.log('Auto save BAST error:', e));
-      }
-
-      // Clean URL params so it never re-triggers
-      router.replace('/susu-farm/berita-acara', { scroll: false });
-    }
-  }, [createForId, queryDate, queryShift, queryFarm, queryAnimal, queryTotal, queryPedet, queryAfkir, queryDiserah, baList, router]);
-
-  useEffect(() => {
-    const targetId = previewForProductionId || previewBaId;
-    if (targetId && processedPreviewIdRef.current !== targetId && baList.length > 0) {
-      const match = baList.find(b =>
-        (previewForProductionId && (b.productionId === previewForProductionId || b.production_id === previewForProductionId)) ||
-        (previewBaId && b.id === previewBaId)
-      );
-      if (match) {
-        processedPreviewIdRef.current = targetId;
-        setPreviewBa(match);
-        router.replace('/susu-farm/berita-acara', { scroll: false });
-      }
-    }
-  }, [previewForProductionId, previewBaId, baList, router]);
 
   const openCreateModal = () => {
     setEditingBa(null);
@@ -477,7 +361,6 @@ function BeritaAcaraContent() {
 
     const payload = {
       type: baType,
-      productionId: formProductionId || null,
       packagingId: selectedPackaging?.id || null,
       date: formDate,
       shift: formShift,
@@ -500,12 +383,12 @@ function BeritaAcaraContent() {
 
     try {
       if (editingBa) {
-        const res = await api.put(`/susu-farm/berita-acara/${editingBa.id}`, payload);
+        const res = await api.put(`/uht/berita-acara/${editingBa.id}`, payload);
         if (res.data.success) {
           setToast({ type: 'success', message: res.data.message || `✓ Berita Acara ${editingBa.nomorBa} berhasil diperbarui.` });
         }
       } else {
-        const res = await api.post('/susu-farm/berita-acara', payload);
+        const res = await api.post('/uht/berita-acara', payload);
         if (res.data.success) {
           const createdItem = res.data.data;
           setToast({
@@ -524,26 +407,27 @@ function BeritaAcaraContent() {
 
   const handleConfirmBaByPemasaran = async (ba) => {
     try {
-      const res = await api.put(`/susu-farm/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
+      const res = await api.put(`/uht/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
       if (res.data.success) {
         setToast({ type: 'success', message: 'Berita Acara produk siap jual telah dikonfirmasi oleh Pemasaran!' });
+        setPreviewBa(null);
         fetchBaList(true);
-        if (previewBa && previewBa.id === ba.id) {
-          setPreviewBa({ ...previewBa, status: 'SELESAI' });
-        }
       }
     } catch (err) {
-      console.error('Error confirming BAST:', err);
-      setToast({ type: 'error', message: 'Gagal mengkonfirmasi penerimaan.' });
+      console.error('Error confirming BA:', err);
+      setToast({ type: 'error', message: err.response?.data?.message || 'Gagal mengonfirmasi Berita Acara.' });
     }
   };
 
+  const handleOpenPreview = async (ba) => {
+    setPreviewBa(ba);
+  };
+
   const handlePrint = async (ba) => {
-    if (!ba) return;
     setPreviewBa(ba);
     try {
-      if (ba.id) {
-        await api.post(`/susu-farm/berita-acara/${ba.id}/print`).catch(() => { });
+      if (ba?.id) {
+        await api.post(`/uht/berita-acara/${ba.id}/print`);
       }
     } catch (e) { }
     setTimeout(() => {
@@ -554,7 +438,7 @@ function BeritaAcaraContent() {
   const handleDelete = async () => {
     if (!deletingBa) return;
     try {
-      const res = await api.delete(`/susu-farm/berita-acara/${deletingBa.id}`);
+      const res = await api.delete(`/uht/berita-acara/${deletingBa.id}`);
       if (res.data.success) {
         setToast({ type: 'success', message: 'Berita Acara berhasil dihapus.' });
         fetchBaList();
@@ -569,7 +453,7 @@ function BeritaAcaraContent() {
 
   const handleStatusChange = async (baId, newStatus) => {
     try {
-      const res = await api.put(`/susu-farm/berita-acara/${baId}`, { status: newStatus });
+      const res = await api.put(`/uht/berita-acara/${baId}`, { status: newStatus });
       if (res.data.success) {
         setToast({ type: 'success', message: res.data.message || `Status berhasil diubah.` });
         fetchBaList();
@@ -616,26 +500,39 @@ function BeritaAcaraContent() {
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* HEADER SECTION (Hidden on Print) */}
-      <div className="shrink-0 print:hidden px-1">
-        <h1 className="text-xl md:text-2xl font-black text-slate-900">
-          Berita Acara Serah Terima
-        </h1>
-        <p className="text-xs text-slate-500 font-semibold mt-0.5">
-          Buat dan kelola berita acara serah terima susu
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 py-1 px-1 print:hidden">
+        <div>
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <span>Berita Acara Serah Terima</span>
+          </h1>
+          <p className="text-xs text-slate-500 font-semibold mt-0.5">
+            Buat dan kelola berita acara serah terima susu
+          </p>
+        </div>
+
+        {canCreate && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#1E3F20] hover:bg-[#16331a] text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0 self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Buat Berita Acara</span>
+          </button>
+        )}
       </div>
 
       {/* SEARCH & FILTERS (Hidden on Print) */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-end gap-3 shrink-0 print:hidden">
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-64 max-w-xs">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+        {/* Search Input */}
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-300 px-3.5 py-1.5 rounded-xl text-xs text-slate-600 w-full sm:w-64 md:w-72 shadow-xs">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Cari nomor BAST, pihak, lokasi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+            className="bg-transparent border-none outline-none w-full text-xs font-semibold text-slate-800"
           />
         </div>
 
@@ -643,11 +540,12 @@ function BeritaAcaraContent() {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+          className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 cursor-pointer shadow-xs"
         >
           <option value="ALL">Semua Jenis</option>
           <option value="PEMBELIAN">Pembelian</option>
           <option value="HIBAH">Hibah</option>
+          <option value="SUSU_OLAHAN">Hasil Olahan</option>
         </select>
 
         {/* Date Filter */}
@@ -655,8 +553,21 @@ function BeritaAcaraContent() {
           type="date"
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
-          className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+          className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 shadow-xs"
         />
+
+        {(filterType !== 'ALL' || filterDate || searchQuery) && (
+          <button
+            onClick={() => {
+              setFilterType('ALL');
+              setFilterDate('');
+              setSearchQuery('');
+            }}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          >
+            Reset
+          </button>
+        )}
       </div>
 
       {/* BERITA ACARA TABLE LIST (Hidden on Print) - Only inside of table scrolls */}
@@ -713,7 +624,25 @@ function BeritaAcaraContent() {
                     month: 'short',
                     year: 'numeric',
                   });
-                  const isOlahan = ba.type === 'SUSU_OLAHAN' || (ba.nomorBa && ba.nomorBa.includes('BAST-OLAHAN'));
+                  const isOlahan = ba.type === 'SUSU_OLAHAN' || ba.nomorBa?.includes('BAST-OLAHAN');
+
+                  let olahanSummary = 'Susu Olahan Siap Jual';
+                  if (ba.items) {
+                    try {
+                      const parsed = typeof ba.items === 'string' ? JSON.parse(ba.items) : ba.items;
+                      if (Array.isArray(parsed) && parsed.length > 0) {
+                        olahanSummary = parsed.map(i => {
+                          const pName = i.product || i.name || i.productCategory || 'Produk';
+                          const sName = i.size || i.packageSize ? `(${i.size || i.packageSize})` : '';
+                          return `${pName} ${sName}`.trim();
+                        }).join(', ');
+                      }
+                    } catch (e) { }
+                  }
+
+                  const displayUnit = isOlahan
+                    ? (ba.unit && !['Liter', 'Lt', 'Kg', 'kg', 'LITER', 'KG'].includes(ba.unit) ? ba.unit : 'pcs')
+                    : (ba.unit || 'Liter');
 
                   return (
                     <tr key={ba.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'} hover:bg-emerald-50/30 transition-colors`}>
@@ -738,7 +667,7 @@ function BeritaAcaraContent() {
                         </>
                       )}
                       <td className="p-4 text-center font-black text-emerald-700 text-sm">
-                        {ba.diserahterimakan?.toLocaleString('id-ID') || 0} <span className="text-xs font-semibold text-slate-500">{20}</span>
+                        {ba.diserahterimakan?.toLocaleString('id-ID') || 0} <span className="text-xs font-semibold text-slate-500">{displayUnit}</span>
                       </td>
                       <td className="p-4 text-slate-800 font-semibold">
                         {ba.penyerahName || ba.giverName || ba.penyerah_name || '-'}
@@ -769,11 +698,27 @@ function BeritaAcaraContent() {
                           >
                             <Printer className="w-4 h-4" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(ba)}
+                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
+                            title="Edit Data"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingBa(ba)}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                            title="Hapus BAST"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })
+                });
               })()}
             </tbody>
           </table>
@@ -1296,35 +1241,51 @@ function BeritaAcaraContent() {
 
       {/* PREVIEW / PRINT MODAL */}
       {previewBa && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto print:p-0 print:bg-white print:static print:block">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-200 my-8 print:p-0 print:shadow-none print:m-0 print:rounded-none">
-            <BeritaAcaraDocumentSusuFarm
-              ba={previewBa}
-              showHeader={true}
-              onClose={() => setPreviewBa(null)}
-              onPrint={handlePrint}
-            />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50 overflow-y-auto print:p-0 print:bg-white print:static print:block">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl animate-in fade-in zoom-in duration-200 print:p-0 print:shadow-none print:m-0 print:rounded-none print:max-h-none overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0 print:hidden">
+              <h3 className="font-bold text-slate-900 text-base">Preview Berita Acara</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePrint(previewBa)}
+                  className="px-4 py-1.5 bg-[#00a86b] hover:bg-[#008f5b] text-white rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak / Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewBa(null)}
+                  className="text-slate-400 hover:text-slate-600 rounded-full cursor-pointer font-normal text-xl leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
 
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 print:hidden text-xs">
-              <div className="flex items-center gap-3 font-mono font-bold text-slate-500">
-                <span>Nomor Dokumen: <strong className="text-slate-900">{previewBa.nomorBa || previewBa.nomor_ba || '-'}</strong></span>
+            <div className="flex-1 overflow-y-auto my-4 pr-1 print:overflow-visible print:my-0 print:pr-0">
+              <BeritaAcaraDocumentUht ba={previewBa} />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4 shrink-0 print:hidden">
+              <div>
                 {previewBa.status === 'MENUNGGU_KONFIRMASI_PEMASARAN' && (user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN') && (
                   <button
                     type="button"
                     onClick={() => handleConfirmBaByPemasaran(previewBa)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow transition-colors cursor-pointer font-sans"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow transition-colors cursor-pointer"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <CheckCircle2 className="w-4 h-4" />
                     <span>Konfirmasi Penerimaan Pemasaran</span>
                   </button>
                 )}
               </div>
               <button
-                type="button"
                 onClick={() => setPreviewBa(null)}
-                className="px-5 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
               >
-                Tutup Preview
+                Tutup
               </button>
             </div>
           </div>

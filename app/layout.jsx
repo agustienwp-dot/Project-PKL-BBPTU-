@@ -15,8 +15,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id" className={jakarta.variable}>
-      <body className="bg-[#F5F5F0] text-slate-800 font-sans antialiased min-h-screen">
+    <html lang="id" className={`${jakarta.variable} h-full overflow-hidden`}>
+      <body className="bg-[#F5F5F0] text-slate-800 font-sans antialiased h-screen w-screen overflow-hidden">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

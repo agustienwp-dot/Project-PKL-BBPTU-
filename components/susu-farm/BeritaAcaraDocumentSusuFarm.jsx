@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { FileText, Printer, Download, Loader2 } from 'lucide-react';
 
-export default function BeritaAcaraDocument({ ba, showHeader = true, onPrint, onClose }) {
+export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onPrint, onClose }) {
   const docRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -71,7 +71,7 @@ export default function BeritaAcaraDocument({ ba, showHeader = true, onPrint, on
   if (ba.items) {
     try {
       parsedItems = typeof ba.items === 'string' ? JSON.parse(ba.items) : ba.items;
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const penerima = ba.penerimaName || ba.receiverName || (isOlahan ? 'Seksi Pemasaran' : (isHibah ? 'Bag umum / RTP' : 'SEKSI PEMASARAN'));
@@ -136,7 +136,7 @@ export default function BeritaAcaraDocument({ ba, showHeader = true, onPrint, on
 
       {/* 1. PAPER DOCUMENT */}
       <div ref={docRef} className="printable-document bg-white text-black font-serif p-8 md:p-12 max-w-3xl mx-auto border border-slate-300 shadow-md print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full print:text-black">
-        
+
         {/* 1. KOP SURAT (HEADER INSTANSI) */}
         <div className="text-center pb-2 border-b-2 border-black space-y-0.5">
           <h2 className="text-xs md:text-sm font-bold tracking-tight uppercase leading-tight">
@@ -153,8 +153,8 @@ export default function BeritaAcaraDocument({ ba, showHeader = true, onPrint, on
             {isOlahan
               ? 'BERITA ACARA SERAH TERIMA HASIL SUSU OLAHAN SIAP JUAL'
               : isHibah
-              ? 'BERITA ACARA SERAH TERIMA SUSU HIBAH'
-              : 'BERITA ACARA SERAH TERIMA'}
+                ? 'BERITA ACARA SERAH TERIMA SUSU HIBAH'
+                : 'BERITA ACARA SERAH TERIMA'}
           </h1>
           {isFarmHandover && (
             <h2 className="text-xs md:text-sm uppercase tracking-wide font-bold">
@@ -336,7 +336,7 @@ export default function BeritaAcaraDocument({ ba, showHeader = true, onPrint, on
         {/* 5. AREA TANDA TANGAN DUA PIHAK */}
         <div className="mt-12 pt-4 font-sans text-xs md:text-sm">
           <div className="grid grid-cols-2 gap-8 text-center">
-            
+
             {/* LEFT: YANG MENERIMA */}
             <div className="flex flex-col justify-between h-36">
               <div>

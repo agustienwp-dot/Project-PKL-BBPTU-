@@ -41,13 +41,10 @@ function isRouteAllowed(role, pathname) {
   if (!role || !pathname) return true;
 
   // Root and dashboard are accessible to all authenticated users
-  if (pathname === '/susu-farm/dashboard' || pathname === '/') return true;
   if (pathname.startsWith('/profil')) return true;
-  if (pathname.startsWith('/susu-farm/reports')) return true;
-  if (pathname.startsWith('/susu-farm/berita-acara')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/susu-farm/dashboard', '/superadmin', '/kategori', '/susu-farm/reports', '/profil', '/susu-farm/produksi', '/susu-farm/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+    const allowed = ['/uht/berita-acara', '/uht/pengemasan', '/uht/dashboard', '/susu-farm/dashboard', '/superadmin', '/kategori', '/susu-farm/reports', '/profil', '/susu-farm/produksi', '/susu-farm/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -57,12 +54,12 @@ function isRouteAllowed(role, pathname) {
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/susu-farm/dashboard', '/pemasaran', '/pemasaran/request-susu', '/susu-farm/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/susu-farm/produksi', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/susu-farm/reports', '/profil'];
+    const allowed = ['/uht/dashboard', '/pemasaran', '/pemasaran/request-susu', '/uht/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
   if (role === 'ADMIN_PENGEMASAN') {
-    const allowed = ['/susu-farm/dashboard', '/pengemasan', '/pengemasan/request-susu', '/pengemasan/stok-bahan', '/pengemasan/produk-siap-edar', '/riwayat-pengemasan', '/susu-farm/reports/pengolahan', '/susu-farm/reports/pengemasan', '/profil', '/susu-farm/berita-acara'];
+    const allowed = ['/uht/dashboard', '/uht/pengemasan', '/uht/request-susu', '/uht/stok-bahan', '/uht/pengemasan/produk-siap-edar', '/riwayat-pengemasan', '/uht/reports', '/reports/pengemasan', '/profil', '/uht/berita-acara'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -137,10 +134,10 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'SUPERADMIN') {
       return [
-        { label: 'Dashboard Main', path: '/susu-farm/dashboard', icon: LayoutDashboard },
+        { label: 'Dashboard Main', path: '/uht/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
         { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
-        { label: 'Berita Acara', path: '/susu-farm/berita-acara', icon: ClipboardList },
+        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
         { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
         { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
         { label: 'Penjualan Produk', path: '/pemasaran/penjualan', icon: ShoppingCart },
@@ -174,21 +171,21 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PENGEMASAN') {
       return [
-        { label: 'Dashboard', path: '/susu-farm/dashboard', icon: LayoutDashboard, section: 'DASHBOARD' },
-        { label: 'Request Susu', path: '/pengemasan/request-susu', icon: Truck, section: 'PENGOLAHAN' },
-        { label: 'Input Hasil Pengolahan', path: '/pengemasan', icon: Package, section: 'PENGOLAHAN' },
-        { label: 'Sisa Stok Bahan', path: '/pengemasan/stok-bahan', icon: Boxes, section: 'PENGOLAHAN' },
-        { label: 'Berita Acara Olahan', path: '/susu-farm/berita-acara', icon: FileCheck, section: 'PENGOLAHAN' },
-        { label: 'Laporan Pengolahan', path: '/susu-farm/reports/pengolahan', icon: FileText, section: 'PENGOLAHAN' },
+        { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard, section: 'DASHBOARD' },
+        { label: 'Request Susu', path: '/uht/request-susu', icon: Truck, section: 'PENGOLAHAN' },
+        { label: 'Input Hasil Pengolahan', path: '/uht/pengemasan', icon: Package, section: 'PENGOLAHAN' },
+        { label: 'Sisa Stok Bahan', path: '/uht/stok-bahan', icon: Boxes, section: 'PENGOLAHAN' },
+        { label: 'Berita Acara Olahan', path: '/uht/berita-acara', icon: FileCheck, section: 'PENGOLAHAN' },
+        { label: 'Laporan Pengolahan', path: '/uht/reports', icon: FileText, section: 'PENGOLAHAN' },
         { label: 'Profil', path: '/profil', icon: User, section: 'LAINNYA' }
       ];
     }
 
     // Default fallback navigation
     return [
-      { label: 'Dashboard', path: '/susu-farm/dashboard', icon: LayoutDashboard },
-      { label: 'Berita Acara', path: '/susu-farm/berita-acara', icon: ClipboardList },
-      { label: 'Laporan', path: '/susu-farm/reports', icon: FileText },
+      { label: 'Dashboard', path: '/uht/dashboard', icon: LayoutDashboard },
+      { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
+      { label: 'Laporan', path: '/reports', icon: FileText },
       { label: 'Profil', path: '/profil', icon: User }
     ];
   };
@@ -197,10 +194,10 @@ export default function DashboardLayout({ children }) {
   const isAllowed = isRouteAllowed(user?.role, pathname);
 
   return (
-    <div className="h-screen max-h-screen overflow-hidden bg-[#F5F5F0] text-slate-800 flex flex-col font-sans relative">
+    <div className="h-screen bg-[#F5F5F0] text-slate-800 flex flex-col font-sans relative overflow-hidden">
 
       {/* TOP NAVBAR HEADER MATCHING DESIGN */}
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200/70 shadow-2xs px-4 md:px-8 py-3.5 flex items-center justify-between print:hidden">
+      <header className="shrink-0 sticky top-0 z-30 bg-white border-b border-slate-200/70 shadow-2xs px-4 md:px-8 py-3.5 flex items-center justify-between print:hidden">
         <div className="flex items-center">
           {/* Menu Button Toggle */}
           <button
@@ -276,7 +273,7 @@ export default function DashboardLayout({ children }) {
                       pathname.startsWith(other.path.split('?')[0]) &&
                       other.path.split('?')[0].length > basePath.length
                   );
-                  const isActive = isExactMatch || (basePath !== '/susu-farm/dashboard' && pathname.startsWith(basePath + '/') && !hasMoreSpecificMatch);
+                  const isActive = isExactMatch || (basePath !== '/uht/dashboard' && pathname.startsWith(basePath + '/') && !hasMoreSpecificMatch);
 
                   return (
                     <Link
@@ -284,8 +281,8 @@ export default function DashboardLayout({ children }) {
                       href={item.path}
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-semibold transition-all ${isActive
-                          ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
-                          : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                        ? 'bg-[#F5F5F0] text-[#1E3F20] shadow-md font-bold'
+                        : 'text-emerald-100 hover:text-white hover:bg-white/10'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -341,7 +338,7 @@ export default function DashboardLayout({ children }) {
               Anda tidak memiliki izin untuk mengakses halaman ini.
             </p>
             <Link
-              href="/susu-farm/dashboard"
+              href={user?.role === 'ADMIN_FARM' ? '/susu-farm/dashboard' : '/uht/dashboard'}
               className="px-5 py-2.5 bg-[#1E3F20] text-white font-bold text-xs rounded-xl shadow hover:bg-[#16331a] transition-all"
             >
               Kembali ke Dashboard

@@ -63,8 +63,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      window.location.href = '/susu-farm/dashboard';
+      const data = await login(email, password);
+      const userRole = data?.user?.role;
+
+      if (userRole === 'ADMIN_PENGEMASAN') {
+        window.location.href = '/uht/dashboard';
+      } else if (userRole === 'ADMIN_FARM') {
+        window.location.href = '/susu-farm/dashboard';
+      } else {
+        window.location.href = '/uht/dashboard';
+      }
     } catch (err) {
       console.error('Login error:', err);
       const msg =
@@ -124,15 +132,37 @@ export default function LoginPage() {
       }
       if (regEmail && regPassword) {
         try {
-          await login(regEmail, regPassword);
+          const data = await login(regEmail, regPassword);
+          const userRole = data?.user?.role;
+
+          if (userRole === 'ADMIN_PENGEMASAN') {
+            window.location.href = '/uht/dashboard';
+          } else if (userRole === 'ADMIN_FARM') {
+            window.location.href = '/susu-farm/dashboard';
+          } else {
+            window.location.href = '/uht/dashboard';
+          }
+          return;
         } catch (e) {
           console.warn('Fallback login used:', e);
         }
       }
       setShowConfirmModal(false);
-      window.location.href = '/susu-farm/dashboard';
+      if (userRole === 'ADMIN_PENGEMASAN') {
+        window.location.href = '/uht/dashboard';
+      } else if (userRole === 'ADMIN_FARM') {
+        window.location.href = '/susu-farm/dashboard';
+      } else {
+        window.location.href = '/uht/dashboard';
+      }
     } catch (err) {
-      window.location.href = '/susu-farm/dashboard';
+      if (userRole === 'ADMIN_PENGEMASAN') {
+        window.location.href = '/uht/dashboard';
+      } else if (userRole === 'ADMIN_FARM') {
+        window.location.href = '/susu-farm/dashboard';
+      } else {
+        window.location.href = '/uht/dashboard';
+      }
     } finally {
       setLoading(false);
     }

@@ -5,12 +5,12 @@ import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
-import {
-  Printer,
-  Download,
-  RefreshCw,
-  Package,
-  Milk,
+import { 
+  Printer, 
+  Download, 
+  RefreshCw, 
+  Package, 
+  Milk, 
   FileSpreadsheet,
   Calendar,
   CheckCircle2,
@@ -20,11 +20,11 @@ import {
 export default function LaporanPengolahanPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-
+  
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
-
+  
   const [reportData, setReportData] = useState(null);
   const [activeView, setActiveView] = useState('PRODUKSI'); // 'PRODUKSI' or 'STOK_BAHAN'
   const [toast, setToast] = useState(null);
@@ -37,7 +37,7 @@ export default function LaporanPengolahanPage() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/susu-farm/reports/pengolahan?month=${month}&year=${year}&t=${Date.now()}`);
+      const res = await api.get(`/reports/pengolahan?month=${month}&year=${year}&t=${Date.now()}`);
       if (res.data?.success) {
         setReportData(res.data.data);
       }
@@ -68,7 +68,7 @@ export default function LaporanPengolahanPage() {
     if (!reportData) return;
 
     const isStok = activeView === 'STOK_BAHAN';
-    const titleText = isStok
+    const titleText = isStok 
       ? `LAPORAN PERSEDIAAN SISA STOK BAHAN BAKU & KEMASAN`
       : `REKAPITULASI PENGOLAHAN & PRODUKSI SUSU OLAHAN SIAP JUAL`;
     const periodText = `BULAN: ${monthNames[month - 1].toUpperCase()} ${year}`;
@@ -186,7 +186,7 @@ export default function LaporanPengolahanPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = isStok
+    link.download = isStok 
       ? `Laporan_Sisa_Stok_Bahan_${monthNames[month - 1]}_${year}.xls`
       : `Laporan_Produksi_${monthNames[month - 1]}_${year}.xls`;
     document.body.appendChild(link);
@@ -262,20 +262,22 @@ export default function LaporanPengolahanPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveView('PRODUKSI')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${activeView === 'PRODUKSI' || activeView === 'MATRIX'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeView === 'PRODUKSI' || activeView === 'MATRIX'
                 ? 'bg-[#1E3F20] text-white shadow-sm'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+            }`}
           >
             <span>Laporan Produksi</span>
           </button>
 
           <button
             onClick={() => setActiveView('STOK_BAHAN')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${activeView === 'STOK_BAHAN'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeView === 'STOK_BAHAN'
                 ? 'bg-[#1E3F20] text-white shadow-sm'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+            }`}
           >
             <span>Laporan Sisa Stok Bahan Baku & Kemasan</span>
           </button>
@@ -307,7 +309,7 @@ export default function LaporanPengolahanPage() {
 
       {/* PRINTABLE OFFICIAL DOCUMENT WRAPPER */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden print:border-none print:shadow-none print:p-0 print:overflow-visible">
-
+        
         {/* DOCUMENT TITLE HEADER */}
         <div className="text-center space-y-1 border-b border-slate-200 pb-3 shrink-0 print:border-black">
           <h2 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-wide print:text-black">

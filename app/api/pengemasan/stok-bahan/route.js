@@ -28,7 +28,11 @@ export async function GET(request) {
       : [];
 
     const movements = (prisma.materialStockMovement && typeof prisma.materialStockMovement.findMany === 'function')
-      ? await prisma.materialStockMovement.findMany({ take: 20, orderBy: { createdAt: 'desc' } }).catch(() => [])
+      ? await prisma.materialStockMovement.findMany({ 
+          take: 50, 
+          include: { material: true },
+          orderBy: { createdAt: 'desc' } 
+        }).catch(() => [])
       : [];
 
     // Compute status and low stock counts

@@ -13,8 +13,7 @@ import {
   Layers,
   CheckCircle2,
   AlertCircle,
-  XCircle,
-  RefreshCw
+  XCircle
 } from 'lucide-react';
 
 export default function ProdukSiapEdarPage() {
@@ -102,69 +101,63 @@ export default function ProdukSiapEdarPage() {
   const totalAllPcs = totalSusuRasaPcs + totalYogurtPcs + totalKejuPcs;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1E3F20] text-white rounded-full text-xs font-bold mb-2">
             <ShoppingBag className="w-4 h-4 text-emerald-200" />
             <span>Divisi UHT / Pengolahan</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Produk Siap Edar</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <h1 className="text-xl md:text-2xl font-black text-slate-900">Produk Siap Edar</h1>
+          <p className="text-xs text-slate-500 font-medium">
             Katalog persediaan produk olahan (Susu Olahan Rasa, Yogurt, Keju) yang siap diserahterimakan ke Seksi Pemasaran.
           </p>
         </div>
 
-        <button
-          onClick={fetchData}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer"
-        >
-          <RefreshCw className="w-4 h-4 text-emerald-700" />
-          <span>Refresh Stok</span>
-        </button>
+
       </div>
 
       {/* Summary Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#1E3F20] text-white p-5 rounded-3xl shadow-sm">
-          <span className="text-[11px] font-extrabold text-emerald-200 uppercase tracking-wider block">TOTAL PRODUK SIAP EDAR</span>
-          <p className="text-3xl font-black text-amber-300 mt-2 font-mono">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
+        <div className="bg-[#1E3F20] text-white p-4 rounded-2xl shadow-sm">
+          <span className="text-[10px] font-extrabold text-emerald-200 uppercase tracking-wider block">TOTAL PRODUK SIAP EDAR</span>
+          <p className="text-2xl font-black text-amber-300 mt-1 font-mono">
             {totalAllPcs.toLocaleString()} <span className="text-xs text-emerald-200 font-bold">pcs</span>
           </p>
-          <span className="text-[10px] text-emerald-200 font-semibold block mt-1">Gabungan seluruh varian</span>
+          <span className="text-[10px] text-emerald-200 font-semibold block mt-0.5">Gabungan seluruh varian</span>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider block">SUSU OLAHAN RASA</span>
-          <p className="text-3xl font-black text-slate-900 mt-2 font-mono">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block">SUSU OLAHAN RASA</span>
+          <p className="text-2xl font-black text-slate-900 mt-1 font-mono">
             {totalSusuRasaPcs.toLocaleString()} <span className="text-xs text-slate-400 font-bold">pcs</span>
           </p>
-          <span className="text-[10px] text-slate-400 font-semibold block mt-1">Cokelat, Melon, Strawberry, Original</span>
+          <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Cokelat, Melon, Strawberry, Original</span>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-extrabold text-purple-800 uppercase tracking-wider block">YOGURT</span>
-          <p className="text-3xl font-black text-slate-900 mt-2 font-mono">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-extrabold text-purple-800 uppercase tracking-wider block">YOGURT</span>
+          <p className="text-2xl font-black text-slate-900 mt-1 font-mono">
             {totalYogurtPcs.toLocaleString()} <span className="text-xs text-slate-400 font-bold">pcs</span>
           </p>
-          <span className="text-[10px] text-slate-400 font-semibold block mt-1">Original & Varian Rasa</span>
+          <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Original & Varian Rasa</span>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wider block">KEJU</span>
-          <p className="text-3xl font-black text-slate-900 mt-2 font-mono">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">KEJU</span>
+          <p className="text-2xl font-black text-slate-900 mt-1 font-mono">
             {totalKejuPcs.toLocaleString()} <span className="text-xs text-slate-400 font-bold">pcs</span>
           </p>
-          <span className="text-[10px] text-slate-400 font-semibold block mt-1">Fresh & Olahan Keju</span>
+          <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Fresh & Olahan Keju</span>
         </div>
       </div>
 
-      {/* Tabs & Search Bar */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Tabs & Search Bar & Table */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
           {/* Tab Filter */}
           <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto">
             <button
@@ -215,10 +208,10 @@ export default function ProdukSiapEdarPage() {
         </div>
 
         {/* Table of Products */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200">
+        <div className="overflow-auto flex-1 min-h-0">
+          <table className="w-full text-left text-xs relative">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 shadow-2xs">
+              <tr>
                 <th className="py-3.5 px-4">Kelompok Produk</th>
                 <th className="py-3.5 px-4">Varian Rasa / Jenis</th>
                 <th className="py-3.5 px-4">Ukuran / Kemasan</th>
