@@ -6,7 +6,7 @@ import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import {
-  Truck,
+  Milk,
   Plus,
   Clock,
   CheckCircle2,
@@ -174,7 +174,7 @@ export default function RequestSusuPengemasanPage() {
         <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm shrink-0">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-teal-500 text-white rounded-xl mt-0.5">
-              <Truck className="w-5 h-5" />
+              <Milk className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-teal-900 text-sm">
@@ -194,7 +194,7 @@ export default function RequestSusuPengemasanPage() {
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Cari No. Request / Kebutuhan..."
+            placeholder="Cari No. Request..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
@@ -225,7 +225,7 @@ export default function RequestSusuPengemasanPage() {
         ) : filteredRequests.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Truck className="w-8 h-8" />
+              <Milk className="w-8 h-8" />
             </div>
             <h3 className="text-slate-800 font-bold text-base">Belum Ada Request Susu</h3>
             <p className="text-slate-500 text-xs max-w-md mx-auto mt-1">
@@ -241,8 +241,6 @@ export default function RequestSusuPengemasanPage() {
                   <th className="py-3.5 px-4">Tanggal</th>
                   <th className="py-3.5 px-4">Pemohon</th>
                   <th className="py-3.5 px-4">Jumlah Susu</th>
-                  <th className="py-3.5 px-4">Kebutuhan Pengolahan</th>
-                  <th className="py-3.5 px-4">Prioritas</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Aksi</th>
                 </tr>
@@ -261,14 +259,6 @@ export default function RequestSusuPengemasanPage() {
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-slate-900">
                       {req.volumeLiters} Liter
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-700">
-                      {req.processingNeeds}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={req.priority === 'Mendesak' ? 'font-bold text-red-600' : 'text-slate-600 font-medium'}>
-                        {req.priority || 'Normal'}
-                      </span>
                     </td>
                     <td className="py-3.5 px-4">
                       {getStatusBadge(req.status)}
@@ -307,7 +297,7 @@ export default function RequestSusuPengemasanPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-500/10 text-amber-600 rounded-2xl">
-                  <Truck className="w-6 h-6" />
+                  <Milk className="w-6 h-6" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-800">Form Request Susu</h2>
@@ -346,32 +336,6 @@ export default function RequestSusuPengemasanPage() {
                     required
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Kebutuhan Pengolahan *</label>
-                  <select
-                    value={formProcessingNeeds}
-                    onChange={(e) => setFormProcessingNeeds(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
-                  >
-                    <option value="Susu Pasteurisasi">Susu Pasteurisasi</option>
-                    <option value="Yogurt">Yogurt</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Prioritas *</label>
-                  <select
-                    value={formPriority}
-                    onChange={(e) => setFormPriority(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
-                  >
-                    <option value="Normal">Normal</option>
-                    <option value="Mendesak">Mendesak</option>
-                  </select>
                 </div>
               </div>
 
@@ -429,10 +393,6 @@ export default function RequestSusuPengemasanPage() {
               <div className="flex justify-between">
                 <span className="text-slate-500">Jumlah Susu:</span>
                 <span className="font-bold text-emerald-700">{confirmingReq.volumeLiters} Liter</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Kebutuhan:</span>
-                <span className="font-medium text-slate-800">{confirmingReq.processingNeeds}</span>
               </div>
             </div>
 

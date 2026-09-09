@@ -79,7 +79,7 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
   const selectedLocation = (ba.farmLocation || ba.location || 'Pengemasan & Olahan').toUpperCase();
 
   const locationsList = ['TEGALSARI', 'LIMPAKUWUS', 'MANGGALA', 'EDUWISATA'];
-  const unitLabel = ba.unit || 'Kg';
+  const unitLabel = (!ba.unit || ba.unit.toLowerCase() === 'kg') ? 'Lt' : ba.unit;
 
   return (
     <div className="w-full">

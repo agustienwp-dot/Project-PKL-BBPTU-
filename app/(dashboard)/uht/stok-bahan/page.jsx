@@ -473,7 +473,7 @@ export default function StokBahanPage() {
                       className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      + Tambah Baris Bahan
+                      Tambah Baris Bahan
                     </button>
                   </div>
 

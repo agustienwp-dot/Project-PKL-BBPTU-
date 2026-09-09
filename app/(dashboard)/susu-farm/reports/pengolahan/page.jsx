@@ -62,6 +62,22 @@ export default function LaporanPengolahanPage() {
   const summary = reportData?.summary || {};
   const materialUsage = reportData?.materialUsage || [];
 
+  const targetSpecs = [
+    { name: 'Botol 250 ml', match: (m) => (m.code || '').includes('BOT-250') || (m.name || '').toLowerCase().includes('250') },
+    { name: 'Botol 115 ml', match: (m) => (m.code || '').includes('BOT-115') || (m.name || '').toLowerCase().includes('115') },
+    { name: 'Cup', match: (m) => (m.code || '').includes('CUP-200') || ((m.name || '').toLowerCase().includes('cup') && !(m.name || '').toLowerCase().includes('tutup')) },
+    { name: 'Plastik Bantal', match: (m) => (m.code || '').includes('PLASTIK') || (m.name || '').toLowerCase().includes('plastik') },
+    { name: 'Label', match: (m) => (m.code || '').includes('LBL') || (m.name || '').toLowerCase().includes('label') }
+  ];
+
+  const matchedMaterials = targetSpecs.map(spec => {
+    const found = materialUsage.find(spec.match);
+    if (!found) return null;
+    return { ...found, name: spec.name };
+  }).filter(Boolean);
+
+  const displayedMaterialUsage = matchedMaterials.length > 0 ? matchedMaterials : materialUsage;
+
   const fmtNum = (n) => (n > 0 ? n.toLocaleString('id-ID') : '0');
 
   const handleExportExcel = () => {
@@ -89,11 +105,11 @@ export default function LaporanPengolahanPage() {
           <tr style="background-color:#1E3F20; color:white; font-weight:bold;">
             <th rowspan="2">No</th>
             <th rowspan="2">Tanggal</th>
-            <th colspan="${materialUsage.length + 1}" style="background-color:#064e3b;">SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)</th>
+            <th colspan="${displayedMaterialUsage.length + 1}" style="background-color:#064e3b;">SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)</th>
           </tr>
           <tr style="background-color:#e2e8f0; font-weight:bold; color:black;">
             <th>SUSU SEGAR (LTR)</th>
-            ${materialUsage.map(m => `<th>${m.name.toUpperCase()} (${(m.unit || 'PCS').toUpperCase()})</th>`).join('')}
+            ${displayedMaterialUsage.map(m => `<th>${m.name.toUpperCase()} (${(m.unit || 'PCS').toUpperCase()})</th>`).join('')}
           </tr>
         </thead>
         <tbody>
@@ -105,7 +121,7 @@ export default function LaporanPengolahanPage() {
             <td>${log.day}</td>
             <td>${log.dateStr}</td>
             <td style="font-weight:bold; background-color:#eff6ff;">${summary.sisaStokSusuSegar || 0}</td>
-            ${materialUsage.map(m => `<td>${m.finalStock || 0}</td>`).join('')}
+            ${displayedMaterialUsage.map(m => `<td>${m.finalStock || 0}</td>`).join('')}
           </tr>
         `;
       });
@@ -114,7 +130,7 @@ export default function LaporanPengolahanPage() {
         <tr style="font-weight:bold; background-color:#e2e8f0;">
           <td colspan="2">SISA STOK SAAT INI (REAL-TIME)</td>
           <td style="background-color:#bfdbfe;">${summary.sisaStokSusuSegar || 0}</td>
-          ${materialUsage.map(m => `<td style="background-color:#fef3c7;">${m.finalStock || 0}</td>`).join('')}
+          ${displayedMaterialUsage.map(m => `<td style="background-color:#fef3c7;">${m.finalStock || 0}</td>`).join('')}
         </tr>
       `;
     } else {
@@ -131,9 +147,9 @@ export default function LaporanPengolahanPage() {
             <th>SUSU DITERIMA (LTR)</th>
             <th>SUSU DIOLAH (LTR)</th>
             <th>SUSU 115 ML</th>
-            <th>SUSU 130 ML</th>
-            <th>SUSU 200 ML</th>
             <th>SUSU 250 ML</th>
+            <th>CUP</th>
+            <th>PLASTIK BANTAL</th>
             <th>YOGURT 200 ML</th>
             <th>KEJU</th>
           </tr>
@@ -149,9 +165,9 @@ export default function LaporanPengolahanPage() {
             <td>${log.susuDiterima || 0}</td>
             <td>${log.susuDiolah || 0}</td>
             <td>${log.susu115 || 0}</td>
-            <td>${log.susu130 || 0}</td>
-            <td>${log.susu200 || 0}</td>
             <td>${log.susu250 || 0}</td>
+            <td>${log.cup || 0}</td>
+            <td>${log.plastikBantal || 0}</td>
             <td>${log.yogurt200 || 0}</td>
             <td>${log.keju || 0}</td>
             <td style="font-weight:bold; background-color:#dcfce7;">${log.totalProduk || 0}</td>
@@ -165,9 +181,9 @@ export default function LaporanPengolahanPage() {
           <td>${monthlyTotals.susuDiterima || 0}</td>
           <td>${monthlyTotals.susuDiolah || 0}</td>
           <td>${monthlyTotals.susu115 || 0}</td>
-          <td>${monthlyTotals.susu130 || 0}</td>
-          <td>${monthlyTotals.susu200 || 0}</td>
           <td>${monthlyTotals.susu250 || 0}</td>
+          <td>${monthlyTotals.cup || 0}</td>
+          <td>${monthlyTotals.plastikBantal || 0}</td>
           <td>${monthlyTotals.yogurt200 || 0}</td>
           <td>${monthlyTotals.keju || 0}</td>
           <td style="background-color:#86efac;">${monthlyTotals.totalProduk || 0}</td>
@@ -350,9 +366,9 @@ export default function LaporanPengolahanPage() {
                     <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DITERIMA</th>
                     <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU DIOLAH</th>
                     <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 115 ML</th>
-                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 130 ML</th>
-                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 200 ML</th>
                     <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">SUSU 250 ML</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">CUP</th>
+                    <th className="border border-slate-300 print:border-black px-2 py-1 font-sans">PLASTIK BANTAL</th>
                     <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-purple-50">YOGURT 200 ML</th>
                     <th className="border border-slate-300 print:border-black px-2 py-1 font-sans bg-amber-50">KEJU</th>
                   </tr>
@@ -381,9 +397,9 @@ export default function LaporanPengolahanPage() {
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-blue-900 font-bold">{fmtNum(log.susuDiterima)}</td>
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right text-purple-900 font-bold">{fmtNum(log.susuDiolah)}</td>
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu115)}</td>
-                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu130)}</td>
-                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu200)}</td>
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.susu250)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.cup)}</td>
+                        <td className="border border-slate-300 print:border-black px-2 py-1 text-right">{fmtNum(log.plastikBantal)}</td>
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-purple-900 bg-purple-50/30">{fmtNum(log.yogurt200)}</td>
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-amber-900 bg-amber-50/30">{fmtNum(log.keju)}</td>
                         <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-black bg-emerald-50 text-emerald-950">{fmtNum(log.totalProduk)}</td>
@@ -401,9 +417,9 @@ export default function LaporanPengolahanPage() {
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 font-black">{fmtNum(monthlyTotals.susuDiterima)}</td>
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-purple-950 font-black">{fmtNum(monthlyTotals.susuDiolah)}</td>
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu115)}</td>
-                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu130)}</td>
-                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu200)}</td>
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.susu250)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.cup)}</td>
+                    <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black">{fmtNum(monthlyTotals.plastikBantal)}</td>
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-purple-950 bg-purple-100/50">{fmtNum(monthlyTotals.yogurt200)}</td>
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-amber-950 bg-amber-100/50">{fmtNum(monthlyTotals.keju)}</td>
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-emerald-950 bg-emerald-200 font-black text-xs">{fmtNum(monthlyTotals.totalProduk)}</td>
@@ -426,7 +442,7 @@ export default function LaporanPengolahanPage() {
                   <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase print:bg-slate-200">
                     <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-10 font-sans">No</th>
                     <th rowSpan={3} className="border border-slate-300 print:border-black px-2 py-2 w-24 font-sans">Tanggal</th>
-                    <th colSpan={materialUsage.length + 1} className="border border-slate-300 print:border-black px-2 py-2 font-sans bg-amber-50/80 text-amber-950 text-xs tracking-wider">
+                    <th colSpan={displayedMaterialUsage.length + 1} className="border border-slate-300 print:border-black px-2 py-2 font-sans bg-amber-50/80 text-amber-950 text-xs tracking-wider">
                       SISA STOK BAHAN BAKU & KEMASAN (REAL-TIME)
                     </th>
                   </tr>
@@ -436,7 +452,7 @@ export default function LaporanPengolahanPage() {
                     <th className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-blue-100/60 text-blue-950">
                       SUSU SEGAR
                     </th>
-                    {materialUsage.map((m) => (
+                    {displayedMaterialUsage.map((m) => (
                       <th key={m.id} className="border border-slate-300 print:border-black px-2 py-1.5 font-sans bg-amber-100/40 text-slate-900 whitespace-nowrap">
                         {m.name.toUpperCase()}
                       </th>
@@ -446,7 +462,7 @@ export default function LaporanPengolahanPage() {
                   {/* Row 3 Units Header */}
                   <tr className="bg-slate-50 text-slate-500 text-[9px] font-mono">
                     <td className="border border-slate-300 print:border-black px-1.5 py-1 font-bold text-blue-900 bg-blue-50">( LTR )</td>
-                    {materialUsage.map((m) => (
+                    {displayedMaterialUsage.map((m) => (
                       <td key={m.id} className="border border-slate-300 print:border-black px-1.5 py-1">
                         ( {(m.unit || 'PCS').toUpperCase()} )
                       </td>
@@ -462,7 +478,7 @@ export default function LaporanPengolahanPage() {
                       <td className="border border-slate-300 print:border-black px-2 py-1 text-right font-bold text-blue-950 bg-blue-50/30">
                         {fmtNum(summary.sisaStokSusuSegar || 0)}
                       </td>
-                      {materialUsage.map((m) => (
+                      {displayedMaterialUsage.map((m) => (
                         <td key={m.id} className="border border-slate-300 print:border-black px-2 py-1 text-right text-slate-700 bg-slate-50/30 font-medium">
                           {fmtNum(m.finalStock)}
                         </td>
@@ -480,7 +496,7 @@ export default function LaporanPengolahanPage() {
                     <td className="border border-slate-300 print:border-black px-2 py-2 text-right text-blue-950 bg-blue-100/60 font-black text-xs">
                       {fmtNum(summary.sisaStokSusuSegar || 0)}
                     </td>
-                    {materialUsage.map((m) => (
+                    {displayedMaterialUsage.map((m) => (
                       <td key={m.id} className="border border-slate-300 print:border-black px-2 py-2 text-right font-black text-slate-900 bg-amber-100/50 text-xs">
                         {fmtNum(m.finalStock)}
                       </td>

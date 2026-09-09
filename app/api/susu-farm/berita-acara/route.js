@@ -13,6 +13,7 @@ export function formatBaItem(item) {
   const nomorBa = item.nomorBa || item.nomor_ba;
   const farmLocation = item.farmLocation || item.location || item.farm_location;
   const animalType = item.animalType || item.animal_type;
+  const unit = (!item.unit || item.unit.toLowerCase() === 'kg') ? 'Lt' : item.unit;
   const totalProduksi = item.totalProduksi ?? item.total_produksi ?? 0;
   const penggunaanPedet = item.penggunaanPedet ?? item.penggunaan_pedet ?? 0;
   const afkir = item.afkir ?? 0;
@@ -60,6 +61,7 @@ export function formatBaItem(item) {
     nomorBa,
     farmLocation,
     animalType,
+    unit,
     totalProduksi,
     penggunaanPedet,
     afkir,
@@ -333,7 +335,7 @@ export async function POST(request) {
           farmLocation: farmLocation || location || 'Pengemasan & Olahan',
           location: location || farmLocation || 'Pengemasan & Olahan',
           animalType: animalType || 'SAPI',
-          unit: unit || 'Botol',
+          unit: (unit && unit.toLowerCase() === 'kg') ? 'Lt' : (unit || 'Botol'),
           totalProduksi: totProd,
           penggunaanPedet: pedetVol,
           afkir: afkirVol,

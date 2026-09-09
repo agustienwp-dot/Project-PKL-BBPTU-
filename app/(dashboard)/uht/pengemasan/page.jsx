@@ -78,6 +78,8 @@ export default function PengemasanPage() {
   const [susu130, setSusu130] = useState('');
   const [susu200, setSusu200] = useState('');
   const [susu250, setSusu250] = useState('');
+  const [susuCupQty, setSusuCupQty] = useState('');
+  const [susuBantalQty, setSusuBantalQty] = useState('');
   const [yogurtFlavor, setYogurtFlavor] = useState('Original');
   const [yogurt200, setYogurt200] = useState('');
   const [kejuPackagingType, setKejuPackagingType] = useState('Kemasan Keju');
@@ -157,6 +159,8 @@ export default function PengemasanPage() {
   const [sendingPkg, setSendingPkg] = useState(null);
   const [deletingPkg, setDeletingPkg] = useState(null);
   const [previewBa, setPreviewBa] = useState(null);
+  const [existingBaList, setExistingBaList] = useState([]);
+  const [existingBaPackagingIds, setExistingBaPackagingIds] = useState(new Set());
 
   // Incoming Milk Receptions & Production Dropdown
   const [incomingProductions, setIncomingProductions] = useState([]);
@@ -187,9 +191,10 @@ export default function PengemasanPage() {
       if (filterStatus) url += `status=${filterStatus}&`;
       if (filterDate) url += `date=${filterDate}&`;
 
-      const [pkgRes, prodRes] = await Promise.all([
+      const [pkgRes, prodRes, baRes] = await Promise.all([
         api.get(url),
         api.get('/farm/production'),
+        api.get('/uht/berita-acara').catch(() => ({ data: { success: true, data: [] } })),
         fetchIncoming(),
       ]);
 
@@ -198,6 +203,21 @@ export default function PengemasanPage() {
       }
       if (prodRes?.data?.success) {
         setProductions(prodRes.data.data);
+      }
+      if (baRes?.data?.success && Array.isArray(baRes.data.data)) {
+        setExistingBaList(baRes.data.data);
+        const baPkgIds = new Set(
+          baRes.data.data
+            .map(b => b.packagingId || b.packaging_id)
+            .filter(Boolean)
+        );
+        try {
+          const stored = JSON.parse(localStorage.getItem('uht_clicked_bast_pkg_ids') || '[]');
+          if (Array.isArray(stored)) {
+            stored.forEach(id => baPkgIds.add(id));
+          }
+        } catch (e) { }
+        setExistingBaPackagingIds(baPkgIds);
       }
     } catch (err) {
       console.error('Error fetching packaging data:', err);
@@ -278,6 +298,8 @@ export default function PengemasanPage() {
     setSusu130('');
     setSusu200('');
     setSusu250('');
+    setSusuCupQty('');
+    setSusuBantalQty('');
     setYogurt200('');
     setKeju100('');
     setKeju250('');
@@ -547,6 +569,16 @@ export default function PengemasanPage() {
 
   const handleGenerateOrPrintBa = async (pkg) => {
     try {
+      // Mark as clicked/created immediately in state and storage so icon turns gray
+      try {
+        const stored = JSON.parse(localStorage.getItem('uht_clicked_bast_pkg_ids') || '[]');
+        if (Array.isArray(stored) && !stored.includes(pkg.id)) {
+          stored.push(pkg.id);
+          localStorage.setItem('uht_clicked_bast_pkg_ids', JSON.stringify(stored));
+        }
+      } catch (e) { }
+      setExistingBaPackagingIds(prev => new Set([...prev, pkg.id]));
+
       let itemsPayload = [];
       if (pkg.packagingDetails) {
         try {
@@ -557,7 +589,8 @@ export default function PengemasanPage() {
       const res = await api.get('/uht/berita-acara');
       let existingBa = null;
       if (res.data?.success && Array.isArray(res.data.data)) {
-        existingBa = res.data.data.find(b => b.packagingId === pkg.id);
+        setExistingBaList(res.data.data);
+        existingBa = res.data.data.find(b => b.packagingId === pkg.id || b.packaging_id === pkg.id);
       }
 
       if (existingBa) {
@@ -594,6 +627,7 @@ export default function PengemasanPage() {
       if (createRes.data?.success && createRes.data.data) {
         setPreviewBa(createRes.data.data);
         setToast({ type: 'success', message: 'Berita Acara berhasil dibuat & siap dicetak!' });
+        fetchData();
       } else {
         const fallbackBa = {
           ...newBaPayload,
@@ -895,14 +929,31 @@ export default function PengemasanPage() {
                           <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
                               {/* 🖨️ CETAK / BUAT BERITA ACARA */}
-                              <button
-                                type="button"
-                                onClick={() => handleGenerateOrPrintBa(p)}
-                                className="p-1.5 text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
-                                title="Cetak Berita Acara"
-                              >
-                                <Printer className="w-4 h-4" />
-                              </button>
+                              {(() => {
+                                const isBaCreated = existingBaPackagingIds.has(p.id) || existingBaList.some(b => b.packagingId === p.id || b.packaging_id === p.id);
+                                if (isBaCreated) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleGenerateOrPrintBa(p)}
+                                      className="p-1.5 text-slate-400 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                                      title="Lihat / Cetak BAST (Sudah Dibuat)"
+                                    >
+                                      <Printer className="w-4 h-4 text-slate-400" />
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGenerateOrPrintBa(p)}
+                                    className="p-1.5 text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors cursor-pointer"
+                                    title="Buat Berita Acara (BAST)"
+                                  >
+                                    <Printer className="w-4 h-4 text-emerald-700" />
+                                  </button>
+                                );
+                              })()}
 
                               {/* 👁️ LIHAT DETAIL */}
                               <button
@@ -1288,17 +1339,18 @@ export default function PengemasanPage() {
             }
 
             // Matrix Layout (Matching Image 2 exactly for Susu, Yogurt, & Keju)
-            const totalHasilPengolahan = (parseInt(susu115) || 0) + (parseInt(susu130) || 0) + (parseInt(susu200) || 0) + (parseInt(susu250) || 0) + (parseInt(yogurt200) || 0) + (parseInt(keju100) || 0) + (parseInt(keju250) || 0);
+            const q115 = susuPasteurisasiPackaging === 'Botol' ? (parseInt(susu115, 10) || 0) : 0;
+            const q250 = susuPasteurisasiPackaging === 'Botol' ? (parseInt(susu250, 10) || 0) : 0;
+            const qCup = susuPasteurisasiPackaging === 'Cup' ? (parseInt(susuCupQty, 10) || 0) : 0;
+            const qBantal = susuPasteurisasiPackaging === 'Plastik Bantal' ? (parseInt(susuBantalQty, 10) || 0) : 0;
+            const qYogurt = parseInt(yogurt200, 10) || 0;
+            const qKeju100 = parseInt(keju100, 10) || 0;
+            const qKeju250 = parseInt(keju250, 10) || 0;
+
+            const totalHasilPengolahan = q115 + q250 + qCup + qBantal + qYogurt + qKeju100 + qKeju250;
 
             const handleSaveHasilPengolahanExcel = async (e) => {
               if (e && e.preventDefault) e.preventDefault();
-              const q115 = parseInt(susu115, 10) || 0;
-              const q130 = parseInt(susu130, 10) || 0;
-              const q200 = parseInt(susu200, 10) || 0;
-              const q250 = parseInt(susu250, 10) || 0;
-              const qYogurt = parseInt(yogurt200, 10) || 0;
-              const qKeju100 = parseInt(keju100, 10) || 0;
-              const qKeju250 = parseInt(keju250, 10) || 0;
 
               if (totalHasilPengolahan <= 0) {
                 setToast({ type: 'error', message: 'Harap masukkan minimal 1 produk hasil pengolahan (> 0 pcs).' });
@@ -1306,22 +1358,22 @@ export default function PengemasanPage() {
               }
 
               const items = [];
-              if (q115 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '115 ml', quantity: q115 });
-              if (q130 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '130 ml', quantity: q130 });
-              if (q200 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '200 ml', quantity: q200 });
-              if (q250 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: susuPasteurisasiPackaging, size: '250 ml', quantity: q250 });
+              if (q115 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: 'Botol', size: '115 ml', quantity: q115 });
+              if (q250 > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: 'Botol', size: '250 ml', quantity: q250 });
+              if (qCup > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: 'Cup', size: '', quantity: qCup });
+              if (qBantal > 0) items.push({ productCategory: 'Susu Pasteurisasi', variant: susuFlavor, packagingType: 'Plastik Bantal', size: '', quantity: qBantal });
               if (qYogurt > 0) items.push({ productCategory: 'Yogurt', variant: yogurtFlavor, packagingType: 'Botol', size: '200 ml', quantity: qYogurt });
               if (qKeju100 > 0) items.push({ productCategory: 'Keju', variant: 'Original', packagingType: kejuPackagingType, size: '100 gram', quantity: qKeju100 });
               if (qKeju250 > 0) items.push({ productCategory: 'Keju', variant: 'Original', packagingType: kejuPackagingType, size: '250 gram', quantity: qKeju250 });
 
               const catList = [];
-              if (q115 > 0 || q130 > 0 || q200 > 0 || q250 > 0) catList.push('Susu Pasteurisasi');
+              if (q115 > 0 || q250 > 0 || qCup > 0 || qBantal > 0) catList.push('Susu Pasteurisasi');
               if (qYogurt > 0) catList.push('Yogurt');
               if (qKeju100 > 0 || qKeju250 > 0) catList.push('Keju');
 
               const primaryCat = catList.length > 0 ? catList[0] : 'Susu Pasteurisasi';
 
-              const approxLiters = ((q115 * 0.115) + (q130 * 0.13) + (q200 * 0.2) + (q250 * 0.25) + (qYogurt * 0.2) + (qKeju100 * 1.0) + (qKeju250 * 2.5));
+              const approxLiters = ((q115 * 0.115) + (q250 * 0.25) + (qCup * 0.2) + (qBantal * 0.2) + (qYogurt * 0.2) + (qKeju100 * 1.0) + (qKeju250 * 2.5));
 
               setSubmitting(true);
               try {
@@ -1425,72 +1477,66 @@ export default function PengemasanPage() {
                               >
                                 <option value="Botol">Botol</option>
                                 <option value="Cup">Cup</option>
+                                <option value="Plastik Bantal">Plastik Bantal</option>
                               </select>
                             </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 115 ml</label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={susu115}
-                                onChange={(e) => setSusu115(e.target.value)}
-                                className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                              />
-                              <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                        {susuPasteurisasiPackaging === 'Botol' ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 115 ml</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={susu115}
+                                  onChange={(e) => setSusu115(e.target.value)}
+                                  className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                                <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                              </div>
                             </div>
-                          </div>
 
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 250 ml</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={susu250}
+                                  onChange={(e) => setSusu250(e.target.value)}
+                                  className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                                <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
                           <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 130 ml</label>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah</label>
                             <div className="relative">
                               <input
                                 type="number"
                                 min="0"
                                 placeholder="0"
-                                value={susu130}
-                                onChange={(e) => setSusu130(e.target.value)}
+                                value={susuPasteurisasiPackaging === 'Cup' ? susuCupQty : susuBantalQty}
+                                onChange={(e) => {
+                                  if (susuPasteurisasiPackaging === 'Cup') {
+                                    setSusuCupQty(e.target.value);
+                                  } else {
+                                    setSusuBantalQty(e.target.value);
+                                  }
+                                }}
                                 className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
                               />
                               <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
                             </div>
                           </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 200 ml</label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={susu200}
-                                onChange={(e) => setSusu200(e.target.value)}
-                                className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                              />
-                              <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">Ukuran 250 ml</label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={susu250}
-                                onChange={(e) => setSusu250(e.target.value)}
-                                className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                              />
-                              <span className="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">pcs</span>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* YOGURT SECTION */}
@@ -2826,7 +2872,7 @@ export default function PengemasanPage() {
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl animate-in fade-in zoom-in duration-200 print:p-0 print:shadow-none print:m-0 print:rounded-none print:max-h-none overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0 print:hidden">
               <h3 className="font-bold text-slate-900 text-base">Preview Berita Acara</h3>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handlePrint(previewBa)}
@@ -2838,14 +2884,23 @@ export default function PengemasanPage() {
                 <button
                   type="button"
                   onClick={() => setPreviewBa(null)}
-                  className="text-slate-400 hover:text-slate-600 rounded-full cursor-pointer font-normal text-xl leading-none"
+                  className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 >
-                  ✕
+                  <span>Tutup</span>
                 </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto my-4 pr-1 print:overflow-visible print:my-0 print:pr-0">
               <BeritaAcaraDocumentUht ba={previewBa} />
+            </div>
+            <div className="flex items-center justify-end border-t border-slate-100 pt-3.5 shrink-0 print:hidden">
+              <button
+                type="button"
+                onClick={() => setPreviewBa(null)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
