@@ -19,36 +19,36 @@ model Admin {
 }
 
 model User {
-  id           String           @id @default(uuid())
-  name         String
-  email        String           @unique
-  password     String
-  role         String           @default("ADMIN_FARM")
-  isActive     Boolean          @default(true) @map("is_active")
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
-  beritaAcaras BeritaAcara[]
-  outflows     MilkOutflow[]
-  packagings   MilkPackaging[]
-  productions  MilkProduction[]
-  milkRequests MilkRequest[]
-  sales        MilkSale[]
-  logs         SystemLog[]
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  password         String
+  role             String            @default("ADMIN_FARM")
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  bastDocuments    BastDocument[]
+  milk_outflows    MilkOutflow[]
+  milk_packagings  MilkPackaging[]
+  milk_productions MilkProduction[]
+  milk_sales       MilkSale[]
+  packagedProducts PackagedProduct[] @relation("UserPackagedProducts")
+  system_logs      SystemLog[]
 
   @@map("users")
 }
 
 model SystemLog {
   id        String   @id @default(uuid())
-  userId    String?  @map("user_id")
-  userEmail String   @map("user_email")
+  userId    String?
+  userEmail String
   action    String
   level     String   @default("INFO")
   details   String?
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  users     User?    @relation(fields: [userId], references: [id])
 
-  @@index([userId], map: "system_logs_user_id_fkey")
+  @@index([userId], map: "system_logs_userId_fkey")
   @@map("system_logs")
 }
 
@@ -56,273 +56,257 @@ model MilkCategory {
   id               String           @id @default(uuid())
   name             String           @unique
   code             String           @unique
-  productType      String           @default("SEGAR") @map("product_type")
-  animalType       String           @default("SAPI") @map("animal_type")
-  defaultPackaging String           @default("botol") @map("default_packaging")
+  productType      String           @default("SEGAR")
+  animalType       String           @default("SAPI")
+  defaultPackaging String           @default("botol")
   description      String?
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  outflows         MilkOutflow[]
-  packagings       MilkPackaging[]
-  productions      MilkProduction[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  milk_outflows    MilkOutflow[]
+  milk_packagings  MilkPackaging[]
+  milk_productions MilkProduction[]
 
   @@map("milk_categories")
 }
 
 model MilkProduction {
-  id                    String          @id @default(uuid())
-  date                  DateTime        @default(now())
-  categoryId            String          @map("category_id")
-  productType           String          @default("SEGAR") @map("product_type")
-  animalType            String          @default("SAPI") @map("animal_type")
-  packagingType         String          @default("botol") @map("packaging_type")
-  rawVolumeLiters       Float           @default(0) @map("raw_volume_liters")
-  processedLiters       Float           @default(0) @map("processed_liters")
-  packagedQty           Int             @default(0) @map("packaged_qty")
-  status                String          @default("SELESAI")
-  notes                 String?
-  createdById           String?         @map("created_by_id")
-  createdAt             DateTime        @default(now()) @map("created_at")
-  updatedAt             DateTime        @updatedAt @map("updated_at")
-  grossVolumeLiters     Float           @default(0) @map("gross_volume_liters")
-  usageType             String?         @map("usage_type")
-  usageVolumeLiters     Float           @default(0) @map("usage_volume_liters")
-  afkirVolumeLiters     Float           @default(0) @map("afkir_volume_liters")
-  pedetVolumeLiters     Float           @default(0) @map("pedet_volume_liters")
-  farmOrigin            String          @default("Manggala") @map("farm_origin")
-  shift                 String          @default("Pagi")
-  keteranganPenjualan   String?         @map("keterangan_penjualan")
-  soldFreshVolumeLiters Float           @default(0) @map("sold_fresh_volume_liters")
-  fotoTimbangan         String?         @map("foto_timbangan") @db.LongText
-  handoverStatus        String          @default("MENUNGGU_VERIFIKASI") @map("handover_status")
-  kodeTransfer          String?         @unique @map("kode_transfer")
-  nomorSegel            String?         @map("nomor_segel")
-  pinVerifikasi         String?         @map("pin_verifikasi")
-  receivedVolumeLiters  Float?          @map("received_volume_liters")
-  beritaAcaras          BeritaAcara[]
-  packagings            MilkPackaging[]
-  category              MilkCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdBy             User?           @relation(fields: [createdById], references: [id])
+  id                String        @id @default(uuid())
+  date              DateTime      @default(now())
+  categoryId        String?
+  productType       String        @default("SEGAR")
+  animalType        String        @default("SAPI")
+  packagingType     String        @default("botol")
+  grossVolumeLiters Float         @default(0)
+  pedetVolumeLiters Float         @default(0)
+  afkirVolumeLiters Float         @default(0)
+  usageType         String?
+  usageVolumeLiters Float         @default(0)
+  rawVolumeLiters   Float         @default(0)
+  processedLiters   Float         @default(0)
+  packagedQty       Int           @default(0)
+  status            String        @default("SELESAI")
+  notes             String?
+  createdById       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime
+  kirimKePI         Float         @default(0)
+  produksi          Float         @default(0)
+  rusakAfkir        Float         @default(0)
+  setorPedet        Float         @default(0)
+  tanggal           DateTime      @default(now())
+  milk_categories   MilkCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  users             User?         @relation(fields: [createdById], references: [id])
 
-  @@index([categoryId], map: "milk_productions_category_id_fkey")
-  @@index([createdById], map: "milk_productions_created_by_id_fkey")
+  @@index([categoryId], map: "milk_productions_categoryId_fkey")
+  @@index([createdById], map: "milk_productions_createdById_fkey")
   @@map("milk_productions")
 }
 
-model MilkPackaging {
-  id               String          @id @default(uuid())
-  date             DateTime        @default(now())
-  animalType       String          @default("SAPI") @map("animal_type")
-  categoryId       String?         @map("category_id")
-  processedLiters  Float           @default(0) @map("processed_liters")
-  botolQty         Int             @default(0) @map("botol_qty")
-  cupQty           Int             @default(0) @map("cup_qty")
-  plastikBantalQty Int             @default(0) @map("plastik_bantal_qty")
-  totalPackagedQty Int             @default(0) @map("total_packaged_qty")
-  status           String          @default("DRAFT")
-  notes            String?
-  createdById      String?         @map("created_by_id")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  origin           String          @default("Sapi")
-  packageSize      String?         @map("package_size")
-  packagingDetails String?         @map("packaging_details") @db.Text
-  packagingType    String?         @map("packaging_type")
-  processedAmount  Float           @default(0) @map("processed_amount")
-  processedUnit    String          @default("Liter") @map("processed_unit")
-  productCategory  String          @default("Susu") @map("product_category")
-  productSubtype   String?         @map("product_subtype")
-  variant          String?
-  condition        String?
-  quantityReceived Int             @default(0) @map("quantity_received")
-  quantitySent     Int             @default(0) @map("quantity_sent")
-  receivedAt       DateTime?       @map("received_at")
-  receivedById     String?         @map("received_by_id")
-  receivedByName   String?         @map("received_by_name")
-  receptionNotes   String?         @map("reception_notes") @db.Text
-  sentAt           DateTime?       @map("sent_at")
-  sentById         String?         @map("sent_by_id")
-  sentByName       String?         @map("sent_by_name")
-  productionId     String?         @map("production_id")
-  category         MilkCategory?   @relation(fields: [categoryId], references: [id])
-  createdBy        User?           @relation(fields: [createdById], references: [id])
-  production       MilkProduction? @relation(fields: [productionId], references: [id])
+model PackagedProduct {
+  id             String    @id @default(uuid())
+  tanggal        DateTime  @default(now())
+  jenisProduk    String
+  kemasan        String
+  jumlah         Float     @default(0)
+  createdAt      DateTime  @default(now())
+  condition      String?
+  createdById    String?
+  notes          String?   @db.Text
+  receivedAt     DateTime?
+  receivedByName String?
+  status         String    @default("DITERIMA")
+  updatedAt      DateTime  @updatedAt
+  createdBy      User?     @relation("UserPackagedProducts", fields: [createdById], references: [id])
 
-  @@index([categoryId], map: "milk_packagings_category_id_fkey")
-  @@index([createdById], map: "milk_packagings_created_by_id_fkey")
-  @@index([productionId], map: "milk_packagings_production_id_fkey")
+  @@index([createdById], map: "packaged_products_createdById_fkey")
+  @@map("packaged_products")
+}
+
+model MilkPackaging {
+  id               String        @id @default(uuid())
+  date             DateTime      @default(now())
+  productCategory  String        @default("Susu")
+  productSubtype   String?
+  origin           String        @default("Sapi")
+  variant          String?
+  animalType       String        @default("SAPI")
+  categoryId       String?
+  processedAmount  Float         @default(0)
+  processedUnit    String        @default("Liter")
+  processedLiters  Float         @default(0)
+  packagingDetails String?       @db.Text
+  packagingType    String?
+  packageSize      String?
+  botolQty         Int           @default(0)
+  cupQty           Int           @default(0)
+  plastikBantalQty Int           @default(0)
+  totalPackagedQty Int           @default(0)
+  status           String        @default("DITERIMA")
+  sentAt           DateTime?
+  sentById         String?
+  sentByName       String?
+  receivedAt       DateTime?
+  receivedById     String?
+  receivedByName   String?
+  quantitySent     Int           @default(0)
+  quantityReceived Int           @default(0)
+  condition        String?
+  receptionNotes   String?       @db.Text
+  notes            String?
+  createdById      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime
+  milk_categories  MilkCategory? @relation(fields: [categoryId], references: [id])
+  users            User?         @relation(fields: [createdById], references: [id])
+
+  @@index([categoryId], map: "milk_packagings_categoryId_fkey")
+  @@index([createdById], map: "milk_packagings_createdById_fkey")
   @@map("milk_packagings")
 }
 
 model MilkOutflow {
-  id            String       @id @default(uuid())
-  date          DateTime     @default(now())
-  categoryId    String       @map("category_id")
-  productType   String       @default("SEGAR") @map("product_type")
-  animalType    String       @default("SAPI") @map("animal_type")
-  packagingType String       @default("botol") @map("packaging_type")
-  quantity      Int          @default(0)
-  notes         String?
-  createdById   String?      @map("created_by_id")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
-  category      MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdBy     User?        @relation(fields: [createdById], references: [id])
+  id              String       @id @default(uuid())
+  date            DateTime     @default(now())
+  categoryId      String
+  productType     String       @default("SEGAR")
+  animalType      String       @default("SAPI")
+  packagingType   String       @default("botol")
+  quantity        Int          @default(0)
+  notes           String?
+  createdById     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime
+  milk_categories MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  users           User?        @relation(fields: [createdById], references: [id])
 
-  @@index([categoryId], map: "milk_outflows_category_id_fkey")
-  @@index([createdById], map: "milk_outflows_created_by_id_fkey")
+  @@index([categoryId], map: "milk_outflows_categoryId_fkey")
+  @@index([createdById], map: "milk_outflows_createdById_fkey")
   @@map("milk_outflows")
 }
 
 model MilkSale {
-  id               String   @id @default(uuid())
-  transaction_id   String   @unique
-  date             DateTime @default(now())
-  product_category String   @default("Susu")
-  product_subtype  String?
-  variant          String?
-  packagingType    String   @default("Botol") @map("packaging_type")
-  quantity         Int      @default(0)
-  unitPrice        Float    @default(0) @map("unit_price")
-  totalPrice       Float    @default(0) @map("total_price")
-  status           String   @default("Berhasil")
-  notes            String?
-  createdById      String?  @map("created_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  createdBy        User?    @relation(fields: [createdById], references: [id])
+  id              String   @id @default(uuid())
+  transactionId   String?  @unique
+  date            DateTime @default(now())
+  productCategory String   @default("Susu")
+  productSubtype  String?
+  variant         String?
+  packagingType   String   @default("Botol")
+  quantity        Int      @default(0)
+  unitPrice       Float    @default(0)
+  totalPrice      Float    @default(0)
+  status          String   @default("Berhasil")
+  notes           String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+  catatan         String?
+  hargaJual       Float    @default(0)
+  jumlah          Float    @default(0)
+  kategoriBayar   String   @default("PNBP")
+  pembeli         String   @default("")
+  produkRefId     String?
+  sumber          String   @default("FRESH")
+  tanggal         DateTime @default(now())
+  users           User?    @relation(fields: [createdById], references: [id])
+  piutang         Piutang?
 
-  @@index([createdById], map: "milk_sales_created_by_id_fkey")
+  @@index([createdById], map: "milk_sales_createdById_fkey")
   @@map("milk_sales")
 }
 
-model BeritaAcara {
-  id               String           @id @default(uuid())
-  nomorBA          String           @unique @map("nomor_ba")
-  date             DateTime         @default(now())
-  shift            String?          @default("Pagi")
-  farmLocation     String?          @default("Tegalsari") @map("farm_location")
-  animalType       String?          @default("SAPI") @map("animal_type")
-  unit             String?          @default("Liter")
-  totalProduksi    Float?           @default(0) @map("total_produksi")
-  penggunaanPedet  Float?           @default(0) @map("penggunaan_pedet")
-  afkir            Float?           @default(0)
-  lainLain         Float?           @default(0) @map("lain_lain")
-  diserahterimakan Float?           @default(0)
-  penerimaRole     String?          @default("Seksi Pemasaran") @map("penerima_role")
-  penerimaUserId   String?          @map("penerima_user_id")
-  penerimaName     String?          @default("Seksi Pemasaran") @map("penerima_name")
-  penyerahRole     String?          @default("Seksi Pemeliharaan") @map("penyerah_role")
-  penyerahUserId   String?          @map("penyerah_user_id")
-  penyerahName     String?          @default("Seksi Pemeliharaan") @map("penyerah_name")
-  status           String?          @default("DRAFT")
-  digitalSignature String?          @map("digital_signature") @db.LongText
-  signedAt         DateTime?        @map("signed_at")
-  signedByName     String?          @map("signed_by_name")
-  sentAt           DateTime?        @map("sent_at")
-  readAt           DateTime?        @map("read_at")
-  printedAt        DateTime?        @map("printed_at")
-  notes            String?          @db.Text
-  productionId     String?          @map("production_id")
-  createdById      String?          @map("created_by_id")
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  confirmedAt      DateTime?        @map("confirmed_at")
-  confirmedBy      String?          @map("confirmed_by")
-  confirmedByName  String?          @map("confirmed_by_name")
-  giverDept        String?          @default("Tim Kerja Layanan Pemasaran") @map("giver_dept")
-  giverName        String?          @default("Tim Kerja Layanan Pemasaran") @map("giver_name")
-  giverTitle       String?          @map("giver_title")
-  items            String?          @db.Text
-  location         String?
-  packagingId      String?          @map("packaging_id")
-  period           String?
-  purpose          String?
-  receiverDept     String?          @map("receiver_dept")
-  receiverName     String?          @map("receiver_name")
-  receiverTitle    String?          @map("receiver_title")
-  type             String?
-  createdBy        User?            @relation(fields: [createdById], references: [id])
-  production       MilkProduction?  @relation(fields: [productionId], references: [id])
-  logs             BeritaAcaraLog[]
+model BastDocument {
+  id               String    @id @default(uuid())
+  nomorBast        String    @unique
+  tanggal          DateTime  @default(now())
+  sumber           String    @default("SUSU_SEGAR")
+  volumeLiters     Float     @default(0)
+  pengirimNama     String
+  pengirimRole     String    @default("ADMIN_FARM")
+  penerimaNama     String?
+  penerimaRole     String?   @default("ADMIN_PEMASARAN")
+  status           String    @default("MENUNGGU_KONFIRMASI")
+  catatan          String?   @db.Text
+  confirmedAt      DateTime?
+  productionId     String?
+  createdById      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  instansiPenerima String?
+  jenisPermintaan  String    @default("PENJUALAN_LANGSUNG")
+  createdBy        User?     @relation(fields: [createdById], references: [id])
 
-  @@index([createdById], map: "berita_acara_created_by_id_fkey")
-  @@index([productionId], map: "berita_acara_production_id_fkey")
-  @@map("berita_acara")
+  @@index([createdById], map: "bast_documents_createdById_fkey")
+  @@map("bast_documents")
 }
 
-model BeritaAcaraLog {
-  id            String      @id @default(uuid())
-  beritaAcaraId String      @map("berita_acara_id")
-  action        String
-  actorName     String      @map("actor_name")
-  actorRole     String?     @map("actor_role")
-  notes         String?
-  createdAt     DateTime    @default(now()) @map("created_at")
-  beritaAcara   BeritaAcara @relation(fields: [beritaAcaraId], references: [id], onDelete: Cascade)
+model Notification {
+  id           String    @id @default(uuid())
+  title        String
+  message      String    @db.Text
+  type         String    @default("STOCK_ADDED")
+  targetRole   String?
+  targetUserId String?
+  senderId     String?
+  senderName   String?
+  senderRole   String?
+  link         String?   @default("/pemasaran/terima-data")
+  isRead       Boolean   @default(false)
+  readAt       DateTime?
+  metadata     String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  @@index([beritaAcaraId], map: "berita_acara_logs_berita_acara_id_fkey")
-  @@map("berita_acara_logs")
+  @@map("notifications")
 }
 
 model MilkRequest {
   id                   String    @id @default(uuid())
-  requestNo            String    @unique @map("request_no")
+  requestNo            String    @unique
   date                 DateTime  @default(now())
-  volumeLiters         Float     @default(0) @map("volume_liters")
-  processingNeeds      String    @map("processing_needs")
-  priority             String    @default("Normal")
+  volumeLiters         Float     @default(0)
+  processingNeeds      String    @db.VarChar(255)
+  priority             String    @default("Normal") @db.VarChar(50)
   notes                String?   @db.Text
-  status               String    @default("MENUNGGU_PERSETUJUAN")
-  rejectionReason      String?   @map("rejection_reason") @db.Text
-  approvedAt           DateTime? @map("approved_at")
-  approvedById         String?   @map("approved_by_id")
-  approvedByName       String?   @map("approved_by_name")
-  dispatchedAt         DateTime? @map("dispatched_at")
-  readyForReceiptAt    DateTime? @map("ready_for_receipt_at")
-  receivedVolumeLiters Float?    @map("received_volume_liters")
-  receivedAt           DateTime? @map("received_at")
-  receivedById         String?   @map("received_by_id")
-  receivedByName       String?   @map("received_by_name")
-  createdById          String?   @map("created_by_id")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-  createdBy            User?     @relation(fields: [createdById], references: [id])
+  status               String    @default("MENUNGGU_PERSETUJUAN") @db.VarChar(50)
+  rejectionReason      String?   @db.Text
+  approvedAt           DateTime?
+  approvedById         String?
+  approvedByName       String?   @db.VarChar(255)
+  dispatchedAt         DateTime?
+  readyForReceiptAt    DateTime?
+  receivedVolumeLiters Float?
+  receivedAt           DateTime?
+  receivedById         String?
+  receivedByName       String?   @db.VarChar(255)
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @default(now())
 
-  @@index([createdById], map: "milk_requests_created_by_id_fkey")
   @@map("milk_requests")
 }
 
-model PackagingMaterial {
-  id            String                  @id @default(uuid())
-  code          String                  @unique
-  name          String
-  category      String                  @default("Kemasan")
-  unit          String                  @default("pcs")
-  currentStock  Float                   @default(0) @map("current_stock")
-  minimumStock  Float                   @default(500) @map("minimum_stock")
-  criticalStock Float                   @default(200) @map("critical_stock")
-  createdAt     DateTime                @default(now()) @map("created_at")
-  updatedAt     DateTime                @updatedAt @map("updated_at")
-  movements     MaterialStockMovement[]
+model Piutang {
+  id               String             @id @default(uuid())
+  milkSaleId       String             @unique @map("milkSaleId")
+  jumlahAwal       Float
+  sisaPiutang      Float
+  lunas            Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  pelunasanPiutang PelunasanPiutang[]
+  milkSale         MilkSale           @relation(fields: [milkSaleId], references: [id], onDelete: Cascade)
 
-  @@map("packaging_materials")
+  @@map("piutang")
 }
 
-model MaterialStockMovement {
-  id            String            @id @default(uuid())
-  materialId    String            @map("material_id")
-  type          String
-  quantity      Float
-  previousStock Float             @default(0) @map("previous_stock")
-  newStock      Float             @default(0) @map("new_stock")
-  source        String            @default("PENYESUAIAN")
-  referenceId   String?           @map("reference_id")
-  notes         String?           @db.Text
-  createdById   String?           @map("created_by_id")
-  createdAt     DateTime          @default(now()) @map("created_at")
-  material      PackagingMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+model PelunasanPiutang {
+  id        String   @id @default(uuid())
+  piutangId String
+  jumlah    Float
+  tanggal   DateTime @default(now())
+  catatan   String?
+  piutang   Piutang  @relation(fields: [piutangId], references: [id], onDelete: Cascade)
 
-  @@index([materialId], map: "material_stock_movements_material_id_fkey")
-  @@map("material_stock_movements")
+  @@index([piutangId], map: "pelunasan_piutang_piutangId_fkey")
+  @@map("pelunasan_piutang")
 }
