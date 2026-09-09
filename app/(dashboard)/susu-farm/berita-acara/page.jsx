@@ -126,7 +126,7 @@ function BeritaAcaraContent() {
   const fetchBaList = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      let url = '/berita-acara?';
+      let url = '/susu-farm/berita-acara?';
       if (filterType !== 'ALL') url += `type=${filterType}&`;
       if (filterDate) url += `date=${filterDate}&`;
       if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
@@ -500,12 +500,12 @@ function BeritaAcaraContent() {
 
     try {
       if (editingBa) {
-        const res = await api.put(`/berita-acara/${editingBa.id}`, payload);
+        const res = await api.put(`/susu-farm/berita-acara/${editingBa.id}`, payload);
         if (res.data.success) {
           setToast({ type: 'success', message: res.data.message || `✓ Berita Acara ${editingBa.nomorBa} berhasil diperbarui.` });
         }
       } else {
-        const res = await api.post('/berita-acara', payload);
+        const res = await api.post('/susu-farm/berita-acara', payload);
         if (res.data.success) {
           const createdItem = res.data.data;
           setToast({
@@ -524,7 +524,7 @@ function BeritaAcaraContent() {
 
   const handleConfirmBaByPemasaran = async (ba) => {
     try {
-      const res = await api.put(`/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
+      const res = await api.put(`/susu-farm/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
       if (res.data.success) {
         setToast({ type: 'success', message: 'Berita Acara produk siap jual telah dikonfirmasi oleh Pemasaran!' });
         fetchBaList(true);
@@ -543,7 +543,7 @@ function BeritaAcaraContent() {
     setPreviewBa(ba);
     try {
       if (ba.id) {
-        await api.post(`/berita-acara/${ba.id}/print`).catch(() => { });
+        await api.post(`/susu-farm/berita-acara/${ba.id}/print`).catch(() => { });
       }
     } catch (e) { }
     setTimeout(() => {
@@ -569,7 +569,7 @@ function BeritaAcaraContent() {
 
   const handleStatusChange = async (baId, newStatus) => {
     try {
-      const res = await api.put(`/berita-acara/${baId}`, { status: newStatus });
+      const res = await api.put(`/susu-farm/berita-acara/${baId}`, { status: newStatus });
       if (res.data.success) {
         setToast({ type: 'success', message: res.data.message || `Status berhasil diubah.` });
         fetchBaList();
