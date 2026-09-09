@@ -145,7 +145,7 @@ export async function POST(request) {
       totalPackagedQty = itemsList.reduce((sum, i) => sum + (parseInt(i.quantity, 10) || 0), 0);
       primaryPkgType = itemsList[0]?.packagingType || 'Botol';
       primaryPkgSize = itemsList[0]?.size || '';
-      
+
       bQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('botol')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
       cQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('cup')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
       pQty = itemsList.filter(i => (i.packagingType || '').toLowerCase().includes('bantal') || (i.packagingType || '').toLowerCase().includes('pack')).reduce((s, i) => s + (parseInt(i.quantity, 10) || 0), 0);
@@ -187,9 +187,9 @@ export async function POST(request) {
         try {
           const exist = await prisma.packagingMaterial.findUnique({ where: { code: m.code } }).catch(() => null);
           if (!exist && typeof prisma.packagingMaterial?.create === 'function') {
-            await prisma.packagingMaterial.create({ data: m }).catch(() => {});
+            await prisma.packagingMaterial.create({ data: m }).catch(() => { });
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -328,7 +328,7 @@ export async function POST(request) {
                 await tx.packagingMaterial.update({
                   where: { id: mat.id },
                   data: { currentStock: newStock }
-                }).catch(() => {});
+                }).catch(() => { });
               }
 
               if (tx.materialStockMovement && typeof tx.materialStockMovement?.create === 'function') {
@@ -343,7 +343,7 @@ export async function POST(request) {
                     notes: `Produksi ${pCategory} ${pVariant} (${totalProdQty} pcs, Net: ${netQtyVal} pcs)`.trim(),
                     createdById: validUserId
                   }
-                }).catch(() => {});
+                }).catch(() => { });
               }
             }
           } catch (matErr) {

@@ -7,110 +7,115 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   try {
     const authUser = getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak: Tidak terautentikasi' },
+        { status: 401 }
+      );
+    }
 
-    // Fetch latest Berita Acara items
-    const baList = await prisma.beritaAcara.findMany({
-      take: 5,
-      orderBy: { created_at: 'desc' },
-    }).catch(() => []);
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '30', 10);
+    const unreadOnly = searchParams.get('unreadOnly') === 'true';
 
-    // Fetch latest Production items
-    const prodList = await prisma.milkProduction.findMany({
-      take: 5,
-      orderBy: { created_at: 'desc' },
-    }).catch(() => []);
+    // Role-based filtering:
+    // SUPERADMIN can see all notifications
+    // ADMIN_PEMASARAN sees notifications targeted to 'ADMIN_PEMASARAN', 'ALL', or their userId
+    // Other roles see notifications targeted to their role, 'ALL', or their userId
+    let where = {};
+    if (authUser.role !== 'SUPERADMIN') {
+      where.OR = [
+        { targetRole: authUser.role },
+        { targetRole: 'ALL' },
+        { targetUserId: authUser.id },
+      ];
+    }
 
-    const notifications = [];
+    if (unreadOnly) {
+      where.isRead = false;
+    }
 
-    // Map Berita Acara notifications
-    baList.forEach((ba) => {
-      const createdAtDate = ba.created_at || ba.createdAt || new Date();
-      const dateStr = new Date(createdAtDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      const nomorBa = ba.nomor_ba || ba.nomorBa || '';
-      const farmLoc = ba.farm_location || ba.farmLocation || 'Farm';
-      
-      if (ba.status === 'TERKIRIM_KE_PEMASARAN' || ba.status === 'TELAH_DITERIMA' || ba.status === 'DIBACA_PEMASARAN' || ba.status === 'SUDAH_DITANDATANGANI') {
-        notifications.push({
-          id: `ba-${ba.id}`,
-          title: 'Konfirmasi Admin Pemasaran',
-          desc: `Berita Acara ${nomorBa} disetujui & diterima oleh Seksi Pemasaran (${ba.diserahterimakan} ${ba.unit || 'Liter'}).`,
-          time: `${dateStr} WIB`,
-          type: 'pemasaran',
-          isUnread: true,
-          badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-        });
-      } else {
-        notifications.push({
-          id: `ba-${ba.id}`,
-          title: 'Berita Acara Dibuat',
-          desc: `Dokumen BAST ${nomorBa} dari Farm ${farmLoc} telah berhasil diterbitkan.`,
-          time: `${dateStr} WIB`,
-          type: 'ba',
-          isUnread: false,
-          badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
-        });
-      }
-    });
-
-    // Map Production notifications
-    prodList.forEach((prod) => {
-      const createdAtDate = prod.created_at || prod.createdAt || new Date();
-      const dateStr = new Date(createdAtDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      const aType = prod.animal_type || prod.animalType || 'SAPI';
-      const rawVol = prod.raw_volume_liters ?? prod.rawVolumeLiters ?? 0;
-      
-      notifications.push({
-        id: `prod-${prod.id}`,
-        title: 'Konfirmasi Admin Pengemasan',
-        desc: `Produksi Susu ${aType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${rawVol} Liter Siap Olah) diterima Seksi Pengemasan & Olahan.`,
-        time: `${dateStr} WIB`,
-        type: 'pengemasan',
-        isUnread: true,
-        badgeColor: 'bg-blue-100 text-blue-900 border-blue-300',
-      });
-    });
-
-    // Sort by timestamp if available or keep top list
-    const unreadCount = notifications.filter(n => n.isUnread).length;
+    const [notifications, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      }),
+      prisma.notification.count({
+        where: {
+          ...where,
+          isRead: false,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: notifications.slice(0, 5),
-      unreadCount: unreadCount || 2,
+      unreadCount,
+      data: notifications,
     });
   } catch (error) {
-    console.error('Error fetching notifications:', error);
-    // Fallback notifications if DB error
+    console.error('GET /api/notifications error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Gagal memuat data notifikasi' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const authUser = getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const {
+      title,
+      message,
+      type,
+      targetRole,
+      targetUserId,
+      link,
+      metadata,
+    } = body;
+
+    if (!title || !message) {
+      return NextResponse.json(
+        { success: false, message: 'Judul dan pesan notifikasi wajib diisi' },
+        { status: 400 }
+      );
+    }
+
+    const notification = await prisma.notification.create({
+      data: {
+        title,
+        message,
+        type: type || 'STOCK_ADDED',
+        targetRole: targetRole || 'ADMIN_PEMASARAN',
+        targetUserId: targetUserId || null,
+        senderId: authUser.id,
+        senderName: authUser.name || authUser.email,
+        senderRole: authUser.role,
+        link: link || '/pemasaran/terima-data',
+        metadata: metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null,
+      },
+    });
+
     return NextResponse.json({
       success: true,
-      data: [
-        {
-          id: 'n1',
-          title: 'Konfirmasi Admin Pemasaran',
-          desc: 'Berita Acara BA-20260819-003 disetujui & diterima oleh Seksi Pemasaran (10 Liter).',
-          time: '11:16 WIB',
-          type: 'pemasaran',
-          isUnread: true,
-        },
-        {
-          id: 'n2',
-          title: 'Konfirmasi Admin Pengemasan',
-          desc: 'Hasil Produksi Susu Sapi (7,770 Liter Siap Olah) diserahkan ke Seksi Pengemasan.',
-          time: '11:15 WIB',
-          type: 'pengemasan',
-          isUnread: true,
-        },
-        {
-          id: 'n3',
-          title: '🛍️ Distribusi Susu Segar',
-          desc: 'Penjualan langsung susu segar sebanyak 20 Liter telah dicatat oleh Seksi Pemasaran.',
-          time: '10:45 WIB',
-          type: 'pemasaran',
-          icon: '🛍️',
-          isUnread: false,
-        }
-      ],
-      unreadCount: 2,
+      message: 'Notifikasi berhasil dibuat',
+      data: notification,
     });
+  } catch (error) {
+    console.error('POST /api/notifications error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Gagal membuat notifikasi' },
+      { status: 500 }
+    );
   }
 }

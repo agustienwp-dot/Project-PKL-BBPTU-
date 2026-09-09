@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthUser, requireRole } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
+    const authUser = getAuthUser(request);
+    const allowed = ['ADMIN_PEMASARAN', 'SUPERADMIN'];
+    if (!authUser || !requireRole(authUser, allowed)) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const productType = searchParams.get('productType'); // SEGAR or OLAHAN
 

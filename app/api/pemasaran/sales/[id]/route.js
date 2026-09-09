@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthUser, requireRole } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/pemasaran/sales/[id]
 export async function GET(request, { params }) {
   try {
+    const authUser = getAuthUser(request);
+    const allowed = ['ADMIN_PEMASARAN', 'SUPERADMIN'];
+    if (!authUser || !requireRole(authUser, allowed)) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     const sale = await prisma.milkSale.findUnique({
       where: { id },
@@ -30,6 +40,15 @@ export async function GET(request, { params }) {
 // DELETE /api/pemasaran/sales/[id]
 export async function DELETE(request, { params }) {
   try {
+    const authUser = getAuthUser(request);
+    const allowed = ['ADMIN_PEMASARAN', 'SUPERADMIN'];
+    if (!authUser || !requireRole(authUser, allowed)) {
+      return NextResponse.json(
+        { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     const sale = await prisma.milkSale.findUnique({ where: { id } });
 

@@ -1,9 +1,0 @@
-JWT_SECRET=jwt-secret-key-farm-123
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=db_stok_hewan
-
-DATABASE_URL="mysql://root:password@localhost:3306/db_stok_hewan"

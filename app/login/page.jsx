@@ -14,11 +14,11 @@ import {
   CheckCircle2,
   ShieldCheck,
   Milk,
-  Package,
   ShoppingBag,
   UserPlus,
   ArrowRight,
   Sparkles,
+  Package,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -55,7 +55,21 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Handle Submit Login
+  const getDashboardUrl = (userObj) => {
+    const role = userObj?.role || (typeof userObj === 'string' ? userObj : '');
+    if (role === 'ADMIN_PEMASARAN') {
+      return '/pemasaran/dashboard';
+    }
+    if (role === 'ADMIN_PENGEMASAN') {
+      return '/uht/dashboard';
+    } if (role === 'ADMIN_FARM') {
+      return '/susu-farm/dashboard';
+    }
+    return '/uht/dashboard';
+
+  };
+
+  // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -63,16 +77,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await login(email, password);
-      const userRole = data?.user?.role;
-
-      if (userRole === 'ADMIN_PENGEMASAN') {
-        window.location.href = '/uht/dashboard';
-      } else if (userRole === 'ADMIN_FARM') {
-        window.location.href = '/susu-farm/dashboard';
-      } else {
-        window.location.href = '/uht/dashboard';
-      }
+      const res = await login(email, password);
+      window.location.href = getDashboardUrl(res?.user || res);
     } catch (err) {
       console.error('Login error:', err);
       const msg =
@@ -148,21 +154,10 @@ export default function LoginPage() {
         }
       }
       setShowConfirmModal(false);
-      if (userRole === 'ADMIN_PENGEMASAN') {
-        window.location.href = '/uht/dashboard';
-      } else if (userRole === 'ADMIN_FARM') {
-        window.location.href = '/susu-farm/dashboard';
-      } else {
-        window.location.href = '/uht/dashboard';
-      }
+      window.location.href = getDashboardUrl(registeredData?.user);
     } catch (err) {
-      if (userRole === 'ADMIN_PENGEMASAN') {
-        window.location.href = '/uht/dashboard';
-      } else if (userRole === 'ADMIN_FARM') {
-        window.location.href = '/susu-farm/dashboard';
-      } else {
-        window.location.href = '/uht/dashboard';
-      }
+      console.error('Auto-login redirect error:', err);
+      window.location.href = getDashboardUrl(registeredData?.user);
     } finally {
       setLoading(false);
     }
@@ -180,6 +175,24 @@ export default function LoginPage() {
     setEmail(createdEmail);
     setPassword('');
     setSuccess(`Akun "${createdEmail}" berhasil didaftarkan. Silakan login manual.`);
+  };
+
+  const handleQuickLogin = async (quickEmail, quickPassword) => {
+    setEmail(quickEmail);
+    setPassword(quickPassword);
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      const res = await login(quickEmail, quickPassword);
+      window.location.href = getDashboardUrl(res?.user || res);
+    } catch (err) {
+      console.error('Quick login error:', err);
+      const msg = err.response?.data?.message || err.message || 'Gagal login dengan akun quick login.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -408,7 +421,7 @@ export default function LoginPage() {
                 <option value="ADMIN_PEMASARAN">Admin Pemasaran (Penjualan)</option>
                 <option value="SUPERADMIN">Superadmin</option>
               </select>
-            </div>
+            </div >
 
             <button
               type="submit"
@@ -439,47 +452,50 @@ export default function LoginPage() {
                 Kembali ke Login
               </button>
             </p>
-          </form>
-        )}
-      </div>
+          </form >
+        )
+        }
+      </div >
 
       {/* MODAL AUTO-LOGIN AFTER REGISTER */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 text-center border border-slate-100">
-            <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto">
-              <Sparkles className="w-6 h-6" />
-            </div>
+      {
+        showConfirmModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 text-center border border-slate-100">
+              <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto">
+                <Sparkles className="w-6 h-6" />
+              </div>
 
-            <div className="space-y-1">
-              <h3 className="text-base font-black text-slate-800">Akun Berhasil Didaftarkan!</h3>
-              <p className="text-xs text-slate-500 font-medium">
-                Akun atas nama <span className="font-bold text-[#5c7c3e]">"{registeredData?.name}"</span> telah sukses dibuat.
-              </p>
-            </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-800">Akun Berhasil Didaftarkan!</h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Akun atas nama <span className="font-bold text-[#5c7c3e]">"{registeredData?.name}"</span> telah sukses dibuat.
+                </p>
+              </div>
 
-            <div className="space-y-2 pt-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleConfirmAutoLogin}
-                className="w-full py-3 px-4 bg-[#5c7c3e] hover:bg-[#4c6932] text-white font-bold rounded-xl shadow-md text-xs"
-              >
-                {loading ? 'Memproses...' : 'Ya, Langsung Masuk Ke Dashboard'}
-              </button>
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleConfirmAutoLogin}
+                  className="w-full py-3 px-4 bg-[#5c7c3e] hover:bg-[#4c6932] text-white font-bold rounded-xl shadow-md text-xs"
+                >
+                  {loading ? 'Memproses...' : 'Ya, Langsung Masuk Ke Dashboard'}
+                </button>
 
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleDeclinedAutoLogin}
-                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
-              >
-                Kembali ke Login
-              </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleDeclinedAutoLogin}
+                  className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                >
+                  Kembali ke Login
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

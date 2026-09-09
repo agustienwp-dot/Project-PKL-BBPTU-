@@ -20,6 +20,7 @@ import {
   User,
   ShieldCheck,
   FileText,
+  FileCheck,
   PackageCheck,
   Package,
   History,
@@ -31,7 +32,7 @@ import {
   ShoppingCart,
   BarChart3,
   Bell,
-  FileCheck,
+  MoreVertical,
   Truck
 } from 'lucide-react';
 import api from '@/services/api';
@@ -44,7 +45,22 @@ function isRouteAllowed(role, pathname) {
   if (pathname.startsWith('/profil')) return true;
 
   if (role === 'SUPERADMIN') {
-    const allowed = ['/uht/berita-acara', '/uht/pengemasan', '/uht/dashboard', '/susu-farm/dashboard', '/superadmin', '/kategori', '/susu-farm/reports', '/profil', '/susu-farm/produksi', '/susu-farm/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
+
+    const allowed = ['/dashboard',
+      '/superadmin',
+      '/reports',
+      '/profil',
+      '/produksi',
+      '/pengemasan',
+      '/riwayat-produksi',
+      '/riwayat-pengemasan',
+      '/pemasaran',
+      '/pemasaran/dashboard',
+      '/pemasaran/terima-susu-segar',
+      '/pemasaran/bast',
+      '/pemasaran/berita-acara',
+      '/pemasaran/terima-data',
+      '/pemasaran/laporan', '/uht/berita-acara', '/uht/pengemasan', '/uht/dashboard', '/susu-farm/dashboard', '/superadmin', '/kategori', '/susu-farm/reports', '/profil', '/susu-farm/produksi', '/susu-farm/berita-acara', '/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/pemasaran', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan'];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -54,12 +70,17 @@ function isRouteAllowed(role, pathname) {
   }
 
   if (role === 'ADMIN_PEMASARAN') {
-    const allowed = ['/uht/dashboard', '/pemasaran', '/pemasaran/request-susu', '/uht/berita-acara', '/pemasaran/penerimaan', '/pemasaran/penjualan', '/pemasaran/laporan', '/produksi', '/uht/pengemasan', '/riwayat-produksi', '/riwayat-pengemasan', '/reports', '/profil'];
-    return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
-  }
-
-  if (role === 'ADMIN_PENGEMASAN') {
-    const allowed = ['/uht/dashboard', '/uht/pengemasan', '/uht/request-susu', '/uht/stok-bahan', '/uht/pengemasan/produk-siap-edar', '/riwayat-pengemasan', '/uht/reports', '/reports/pengemasan', '/profil', '/uht/berita-acara'];
+    const allowed = [
+      '/dashboard',
+      '/pemasaran',
+      '/pemasaran/dashboard',
+      '/pemasaran/terima-susu-segar',
+      '/pemasaran/bast',
+      '/pemasaran/berita-acara',
+      '/pemasaran/terima-data',
+      '/pemasaran/laporan',
+      '/profil'
+    ];
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
@@ -71,7 +92,10 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuDotsOpen, setMenuDotsOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  ;
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
   useEffect(() => {
@@ -80,15 +104,36 @@ export default function DashboardLayout({ children }) {
     }
   }, [user, loading, router]);
 
+  // Close sidebar and menu dots on route change or Escape
   useEffect(() => {
-    if (user && (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN' || user.role === 'ADMIN_PENGEMASAN')) {
-      const fetchPending = async () => {
+    setSidebarOpen(false);
+    setMenuDotsOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      const fetchStatus = async () => {
         try {
-          if (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN') {
-            const res = await api.get('/farm/packaging?status=MENUNGGU_PENERIMAAN');
-            if (res.data.success) {
-              setPendingCount(res.data.data.length);
+          if (user.role === 'ADMIN_PEMASARAN' || user.role === 'SUPERADMIN' || user.role === 'ADMIN_PENGEMASAN') {
+            const pkgRes = await api.get('/farm/packaging?status=MENUNGGU_PENERIMAAN').catch(() => ({ data: { success: false } }));
+            if (pkgRes.data?.success) {
+              setPendingCount(pkgRes.data.data.length);
             }
+          }
+
+          const notifRes = await api.get('/notifications?limit=1').catch(() => ({ data: { success: false } }));
+          if (notifRes.data?.success) {
+            setUnreadNotifCount(notifRes.data.unreadCount || 0);
           }
           const reqRes = await api.get('/susu/request?status=MENUNGGU_PERSETUJUAN');
           if (reqRes.data.success) {
@@ -96,8 +141,9 @@ export default function DashboardLayout({ children }) {
           }
         } catch (e) { }
       };
-      fetchPending();
-      const interval = setInterval(fetchPending, 15000);
+
+      fetchStatus();
+      const interval = setInterval(fetchStatus, 10000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -128,20 +174,21 @@ export default function DashboardLayout({ children }) {
 
   const roleInfo = getRoleBadge(user?.role);
 
-  // Define Role-based Navigation Items
+  // Define Role-based Navigation Items (Exact Original Names & Paths)
   const getNavItems = () => {
     const role = user?.role;
+    const notifBadge = unreadNotifCount > 0 ? (unreadNotifCount > 9 ? '9+ Stok' : `${unreadNotifCount} Baru`) : null;
 
     if (role === 'SUPERADMIN') {
       return [
         { label: 'Dashboard Main', path: '/uht/dashboard', icon: LayoutDashboard },
         { label: 'Manajemen System', path: '/superadmin', icon: ShieldCheck },
-        { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
-        { label: 'Berita Acara', path: '/uht/berita-acara', icon: ClipboardList },
-        { label: 'Dashboard Pemasaran', path: '/pemasaran', icon: Boxes },
-        { label: 'Notifikasi Stok', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
-        { label: 'Penjualan Produk', path: '/pemasaran/penjualan', icon: ShoppingCart },
-        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
+        { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: Boxes },
+        { label: 'Terima Susu Segar', path: '/pemasaran/terima-susu-segar', icon: Milk },
+        { label: 'Distribusi Susu Segar', path: '/pemasaran/bast', icon: FileText },
+        { label: 'Berita Acara', path: '/pemasaran/berita-acara', icon: FileCheck },
+        { label: 'UHT', path: '/pemasaran/terima-data', icon: PackageCheck, badge: notifBadge },
+        { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -158,13 +205,12 @@ export default function DashboardLayout({ children }) {
 
     if (role === 'ADMIN_PEMASARAN') {
       return [
-        { label: 'Dashboard', path: '/susu-farm/dashboard', icon: LayoutDashboard },
-        { label: 'Request Susu Masuk', path: '/pemasaran/request-susu', icon: Truck, badge: pendingRequestCount > 0 ? `${pendingRequestCount}` : null },
-        { label: 'Terima Hasil Olahan', path: '/pemasaran/penerimaan', icon: Bell, badge: pendingCount > 0 ? `${pendingCount}` : null },
-        { label: 'Berita Acara', path: '/susu-farm/berita-acara', icon: ClipboardList },
-        { label: 'Penjualan', path: '/pemasaran/penjualan', icon: ShoppingCart },
-        { label: 'Laporan Penjualan', path: '/pemasaran/laporan', icon: BarChart3 },
-        { label: 'Stok & Produk Keluar', path: '/pemasaran?view=stok', icon: Boxes },
+        { label: 'Dashboard Pemasaran', path: '/pemasaran/dashboard', icon: LayoutDashboard },
+        { label: 'Terima Susu Segar', path: '/pemasaran/terima-susu-segar', icon: Milk },
+        { label: 'Distribusi Susu Segar', path: '/pemasaran/bast', icon: FileText },
+        { label: 'Berita Acara', path: '/pemasaran/berita-acara', icon: FileCheck },
+        { label: 'UHT', path: '/pemasaran/terima-data', icon: PackageCheck, badge: notifBadge },
+        { label: 'Laporan & Rekapitulasi', path: '/pemasaran/laporan', icon: BarChart3 },
         { label: 'Profil', path: '/profil', icon: User }
       ];
     }
@@ -301,15 +347,20 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
 
-          {/* Drawer Bottom Section: User Profile & Logout */}
-          <div className="p-4 border-t border-white/10 space-y-3 shrink-0">
-            <div className="flex items-center gap-3 px-2">
-              <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 font-bold">
-                <User className="w-4 h-4" />
+          {/* User Profile Box & Logout */}
+          <div className="p-4 border-t border-white/10 bg-[#16331a]">
+            <div className="p-3 bg-[#102613] rounded-2xl border border-white/10 mb-3 space-y-1.5 shadow-inner">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-xs">
+                  <User className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-white truncate">{user?.name || 'Pengguna'}</p>
+                  <p className="text-[10px] text-emerald-300 truncate">{user?.email}</p>
+                </div>
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-black text-white truncate">{user?.name || 'Pengguna'}</span>
-                <span className="text-[10px] text-emerald-200 font-bold truncate opacity-90">{roleInfo.label}</span>
+              <div className={`inline-block text-[9px] px-2 py-0.5 rounded-md font-extrabold uppercase tracking-wider border ${roleInfo.bg}`}>
+                {roleInfo.label}
               </div>
             </div>
 
@@ -324,8 +375,8 @@ export default function DashboardLayout({ children }) {
         </div>
       </aside>
 
-      {/* MAIN DASHBOARD CONTENT AREA - FULL WIDTH & FIXED VIEWPORT */}
-      <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden p-4 md:p-6 bg-[#F4F7FB] w-full">
+      {/* MAIN DASHBOARD CONTENT AREA - FULL WIDTH & SCROLLABLE VIEWPORT */}
+      <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto p-4 md:p-6 bg-[#F4F7FB] w-full">
         {isAllowed ? (
           children
         ) : (

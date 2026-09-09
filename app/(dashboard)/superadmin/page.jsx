@@ -245,14 +245,14 @@ export default function SuperadminPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Nama Lengkap</th>
-                  <th className="py-3.5 px-4">Email</th>
-                  <th className="py-3.5 px-4">Role Hak Akses</th>
-                  <th className="py-3.5 px-4">Status Akun</th>
-                  <th className="py-3.5 px-4">Tanggal Dibuat</th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
+              <thead className="bg-[#1E3F20] text-white select-none">
+                <tr className="border-b border-[#2d5e31] font-bold uppercase tracking-wider text-white">
+                  <th className="py-3.5 px-4 text-white font-bold">Nama Lengkap</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Email</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Role Hak Akses</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Status Akun</th>
+                  <th className="py-3.5 px-4 text-white font-bold">Tanggal Dibuat</th>
+                  <th className="py-3.5 px-4 text-center text-white font-bold">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -371,13 +371,13 @@ export default function SuperadminPage() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Waktu</th>
-                    <th className="py-3.5 px-4">Pengguna</th>
-                    <th className="py-3.5 px-4">Tindakan / Aksi</th>
-                    <th className="py-3.5 px-4">Level Log</th>
-                    <th className="py-3.5 px-4">Keterangan / Detail</th>
+                <thead className="bg-[#1E3F20] text-white select-none">
+                  <tr className="border-b border-[#2d5e31] font-bold uppercase tracking-wider text-white">
+                    <th className="py-3.5 px-4 text-white font-bold">Waktu</th>
+                    <th className="py-3.5 px-4 text-white font-bold">Pengguna</th>
+                    <th className="py-3.5 px-4 text-white font-bold">Tindakan / Aksi</th>
+                    <th className="py-3.5 px-4 text-white font-bold">Level Log</th>
+                    <th className="py-3.5 px-4 text-white font-bold">Keterangan / Detail</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">

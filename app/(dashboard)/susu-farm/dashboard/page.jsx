@@ -334,7 +334,7 @@ export default function DashboardPage() {
     const totalSusuOlahan = stokBotol115 + stokBotol250 + stokCup + stokPlastikBantal;
 
     return (
-      <div className="space-y-6 pb-12 bg-[#F6F8FA] -m-6 p-6 flex-1 min-h-0 overflow-y-auto">
+      <div className="space-y-6 pb-12 w-full">
         {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
         {/* 1. HEADER DASHBOARD GREETING */}

@@ -263,7 +263,7 @@ export default function RiwayatPengemasanPage() {
           <ClipboardList className="w-4 h-4" />
           <span>POV Admin Farm Produksi</span>
         </div>
-        <h1 className="text-2xl font-black text-slate-900">Riwayat Pengemasan & Pengiriman</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">RIWAYAT PENGEMASAN & PENGIRIMAN</h1>
         <p className="text-xs text-slate-500 font-medium">Tabel riwayat pengemasan dan status pengiriman produk ke Admin Pemasaran.</p>
       </div>
 
@@ -307,10 +307,8 @@ export default function RiwayatPengemasanPage() {
             className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none"
           >
             <option value="">Semua Status Pengiriman</option>
+            <option value="DITERIMA">🟢 Masuk Stok Pemasaran</option>
             <option value="DRAFT">📋 DRAFT</option>
-            <option value="MENUNGGU_PENERIMAAN">🟡 Menunggu Penerimaan</option>
-            <option value="DITERIMA">🟢 Diterima Pemasaran</option>
-            <option value="PERLU_KOREKSI">⚠️ Perlu Koreksi</option>
           </select>
 
           <input
@@ -354,15 +352,15 @@ export default function RiwayatPengemasanPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4 whitespace-nowrap">Tanggal</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Produk</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Kategori</th>
-                  <th className="py-3.5 px-4 min-w-[160px]">Kemasan & Ukuran</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Jumlah</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Status Transfer</th>
-                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Aksi</th>
+              <thead className="bg-[#1E3F20] text-white select-none">
+                <tr className="border-b border-[#2d5e31] font-bold uppercase tracking-wider text-white">
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Tanggal</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Produk</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Kategori</th>
+                  <th className="py-3.5 px-4 min-w-[160px] text-white font-bold">Kemasan & Ukuran</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Jumlah</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap text-white font-bold">Status Transfer</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap text-white font-bold">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -730,112 +728,67 @@ export default function RiwayatPengemasanPage() {
                       </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-emerald-900 mb-1">Asal Susu</label>
+                    <div>
+                      <label className="block text-xs font-bold text-emerald-900 mb-1">Varian / Rasa</label>
+                      {formProductSubtype === 'Susu Rasa' ? (
                         <select
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
+                          value={formVariant}
+                          onChange={(e) => setFormVariant(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
                           required
                         >
-                          <option value="Sapi">🐄 Sapi</option>
-                          <option value="Kambing">🐐 Kambing</option>
+                          <option value="Cokelat">Cokelat</option>
+                          <option value="Stroberi">Stroberi</option>
+                          <option value="Vanilla">Vanilla</option>
+                          <option value="Melon">Melon</option>
+                          <option value="Original">Original</option>
                         </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-emerald-900 mb-1">Varian / Rasa</label>
-                        {formProductSubtype === 'Susu Rasa' ? (
-                          <select
-                            value={formVariant}
-                            onChange={(e) => setFormVariant(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-                            required
-                          >
-                            <option value="Cokelat">Cokelat</option>
-                            <option value="Stroberi">Stroberi</option>
-                            <option value="Vanilla">Vanilla</option>
-                            <option value="Melon">Melon</option>
-                            <option value="Original">Original</option>
-                          </select>
-                        ) : (
-                          <select
-                            value={formVariant}
-                            onChange={(e) => setFormVariant(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-                            required
-                          >
-                            <option value="Original">Original</option>
-                          </select>
-                        )}
-                      </div>
+                      ) : (
+                        <select
+                          value={formVariant}
+                          onChange={(e) => setFormVariant(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                          required
+                        >
+                          <option value="Original">Original</option>
+                        </select>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {formProductCategory === 'Yogurt' && (
                   <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200/70 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-purple-900 mb-1">Asal Susu</label>
-                        <select
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                          required
-                        >
-                          <option value="Sapi">🐄 Sapi</option>
-                          <option value="Kambing">🐐 Kambing</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-purple-900 mb-1">Varian / Rasa Yogurt</label>
-                        <select
-                          value={formVariant}
-                          onChange={(e) => setFormVariant(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                          required
-                        >
-                          <option value="Original">Original</option>
-                          <option value="Strawberry">Strawberry</option>
-                          <option value="Mangga">Mangga</option>
-                          <option value="Cokelat">Cokelat</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-bold text-purple-900 mb-1">Varian / Rasa Yogurt</label>
+                      <select
+                        value={formVariant}
+                        onChange={(e) => setFormVariant(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                        required
+                      >
+                        <option value="Original">Original</option>
+                        <option value="Strawberry">Strawberry</option>
+                        <option value="Mangga">Mangga</option>
+                        <option value="Cokelat">Cokelat</option>
+                      </select>
                     </div>
                   </div>
                 )}
 
                 {formProductCategory === 'Keju' && (
                   <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/70 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-amber-900 mb-1">Asal Bahan Keju</label>
-                        <select
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                          required
-                        >
-                          <option value="Sapi">🐄 Sapi</option>
-                          <option value="Kambing">🐐 Kambing</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-amber-900 mb-1">Jenis / Varian Keju</label>
-                        <select
-                          value={formVariant}
-                          onChange={(e) => setFormVariant(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                          required
-                        >
-                          <option value="Keju Fresh">Keju Fresh</option>
-                          <option value="Keju Olahan">Keju Olahan</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-bold text-amber-900 mb-1">Jenis / Varian Keju</label>
+                      <select
+                        value={formVariant}
+                        onChange={(e) => setFormVariant(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                        required
+                      >
+                        <option value="Keju Fresh">Keju Fresh</option>
+                        <option value="Keju Olahan">Keju Olahan</option>
+                      </select>
                     </div>
                   </div>
                 )}

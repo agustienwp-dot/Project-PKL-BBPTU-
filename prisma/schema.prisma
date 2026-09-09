@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../lib/prisma-client"
 }
 
 datasource db {
@@ -27,6 +28,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  bastDocuments    BastDocument[]
+  packagedProducts PackagedProduct[] @relation("UserPackagedProducts")
   logs         SystemLog[]
   productions  MilkProduction[]
   packagings   MilkPackaging[]
@@ -111,6 +114,25 @@ model MilkProduction {
   @@map("milk_productions")
 }
 
+model PackagedProduct {
+  id             String    @id @default(uuid())
+  tanggal        DateTime  @default(now())
+  jenisProduk    String    // "Susu Rasa" | "Keju" | "Yogurt"
+  kemasan        String    // "Botol 250ml" | "Botol 110ml" | "Cup" | "Plastik Bantal"
+  jumlah         Float     @default(0)
+  status         String    @default("DITERIMA") // "DITERIMA", "PERLU_KOREKSI"
+  receivedAt     DateTime?
+  receivedByName String?
+  condition      String?   // "Sesuai", "Ada Selisih", "Ada Kerusakan"
+  notes          String?   @db.Text
+  createdById    String?
+  createdBy      User?     @relation("UserPackagedProducts", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("packaged_products")
+}
+
 model MilkPackaging {
   id               String   @id @default(uuid())
   date             DateTime @default(now())
@@ -173,10 +195,18 @@ model MilkOutflow {
 
 model MilkSale {
   id              String   @id @default(uuid())
-  transactionId   String   @unique @map("transaction_id") // e.g. TRX-20260814-001
+  transactionId   String?  @unique // e.g. TRX-20260814-001
   date            DateTime @default(now())
-  productCategory String   @default("Susu") @map("product_category") // "Susu", "Yogurt", "Keju"
-  productSubtype  String?  @map("product_subtype") // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa", etc.
+  tanggal         DateTime @default(now())
+  sumber          String   @default("FRESH") // "FRESH" | "OLAHAN"
+  produkRefId     String?  // relasi ke PackagedProduct.id
+  jumlah          Float    @default(0)
+  pembeli         String   @default("")
+  hargaJual       Float    @default(0)
+  kategoriBayar   String   @default("PNBP") // "PNBP" | "PIUTANG"
+  catatan         String?
+  productCategory String   @default("Susu") // "Susu", "Yogurt", "Keju"
+  productSubtype  String?  // "Susu UHT", "Susu Pasteurisasi", "Susu Rasa", etc.
   variant         String?  // "Original", "Cokelat", etc.
   packagingType   String   @default("Botol") @map("packaging_type") // "Botol", "Cup", "Plastik Bantal", etc.
   quantity        Int      @default(0) // Jumlah pcs
@@ -189,7 +219,53 @@ model MilkSale {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  piutang         Piutang?
+
   @@map("milk_sales")
+}
+
+model BastDocument {
+  id               String    @id @default(uuid())
+  nomorBast        String    @unique // e.g. BAST/BBPTU/20260819/0001
+  tanggal          DateTime  @default(now())
+  sumber           String    @default("SUSU_SEGAR") // SUSU_SEGAR / SUSU_MENTAH
+  volumeLiters     Float     @default(0)
+  jenisPermintaan  String    @default("PENJUALAN_LANGSUNG") // PENJUALAN_LANGSUNG, HIBAH, KERJASAMA, PERMINTAAN_DINAS
+  instansiPenerima String?   // Pembeli / Instansi / Penerima Hibah
+  pengirimNama     String
+  pengirimRole     String    @default("ADMIN_FARM")
+  penerimaNama     String?
+  penerimaRole     String?   @default("ADMIN_PEMASARAN")
+  status           String    @default("MENUNGGU_KONFIRMASI") // MENUNGGU_KONFIRMASI, DITERIMA, DITOLAK
+  catatan          String?   @db.Text
+  confirmedAt      DateTime?
+  productionId     String?
+  createdById      String?
+  createdBy        User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("bast_documents")
+}
+
+model Notification {
+  id           String    @id @default(uuid())
+  title        String
+  message      String    @db.Text
+  type         String    @default("STOCK_ADDED") // "STOCK_ADDED", "STOCK_SENT", "BAST_CREATED", "SYSTEM"
+  targetRole   String?   // "ADMIN_PEMASARAN", "ADMIN_FARM", "SUPERADMIN", "ALL"
+  targetUserId String?
+  senderId     String?
+  senderName   String?
+  senderRole   String?
+  link         String?   @default("/pemasaran/terima-data")
+  isRead       Boolean   @default(false)
+  readAt       DateTime?
+  metadata     String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("notifications")
 }
 
 model BeritaAcara {
