@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
-import { 
-  FileText, 
-  Printer, 
-  Milk, 
-  Coffee, 
-  Calendar, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  FileText,
+  Printer,
+  Milk,
+  Coffee,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
   Boxes,
   CheckCircle2
 } from 'lucide-react';
@@ -86,18 +86,16 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
           <button
             onClick={() => setProductType('SEGAR')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              productType === 'SEGAR' ? 'bg-[#1E3F20] text-white shadow' : 'text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${productType === 'SEGAR' ? 'bg-[#1E3F20] text-white shadow' : 'text-slate-600 hover:bg-slate-200'
+              }`}
           >
             <Milk className="w-4 h-4" />
             <span>Laporan Susu Segar</span>
           </button>
           <button
             onClick={() => setProductType('OLAHAN')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              productType === 'OLAHAN' ? 'bg-amber-600 text-white shadow' : 'text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${productType === 'OLAHAN' ? 'bg-amber-600 text-white shadow' : 'text-slate-600 hover:bg-slate-200'
+              }`}
           >
             <Coffee className="w-4 h-4" />
             <span>Laporan Susu Olahan (Cup, Pack, Botol)</span>

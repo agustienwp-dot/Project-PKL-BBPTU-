@@ -26,11 +26,16 @@ export async function POST(request) {
     if (user) {
       const isValid = await comparePassword(password, user.password);
       if (isValid) {
+        let finalRole = user.role;
+        if (user.name && user.name.toUpperCase().includes('PENGEMASAN')) {
+          finalRole = 'ADMIN_PENGEMASAN';
+        }
+
         const token = generateToken({
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: finalRole,
         });
 
         return NextResponse.json({
@@ -41,7 +46,7 @@ export async function POST(request) {
             id: user.id,
             name: user.name,
             email: user.email,
-            role: user.role,
+            role: finalRole,
           },
         });
       }
@@ -67,7 +72,17 @@ export async function POST(request) {
       }
 
       if (isMatch) {
-        const mappedRole = (adminAccount.role || 'ADMIN_FARM').toUpperCase();
+        let mappedRole = (adminAccount.role || '').toUpperCase();
+        if (!mappedRole || mappedRole === 'ADMIN_FARM') {
+          if (adminAccount.username && adminAccount.username.toUpperCase().includes('PENGEMASAN')) {
+            mappedRole = 'ADMIN_PENGEMASAN';
+          } else if (adminAccount.username && adminAccount.username.toUpperCase().includes('PEMASARAN')) {
+            mappedRole = 'ADMIN_PEMASARAN';
+          } else {
+            mappedRole = 'ADMIN_FARM';
+          }
+        }
+
         const emailFallback = `${adminAccount.username}@susu.com`;
         
         const token = generateToken({

@@ -6,7 +6,15 @@ import api from '@/services/api';
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('user');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,12 +25,16 @@ export function AuthProvider({ children }) {
           const res = await api.get('/auth/me');
           if (res.data.success) {
             setUser(res.data.user);
+            localStorage.setItem('user', JSON.stringify(res.data.user));
           }
         } catch (err) {
           console.error('Auth verification failed:', err);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setUser(null);
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };
@@ -63,6 +75,7 @@ export function AuthProvider({ children }) {
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isAdminFarm = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
   const isAdminPemasaran = user?.role === 'ADMIN_PEMASARAN' || user?.role === 'SUPERADMIN';
+  const isAdminPengemasan = user?.role === 'ADMIN_PENGEMASAN' || user?.role === 'SUPERADMIN';
 
   return (
     <AuthContext.Provider
@@ -75,6 +88,7 @@ export function AuthProvider({ children }) {
         isSuperAdmin,
         isAdminFarm,
         isAdminPemasaran,
+        isAdminPengemasan,
       }}
     >
       {children}

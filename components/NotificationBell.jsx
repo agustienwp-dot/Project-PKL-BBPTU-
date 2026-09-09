@@ -263,15 +263,14 @@ export default function NotificationBell({ isDarkNavbar = false }) {
           setIsOpen(!isOpen);
           if (!isOpen) fetchNotifications();
         }}
-        className={`relative p-2.5 rounded-full transition-all cursor-pointer ${
-          isDarkNavbar
-            ? isOpen
-              ? 'bg-white/30 text-white shadow-inner'
-              : 'bg-white/15 text-white hover:bg-white/25 shadow-xs border border-white/10'
-            : isOpen
-              ? 'bg-emerald-50 text-[#1E3F20] border-emerald-300 shadow-inner'
-              : 'bg-white text-slate-700 hover:text-[#1E3F20] hover:bg-slate-50 border-slate-200 shadow-sm'
-        }`}
+        className={`relative p-2.5 rounded-full transition-all cursor-pointer ${isDarkNavbar
+          ? isOpen
+            ? 'bg-white/30 text-white shadow-inner'
+            : 'bg-white/15 text-white hover:bg-white/25 shadow-xs border border-white/10'
+          : isOpen
+            ? 'bg-emerald-50 text-[#1E3F20] border-emerald-300 shadow-inner'
+            : 'bg-white text-slate-700 hover:text-[#1E3F20] hover:bg-slate-50 border-slate-200 shadow-sm'
+          }`}
         title="Notifikasi Stok & Aktivitas"
         aria-label="Notifikasi"
       >
@@ -323,21 +322,19 @@ export default function NotificationBell({ isDarkNavbar = false }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveTab('ALL')}
-                className={`px-3 py-1 rounded-xl text-xs transition-all ${
-                  activeTab === 'ALL'
-                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200 font-black'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`px-3 py-1 rounded-xl text-xs transition-all ${activeTab === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200 font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Semua ({notifications.length})
               </button>
               <button
                 onClick={() => setActiveTab('UNREAD')}
-                className={`px-3 py-1 rounded-xl text-xs transition-all ${
-                  activeTab === 'UNREAD'
-                    ? 'bg-white text-emerald-800 shadow-sm border border-slate-200 font-black'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`px-3 py-1 rounded-xl text-xs transition-all ${activeTab === 'UNREAD'
+                  ? 'bg-white text-emerald-800 shadow-sm border border-slate-200 font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Belum Dibaca ({unreadCount})
               </button>
@@ -365,16 +362,15 @@ export default function NotificationBell({ isDarkNavbar = false }) {
                 if (notif.metadata) {
                   try {
                     meta = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
-                  } catch (e) {}
+                  } catch (e) { }
                 }
 
                 return (
                   <div
                     key={notif.id}
                     onClick={() => handleMarkAsRead(notif.id, notif.link)}
-                    className={`p-3.5 transition-all cursor-pointer group flex items-start gap-3 hover:bg-slate-50 relative ${
-                      isUnread ? 'bg-emerald-50/40' : 'bg-white'
-                    }`}
+                    className={`p-3.5 transition-all cursor-pointer group flex items-start gap-3 hover:bg-slate-50 relative ${isUnread ? 'bg-emerald-50/40' : 'bg-white'
+                      }`}
                   >
                     {/* Visual Icon */}
                     {getNotifIcon(notif.type, notif.title)}
@@ -383,11 +379,10 @@ export default function NotificationBell({ isDarkNavbar = false }) {
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-start justify-between gap-1">
                         <h4
-                          className={`text-xs leading-tight line-clamp-1 ${
-                            isUnread
-                              ? 'font-black text-slate-900'
-                              : 'font-semibold text-slate-700'
-                          }`}
+                          className={`text-xs leading-tight line-clamp-1 ${isUnread
+                            ? 'font-black text-slate-900'
+                            : 'font-semibold text-slate-700'
+                            }`}
                         >
                           {notif.title}
                         </h4>

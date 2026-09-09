@@ -81,7 +81,7 @@ export default function RiwayatPengemasanPage() {
     fetchData();
   }, [filterCategory, filterStatus, filterDate]);
 
-  const canManage = user?.role === 'ADMIN_FARM' || user?.role === 'SUPERADMIN';
+  const canManage = user?.role === 'ADMIN_FARM' || user?.role === 'ADMIN_PENGEMASAN' || user?.role === 'SUPERADMIN';
 
   const computedTotalPcs = formPackagingItems.reduce((acc, item) => {
     const qty = parseInt(item.quantity, 10) || 0;
@@ -270,7 +270,7 @@ export default function RiwayatPengemasanPage() {
       {/* Filter & Search Bar */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full sm:w-72 md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"

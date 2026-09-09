@@ -49,9 +49,9 @@ async function main() {
 
   const adminPengemasan = await prisma.user.upsert({
     where: { email: 'pengemasan@susu.com' },
-    update: { name: 'Admin Pengemasan Olahan', role: 'ADMIN_PENGEMASAN', password: pengemasanPassword, isActive: true },
+    update: { name: 'Admin Pengemasan', role: 'ADMIN_PENGEMASAN', password: pengemasanPassword, isActive: true },
     create: {
-      name: 'Admin Pengemasan Olahan',
+      name: 'Admin Pengemasan',
       email: 'pengemasan@susu.com',
       password: pengemasanPassword,
       role: 'ADMIN_PENGEMASAN',
@@ -69,7 +69,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Akun User Siap');
+  console.log('✅ Akun User (SUPERADMIN, ADMIN_FARM, ADMIN_PENGEMASAN, ADMIN_PEMASARAN) siap');
 
   // 2. Kategori Susu (Fokus Susu Sapi)
   const segarCategoriesData = [
