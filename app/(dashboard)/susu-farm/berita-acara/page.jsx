@@ -126,7 +126,7 @@ function BeritaAcaraContent() {
   const fetchBaList = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      let url = '/susu-farm/berita-acara?';
+      let url = '/berita-acara?';
       if (filterType !== 'ALL') url += `type=${filterType}&`;
       if (filterDate) url += `date=${filterDate}&`;
       if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
@@ -500,12 +500,12 @@ function BeritaAcaraContent() {
 
     try {
       if (editingBa) {
-        const res = await api.put(`/susu-farm/berita-acara/${editingBa.id}`, payload);
+        const res = await api.put(`/berita-acara/${editingBa.id}`, payload);
         if (res.data.success) {
           setToast({ type: 'success', message: res.data.message || `✓ Berita Acara ${editingBa.nomorBa} berhasil diperbarui.` });
         }
       } else {
-        const res = await api.post('/susu-farm/berita-acara', payload);
+        const res = await api.post('/berita-acara', payload);
         if (res.data.success) {
           const createdItem = res.data.data;
           setToast({
@@ -524,7 +524,7 @@ function BeritaAcaraContent() {
 
   const handleConfirmBaByPemasaran = async (ba) => {
     try {
-      const res = await api.put(`/susu-farm/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
+      const res = await api.put(`/berita-acara/${ba.id}`, { action: 'CONFIRM_PEMASARAN' });
       if (res.data.success) {
         setToast({ type: 'success', message: 'Berita Acara produk siap jual telah dikonfirmasi oleh Pemasaran!' });
         fetchBaList(true);
@@ -543,7 +543,7 @@ function BeritaAcaraContent() {
     setPreviewBa(ba);
     try {
       if (ba.id) {
-        await api.post(`/susu-farm/berita-acara/${ba.id}/print`).catch(() => { });
+        await api.post(`/berita-acara/${ba.id}/print`).catch(() => { });
       }
     } catch (e) { }
     setTimeout(() => {
@@ -569,7 +569,7 @@ function BeritaAcaraContent() {
 
   const handleStatusChange = async (baId, newStatus) => {
     try {
-      const res = await api.put(`/susu-farm/berita-acara/${baId}`, { status: newStatus });
+      const res = await api.put(`/berita-acara/${baId}`, { status: newStatus });
       if (res.data.success) {
         setToast({ type: 'success', message: res.data.message || `Status berhasil diubah.` });
         fetchBaList();
@@ -738,7 +738,7 @@ function BeritaAcaraContent() {
                         </>
                       )}
                       <td className="p-4 text-center font-black text-emerald-700 text-sm">
-                        {ba.diserahterimakan?.toLocaleString('id-ID') || 0} <span className="text-xs font-semibold text-slate-500">{displayUnit}</span>
+                        {ba.diserahterimakan?.toLocaleString('id-ID') || 0} <span className="text-xs font-semibold text-slate-500">{20}</span>
                       </td>
                       <td className="p-4 text-slate-800 font-semibold">
                         {ba.penyerahName || ba.giverName || ba.penyerah_name || '-'}
@@ -747,15 +747,6 @@ function BeritaAcaraContent() {
                         {ba.receiverName || ba.penerimaName || ba.penerima_name || '-'}
                       </td>
                       <td className="p-4">
-                        {getStatusBadge(ba)}
-                      </td>
-                      <td className="p-4 whitespace-nowrap text-slate-800 font-medium">
-                        {ba.penyerahName || ba.giverName || 'Seksi Pemeliharaan'}
-                      </td>
-                      <td className="p-4 whitespace-nowrap text-slate-800 font-medium">
-                        {ba.penerimaName || ba.receiverName || 'Seksi Pemasaran'}
-                      </td>
-                      <td className="p-4 whitespace-nowrap">
                         {getStatusBadge(ba)}
                       </td>
                       <td className="p-4 text-center">
@@ -1307,7 +1298,7 @@ function BeritaAcaraContent() {
       {previewBa && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto print:p-0 print:bg-white print:static print:block">
           <div className="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-200 my-8 print:p-0 print:shadow-none print:m-0 print:rounded-none">
-            <BeritaAcaraDocument
+            <BeritaAcaraDocumentSusuFarm
               ba={previewBa}
               showHeader={true}
               onClose={() => setPreviewBa(null)}

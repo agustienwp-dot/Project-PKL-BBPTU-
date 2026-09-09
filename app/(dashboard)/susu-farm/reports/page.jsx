@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
-import { 
-  FileText, 
-  Printer, 
-  Milk, 
-  Coffee, 
-  Calendar, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  FileText,
+  Printer,
+  Milk,
+  Coffee,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
   Boxes,
   CheckCircle2,
   FileSpreadsheet
@@ -34,7 +34,7 @@ export default function ReportsPage() {
 
   const fetchReport = async () => {
     try {
-      const res = await api.get(`/susu-farm/reports/monthly?month=${month}&year=${year}&productType=${productType}&animalType=${animalType}`);
+      const res = await api.get(`/reports/monthly?month=${month}&year=${year}&productType=${productType}&animalType=${animalType}`);
       if (res.data.success) {
         setReportData(res.data.data);
       }
@@ -85,22 +85,20 @@ export default function ReportsPage() {
               <th rowspan="2" style="background-color:#cbd5e1;">JUMLAH SUSU</th>
             </tr>
             <tr style="background-color:#f1f5f9; font-weight:bold;">
-              ${
-                isKambingOnly
-                  ? `<th colspan="3" style="background-color:#f3e8ff;">FARM KAMBING</th>`
-                  : isAll
-                  ? `<th colspan="3" style="background-color:#fef3c7;">FARM TEGALSARI</th><th colspan="3" style="background-color:#e0f2fe;">FARM LIMPAKUWUS</th><th colspan="3" style="background-color:#f3e8ff;">FARM MANGGALA</th><th colspan="3" style="background-color:#dcfce7;">EDUWISATA</th><th colspan="3" style="background-color:#fae8ff;">FARM KAMBING</th>`
-                  : `<th colspan="3" style="background-color:#fef3c7;">FARM TEGALSARI</th><th colspan="3" style="background-color:#e0f2fe;">FARM LIMPAKUWUS</th><th colspan="3" style="background-color:#f3e8ff;">FARM MANGGALA</th><th colspan="3" style="background-color:#dcfce7;">EDUWISATA</th>`
-              }
+              ${isKambingOnly
+        ? `<th colspan="3" style="background-color:#f3e8ff;">FARM KAMBING</th>`
+        : isAll
+          ? `<th colspan="3" style="background-color:#fef3c7;">FARM TEGALSARI</th><th colspan="3" style="background-color:#e0f2fe;">FARM LIMPAKUWUS</th><th colspan="3" style="background-color:#f3e8ff;">FARM MANGGALA</th><th colspan="3" style="background-color:#dcfce7;">EDUWISATA</th><th colspan="3" style="background-color:#fae8ff;">FARM KAMBING</th>`
+          : `<th colspan="3" style="background-color:#fef3c7;">FARM TEGALSARI</th><th colspan="3" style="background-color:#e0f2fe;">FARM LIMPAKUWUS</th><th colspan="3" style="background-color:#f3e8ff;">FARM MANGGALA</th><th colspan="3" style="background-color:#dcfce7;">EDUWISATA</th>`
+      }
             </tr>
             <tr style="background-color:#e2e8f0; font-weight:bold;">
-              ${
-                isKambingOnly
-                  ? `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
-                  : isAll
-                  ? `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
-                  : `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
-              }
+              ${isKambingOnly
+        ? `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
+        : isAll
+          ? `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
+          : `<th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th><th>PAGI (Lt)</th><th>SORE (Lt)</th><th>JUMLAH (Lt)</th>`
+      }
               <th style="background-color:#94a3b8;">TOTAL (Lt)</th>
             </tr>
           </thead>
