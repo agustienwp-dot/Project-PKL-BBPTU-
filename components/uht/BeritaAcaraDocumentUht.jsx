@@ -22,6 +22,7 @@ export default function BeritaAcaraDocumentUht({ ba, showHeader = true, onPrint,
     if (!docRef.current) return;
     setDownloading(true);
     try {
+      // Dynamic import html2pdf
       let html2pdf;
       try {
         html2pdf = (await import('html2pdf.js')).default;

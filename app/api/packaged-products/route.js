@@ -26,7 +26,7 @@ export async function GET(request) {
 
     const packagedProducts = await prisma.packagedProduct.findMany({
       where: whereClause,
-      orderBy: { tanggal: sortOrder === 'desc' ? 'desc' : 'asc' },
+      orderBy: { createdAt: sortOrder === 'desc' ? 'desc' : 'asc' },
       include: {
         createdBy: {
           select: { id: true, name: true, email: true },
@@ -34,10 +34,16 @@ export async function GET(request) {
       },
     });
 
+    const formatted = packagedProducts.map((p) => ({
+      ...p,
+      tanggal: p.createdAt,
+      date: p.createdAt,
+    }));
+
     return NextResponse.json({
       success: true,
       message: 'Berhasil mengambil data produk olahan.',
-      data: packagedProducts,
+      data: formatted,
     });
   } catch (error) {
     console.error('Error GET /api/packaged-products:', error);

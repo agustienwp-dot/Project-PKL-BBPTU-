@@ -10,7 +10,7 @@ export async function GET(request) {
     const productType = searchParams.get('productType');
 
     const where = {};
-    if (productType) where.product_type = productType;
+    if (productType) where.productType = productType;
 
     const categories = await prisma.milkCategory.findMany({
       where,
@@ -35,7 +35,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Superadmin atau Admin Farm yang dapat menambah kategori' }, { status: 403 });
     }
 
-    const { name, code, productType, defaultPackaging, description } = await request.json();
+    const { name, code, productType, animalType, defaultPackaging, description } = await request.json();
 
     if (!name || !code) {
       return NextResponse.json({ success: false, message: 'Nama dan kode kategori wajib diisi' }, { status: 400 });
@@ -52,18 +52,19 @@ export async function POST(request) {
       data: {
         name,
         code: uppercaseCode,
-        product_type: productType || 'SEGAR',
-        default_packaging: defaultPackaging || 'botol',
+        animalType: animalType || 'SAPI',
+        productType: productType || 'SEGAR',
+        defaultPackaging: defaultPackaging || 'botol',
         description,
       },
     });
 
     await prisma.systemLog.create({
       data: {
-        user_id: authUser.id,
-        user_email: authUser.email,
+        userId: authUser.id,
+        userEmail: authUser.email,
         action: 'CREATE_CATEGORY',
-        details: `Menambahkan kategori ${category.product_type} '${name}' (${uppercaseCode})`,
+        details: `Menambahkan kategori ${category.productType} '${name}' (${uppercaseCode})`,
       },
     });
 

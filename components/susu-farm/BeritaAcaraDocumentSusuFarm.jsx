@@ -22,6 +22,7 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
     if (!docRef.current) return;
     setDownloading(true);
     try {
+      // Dynamic import html2pdf
       let html2pdf;
       try {
         html2pdf = (await import('html2pdf.js')).default;
@@ -65,7 +66,8 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
 
   const isHibah = ba.type === 'HIBAH' || (ba.nomorBa && ba.nomorBa.includes('BAST-HB'));
   const isOlahan = ba.type === 'SUSU_OLAHAN' || (ba.nomorBa && ba.nomorBa.includes('BAST-OLAHAN'));
-  const isFarmHandover = !isHibah && !isOlahan;
+  const isPermintaan = ba.type === 'PERMINTAAN_SUSU' || ba.type === 'REQUEST_SUSU' || (ba.nomorBa && (ba.nomorBa.includes('BAST-REQ') || ba.nomorBa.startsWith('REQ-')));
+  const isFarmHandover = !isHibah && !isOlahan && !isPermintaan;
 
   let parsedItems = [];
   if (ba.items) {
@@ -74,8 +76,8 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
     } catch (e) { }
   }
 
-  const penerima = ba.penerimaName || ba.receiverName || (isOlahan ? 'Seksi Pemasaran' : (isHibah ? 'Bag umum / RTP' : 'SEKSI PEMASARAN'));
-  const penyerah = ba.penyerahName || ba.giverName || (isOlahan ? 'Seksi Pengemasan & Olahan' : 'SEKSI YANTEK');
+  const penerima = ba.penerimaName || ba.receiverName || (isPermintaan ? 'Unit Pengolahan Susu (UHT)' : (isOlahan ? 'Seksi Pemasaran' : (isHibah ? 'Bag umum / RTP' : 'SEKSI PEMASARAN')));
+  const penyerah = ba.penyerahName || ba.giverName || (isPermintaan ? 'Tim Kerja Layanan Pemasaran' : (isOlahan ? 'Seksi Pengemasan & Olahan' : 'SEKSI YANTEK'));
   const selectedLocation = (ba.farmLocation || ba.location || 'Pengemasan & Olahan').toUpperCase();
 
   const locationsList = ['TEGALSARI', 'LIMPAKUWUS', 'MANGGALA', 'EDUWISATA'];
@@ -150,19 +152,28 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
         {/* 2. JUDUL BERITA ACARA */}
         <div className="text-center my-5 space-y-1">
           <h1 className="text-xs md:text-sm uppercase tracking-wide font-bold">
-            {isOlahan
-              ? 'BERITA ACARA SERAH TERIMA HASIL SUSU OLAHAN SIAP JUAL'
-              : isHibah
-                ? 'BERITA ACARA SERAH TERIMA SUSU HIBAH'
-                : 'BERITA ACARA SERAH TERIMA'}
+            {isPermintaan
+              ? 'BERITA ACARA PERMINTAAN & SERAH TERIMA BAHAN BAKU SUSU SEGAR'
+              : isOlahan
+                ? 'BERITA ACARA SERAH TERIMA HASIL SUSU OLAHAN SIAP JUAL'
+                : isHibah
+                  ? 'BERITA ACARA SERAH TERIMA SUSU HIBAH'
+                  : 'BERITA ACARA SERAH TERIMA'}
           </h1>
+          {isPermintaan && (
+            <h2 className="text-xs md:text-sm uppercase tracking-wide font-bold">
+              UNIT PENGOLAHAN HASIL (UHT) & SEKSI PEMASARAN
+            </h2>
+          )}
           {isFarmHandover && (
             <h2 className="text-xs md:text-sm uppercase tracking-wide font-bold">
               SUSU LAYAK KONSUMSI
             </h2>
           )}
           <p className="text-xs uppercase tracking-tight font-medium">
-            {isOlahan ? (
+            {isPermintaan ? (
+              <>DARI SEKSI PEMASARAN KEPADA UNIT PENGOLAHAN (UHT) & PENGEMASAN</>
+            ) : isOlahan ? (
               <>
                 DARI SEKSI PENGEMASAN & OLAHAN KE SEKSI PEMASARAN
               </>
@@ -180,21 +191,41 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
             )}
           </p>
           <p className="text-xs font-bold font-sans pt-1">
-            Nomor: {nomorBaStr}
+            Nomor: {nomorBaStr} {ba.requestNo ? `(No. Request: ${ba.requestNo})` : ''}
           </p>
         </div>
 
         {/* 3. INFORMASI WAKTU & LOKASI */}
         <div className="my-6 text-xs md:text-sm font-sans space-y-2 text-black">
-          {isFarmHandover && (
+          {isPermintaan ? (
+            <div className="space-y-1.5 font-sans text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-32 font-bold uppercase">SUMBER BAHAN</span>
+                <span>:</span>
+                <span className="font-semibold">{ba.farmLocation || 'Gudang Pemasaran / Cold Storage'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-32 font-bold uppercase">JENIS KOMODITAS</span>
+                <span>:</span>
+                <span className="font-semibold uppercase font-mono">
+                  {ba.animalType === 'KAMBING' ? 'SUSU SEGAR KAMBING' : 'SUSU SEGAR SAPI'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-32 font-bold uppercase">TANGGAL</span>
+                <span>:</span>
+                <span className="font-semibold">{dateFormatted}</span>
+              </div>
+            </div>
+          ) : isFarmHandover ? (
             <div className="flex items-center gap-2 font-bold uppercase">
               <span className="w-24">PAGI/SORE</span>
               <span>:</span>
               <span>{(ba.shift || 'PAGI').toUpperCase()} / {selectedLocation}</span>
             </div>
-          )}
+          ) : null}
 
-          {!isHibah && !isOlahan && !isFarmHandover && (
+          {!isHibah && !isOlahan && !isFarmHandover && !isPermintaan && (
             <div className="flex items-center gap-2">
               <span className="w-24 font-bold text-xs uppercase">PAGI/SORE</span>
               <span>:</span>
@@ -218,16 +249,58 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <span className="w-24 font-bold text-xs uppercase">TANGGAL</span>
-            <span>:</span>
-            <span className="font-semibold text-xs text-black">{dateFormatted}</span>
-          </div>
+          {!isPermintaan && (
+            <div className="flex items-center gap-2">
+              <span className="w-24 font-bold text-xs uppercase">TANGGAL</span>
+              <span>:</span>
+              <span className="font-semibold text-xs text-black">{dateFormatted}</span>
+            </div>
+          )}
         </div>
 
         {/* 4. TABEL UTAMA */}
         <div className="my-6">
-          {isFarmHandover ? (
+          {isPermintaan ? (
+            /* TABEL RINCIAN PERMINTAAN BAHAN BAKU SUSU SEGAR */
+            <table className="w-full text-left text-xs md:text-sm border-collapse border border-black font-sans">
+              <thead>
+                <tr className="border-b border-black font-bold text-center bg-gray-50 print:bg-white text-xs md:text-sm">
+                  <th className="border-r border-black p-2.5 w-12 text-center">No</th>
+                  <th className="border-r border-black p-2.5 text-center">Uraian Bahan Baku</th>
+                  <th className="border-r border-black p-2.5 w-36 text-center">Jumlah (Liter)</th>
+                  <th className="p-2.5 text-center">Peruntukan Pengolahan</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-black text-xs md:text-sm min-h-[55px]">
+                  <td className="border-r border-black p-3 text-center align-middle font-bold">1</td>
+                  <td className="border-r border-black p-3 align-middle font-bold text-black">
+                    Susu Segar {ba.animalType === 'KAMBING' ? 'Kambing' : 'Sapi'} Bahan Baku
+                  </td>
+                  <td className="border-r border-black p-3 text-center align-middle font-mono font-bold text-sm">
+                    {parseFloat(ba.diserahterimakan || ba.totalProduksi || ba.volumeLiters || 0).toLocaleString('id-ID', { minimumFractionDigits: 1 })} Liter
+                  </td>
+                  <td className="p-3 align-middle">
+                    <span className="font-semibold text-slate-800">
+                      {ba.purpose || ba.processingNeeds || 'Pengolahan Produk Susu UHT / Pasteurisasi'}
+                    </span>
+                    {ba.priority && (
+                      <span className="block text-[11px] text-slate-500 font-normal">
+                        Prioritas: {ba.priority}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+                {ba.notes && (
+                  <tr className="border-t border-black">
+                    <td colSpan={4} className="p-2.5 text-xs font-sans text-slate-800 bg-slate-50/50">
+                      <strong>Catatan Permintaan & Serah Terima:</strong> {ba.notes}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : isFarmHandover ? (
             /* 5-COLUMN BREAKDOWN TABLE FOR FARM HANDOVER */
             <table className="w-full text-center text-xs md:text-sm border-collapse border border-black font-sans">
               <thead>
@@ -335,51 +408,91 @@ export default function BeritaAcaraDocumentSusuFarm({ ba, showHeader = true, onP
 
         {/* 5. AREA TANDA TANGAN DUA PIHAK */}
         <div className="mt-12 pt-4 font-sans text-xs md:text-sm">
-          <div className="grid grid-cols-2 gap-8 text-center">
+          {isPermintaan ? (
+            <div className="grid grid-cols-2 gap-8 text-center font-sans text-xs md:text-sm">
+              {/* LEFT: YANG MENERIMA */}
+              <div className="flex flex-col justify-between h-36">
+                <div>
+                  <p className="font-semibold text-black">Yang Menerima,</p>
+                  <p className="font-semibold text-black">Unit Pengolahan Susu (UHT)</p>
+                </div>
 
-            {/* LEFT: YANG MENERIMA */}
-            <div className="flex flex-col justify-between h-36">
-              <div>
-                <p className="font-semibold text-black">Yang Menerima,</p>
-                {isOlahan && <p className="font-semibold text-black">Seksi Pemasaran</p>}
+                <div className="h-16 flex items-center justify-center relative">
+                  {/* Ruang tanda tangan */}
+                </div>
+
+                <div>
+                  <p className="font-bold text-black border-b border-dotted border-black inline-block min-w-[200px] pb-0.5 uppercase">
+                    {penerima || 'Admin Pengemasan'}
+                  </p>
+                </div>
               </div>
 
-              <div className="h-16 flex items-center justify-center relative">
-                {ba.confirmedByName ? (
-                  <span className="text-xs font-bold text-emerald-800 border border-emerald-300 bg-emerald-50 px-3 py-1 rounded">
-                    ✓ Dikonfirmasi ({ba.confirmedByName})
-                  </span>
-                ) : ba.digitalSignature ? (
-                  <img src={ba.digitalSignature} alt="Tanda Tangan" className="max-h-14 object-contain" />
-                ) : null}
-              </div>
+              {/* RIGHT: YANG MENYERAHKAN */}
+              <div className="flex flex-col justify-between h-36">
+                <div>
+                  <p className="font-semibold text-black">Yang Menyerahkan,</p>
+                  <p className="font-semibold text-black">Seksi Pemasaran</p>
+                </div>
 
-              <div>
-                <p className="font-bold text-black border-b border-dotted border-black inline-block min-w-[200px] pb-0.5 uppercase">
-                  {penerima || '...................................................'}
-                </p>
-              </div>
-            </div>
+                <div className="h-16 flex items-center justify-center relative">
+                  {/* Ruang tanda tangan */}
+                </div>
 
-            {/* RIGHT: YANG MENYERAHKAN */}
-            <div className="flex flex-col justify-between h-36">
-              <div>
-                <p className="font-semibold text-black">Yang Menyerahkan,</p>
-                <p className="font-semibold text-black">{isOlahan ? 'Seksi Pengemasan & Olahan' : 'Tim Kerja Layanan Pemasaran'}</p>
-              </div>
-
-              <div className="h-16 flex items-center justify-center relative">
-                {/* Signature space */}
-              </div>
-
-              <div>
-                <p className="font-bold text-black border-b border-dotted border-black inline-block min-w-[200px] pb-0.5 uppercase">
-                  {penyerah}
-                </p>
+                <div>
+                  <p className="font-bold text-black border-b border-dotted border-black inline-block min-w-[200px] pb-0.5 uppercase">
+                    {penyerah || 'Tim Kerja Layanan Pemasaran'}
+                  </p>
+                </div>
               </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-8 text-center">
 
-          </div>
+              {/* LEFT: YANG MENERIMA */}
+              <div className="flex flex-col justify-between h-36">
+                <div>
+                  <p className="font-semibold text-black">Yang Menerima,</p>
+                  {isOlahan && <p className="font-semibold text-black">Seksi Pemasaran</p>}
+                </div>
+
+                <div className="h-16 flex items-center justify-center relative">
+                  {ba.confirmedByName ? (
+                    <span className="text-xs font-bold text-emerald-800 border border-emerald-300 bg-emerald-50 px-3 py-1 rounded">
+                      ✓ Dikonfirmasi ({ba.confirmedByName})
+                    </span>
+                  ) : ba.digitalSignature ? (
+                    <img src={ba.digitalSignature} alt="Tanda Tangan" className="max-h-14 object-contain" />
+                  ) : null}
+                </div>
+
+                <div>
+                  <p className="font-bold text-black border-b border-dotted border-black inline-block min-w-[200px] pb-0.5 uppercase">
+                    {penerima || '...................................................'}
+                  </p>
+                </div>
+              </div>
+
+              {/* RIGHT: YANG MENYERAHKAN */}
+              <div className="flex flex-col justify-between h-36">
+                <div>
+                  <p className="font-semibold text-black">Yang Menyerahkan,</p>
+                  <p className="font-semibold text-black">{isOlahan ? 'Seksi Pengemasan & Olahan' : 'Tim Kerja Layanan Pemasaran'}</p>
+                </div>
+
+                <div className="h-16 flex items-center justify-center relative">
+                  {/* Signature space */}
+                </div>
+
+                <div>
+                  <p className="font-bold text-black border-b border-dotted border-black inline-block min-w-[200px] pb-0.5 uppercase">
+                    {penyerah}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          )}
         </div>
       </div>
     </div>

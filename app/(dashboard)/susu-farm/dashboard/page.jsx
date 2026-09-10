@@ -155,51 +155,10 @@ function getFarmChartData(rawChartData, chartFilter, todayTotalGross, todaySapiG
   const currentDay = now.getDate();
 
   if (chartFilter === '7') {
-    if (Array.isArray(rawChartData) && rawChartData.length >= 7 && rawChartData.some(d => (d.totalLiters || 0) > 0)) {
+    if (Array.isArray(rawChartData) && rawChartData.length >= 7) {
       return rawChartData.map((item, idx) => {
-        if (idx === rawChartData.length - 1 || item.dayNum === currentDay) {
-          const tot = todayTotalGross > 0 ? todayTotalGross : (item.totalLiters || 0);
-          const sapi = todaySapiGross > 0 ? todaySapiGross : (item.sapiLiters || 0);
-          const kambing = todayKambingGross > 0 ? todayKambingGross : (item.kambingLiters || 0);
-          return {
-            ...item,
-            totalLiters: tot,
-            sapiLiters: sapi,
-            kambingLiters: kambing,
-            isToday: true,
-          };
-        }
-        return item;
-      });
-    }
-    const res = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dayIdx = d.getDay();
-      const seed = (d.getDate() * 173 + (d.getMonth() + 1) * 89) % 100;
-      const sVol = (i === 0 && todaySapiGross > 0) ? todaySapiGross : (2050 + (seed * 8));
-      const kVol = (i === 0 && todayKambingGross > 0) ? todayKambingGross : (680 + (seed * 3));
-      const tot = (i === 0 && todayTotalGross > 0) ? todayTotalGross : (sVol + kVol);
-      res.push({
-        label: `${daysName[dayIdx]} ${d.getDate()}/${d.getMonth() + 1}`,
-        dayName: daysName[dayIdx],
-        dayNum: d.getDate(),
-        monthNum: d.getMonth() + 1,
-        dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
-        formattedDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-        totalLiters: tot,
-        sapiLiters: sVol,
-        kambingLiters: kVol,
-        isToday: i === 0,
-      });
-    }
-    return res;
-  } else {
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    if (Array.isArray(rawChartData) && rawChartData.length >= daysInMonth && rawChartData.some(d => (d.totalLiters || 0) > 0)) {
-      return rawChartData.map(item => {
-        if (item.dayNum === currentDay) {
+        const isCurrent = idx === rawChartData.length - 1 || item.dayNum === currentDay;
+        if (isCurrent) {
           const tot = todayTotalGross > 0 ? todayTotalGross : (item.totalLiters || 0);
           const sapi = todaySapiGross > 0 ? todaySapiGross : (item.sapiLiters || 0);
           const kambing = todayKambingGross > 0 ? todayKambingGross : (item.kambingLiters || 0);
@@ -213,7 +172,56 @@ function getFarmChartData(rawChartData, chartFilter, todayTotalGross, todaySapiG
         }
         return {
           ...item,
-          isToday: item.dayNum === currentDay,
+          totalLiters: item.totalLiters || 0,
+          sapiLiters: item.sapiLiters || 0,
+          kambingLiters: item.kambingLiters || 0,
+          isToday: false,
+        };
+      });
+    }
+    const res = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayIdx = d.getDay();
+      const isToday = i === 0;
+      res.push({
+        label: `${daysName[dayIdx]} ${d.getDate()}/${d.getMonth() + 1}`,
+        dayName: daysName[dayIdx],
+        dayNum: d.getDate(),
+        monthNum: d.getMonth() + 1,
+        dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
+        formattedDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        totalLiters: isToday ? todayTotalGross : 0,
+        sapiLiters: isToday ? todaySapiGross : 0,
+        kambingLiters: isToday ? todayKambingGross : 0,
+        isToday: isToday,
+      });
+    }
+    return res;
+  } else {
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (Array.isArray(rawChartData) && rawChartData.length >= daysInMonth) {
+      return rawChartData.map(item => {
+        const isCurrent = item.dayNum === currentDay;
+        if (isCurrent) {
+          const tot = todayTotalGross > 0 ? todayTotalGross : (item.totalLiters || 0);
+          const sapi = todaySapiGross > 0 ? todaySapiGross : (item.sapiLiters || 0);
+          const kambing = todayKambingGross > 0 ? todayKambingGross : (item.kambingLiters || 0);
+          return {
+            ...item,
+            totalLiters: tot,
+            sapiLiters: sapi,
+            kambingLiters: kambing,
+            isToday: true,
+          };
+        }
+        return {
+          ...item,
+          totalLiters: item.totalLiters || 0,
+          sapiLiters: item.sapiLiters || 0,
+          kambingLiters: item.kambingLiters || 0,
+          isToday: false,
         };
       });
     }
@@ -221,13 +229,7 @@ function getFarmChartData(rawChartData, chartFilter, todayTotalGross, todaySapiG
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(now.getFullYear(), now.getMonth(), day);
       const dayIdx = d.getDay();
-      const seed = (day * 173 + (now.getMonth() + 1) * 89) % 100;
-      let sVol = 0, kVol = 0, tot = 0;
-      if (day <= currentDay) {
-        sVol = (day === currentDay && todaySapiGross > 0) ? todaySapiGross : (2050 + (seed * 8));
-        kVol = (day === currentDay && todayKambingGross > 0) ? todayKambingGross : (680 + (seed * 3));
-        tot = (day === currentDay && todayTotalGross > 0) ? todayTotalGross : (sVol + kVol);
-      }
+      const isToday = day === currentDay;
       res.push({
         label: `${daysName[dayIdx]} ${day}/${now.getMonth() + 1}`,
         dayName: daysName[dayIdx],
@@ -235,10 +237,10 @@ function getFarmChartData(rawChartData, chartFilter, todayTotalGross, todaySapiG
         monthNum: now.getMonth() + 1,
         dateStr: `${day}/${now.getMonth() + 1}`,
         formattedDate: `${day} ${d.toLocaleDateString('id-ID', { month: 'short' })}`,
-        totalLiters: tot,
-        sapiLiters: sVol,
-        kambingLiters: kVol,
-        isToday: day === currentDay,
+        totalLiters: isToday ? todayTotalGross : 0,
+        sapiLiters: isToday ? todaySapiGross : 0,
+        kambingLiters: isToday ? todayKambingGross : 0,
+        isToday: isToday,
         isFuture: day > currentDay,
       });
     }
@@ -662,32 +664,28 @@ export default function DashboardPage() {
   }
 
   const farmStats = statsData?.farm || {};
-  const todaySapiRawVal = farmStats.todaySapiLiters || farmStats.todaySapiGross || 0;
-  const todayKambingRawVal = farmStats.todayKambingLiters || farmStats.todayKambingGross || 0;
-  const todayTotalRawVal = farmStats.todayGrossLiters || farmStats.todayTotalLiters || (todaySapiRawVal + todayKambingRawVal);
+  const todaySapiGross = farmStats.todaySapiGross ?? farmStats.todaySapiLiters ?? 0;
+  const todayKambingGross = farmStats.todayKambingGross ?? farmStats.todayKambingLiters ?? 0;
+  const todayTotalGross = farmStats.todayGrossLiters ?? farmStats.todayTotalLiters ?? (todaySapiGross + todayKambingGross);
+  const todaySapiRaw = farmStats.todaySapiRaw || 0;
+  const todayKambingRaw = farmStats.todayKambingRaw || 0;
 
-  const todayTotalGross = todayTotalRawVal > 0 ? todayTotalRawVal : 3600;
-  const todaySapiGross = todaySapiRawVal > 0 ? todaySapiRawVal : 2700;
-  const todayKambingGross = todayKambingRawVal > 0 ? todayKambingRawVal : 900;
-  const todaySapiRaw = farmStats.todaySapiRaw > 0 ? farmStats.todaySapiRaw : 2506;
-  const todayKambingRaw = farmStats.todayKambingRaw > 0 ? farmStats.todayKambingRaw : 883;
+  const sapiPercentage = todayTotalGross > 0 ? Math.round((todaySapiGross / todayTotalGross) * 100) : 0;
+  const kambingPercentage = todayTotalGross > 0 ? Math.round((todayKambingGross / todayTotalGross) * 100) : 0;
+  const sapiRawPercentage = todaySapiGross > 0 ? Math.round((todaySapiRaw / todaySapiGross) * 100) : 0;
+  const kambingRawPercentage = todayKambingGross > 0 ? Math.round((todayKambingRaw / todayKambingGross) * 100) : 0;
 
-  const sapiPercentage = Math.round((todaySapiGross / todayTotalGross) * 100);
-  const kambingPercentage = Math.round((todayKambingGross / todayTotalGross) * 100);
-  const sapiRawPercentage = Math.round((todaySapiRaw / todaySapiGross) * 100);
-  const kambingRawPercentage = Math.round((todayKambingRaw / todayKambingGross) * 100);
+  const tegalsariVol = farmStats.farmOriginToday?.tegalsari || 0;
+  const limpakuwusVol = farmStats.farmOriginToday?.limpakuwus || 0;
+  const manggalaVol = farmStats.farmOriginToday?.manggala || 0;
+  const eduwisataVol = farmStats.farmOriginToday?.eduwisata || 0;
 
-  const tegalsariVol = farmStats.farmOriginToday?.tegalsari || 1000;
-  const limpakuwusVol = farmStats.farmOriginToday?.limpakuwus || 950;
-  const manggalaVol = farmStats.farmOriginToday?.manggala || 1150;
-  const eduwisataVol = farmStats.farmOriginToday?.eduwisata || 500;
+  const farmRefTotal = (tegalsariVol + limpakuwusVol + manggalaVol + eduwisataVol) || todayTotalGross || 0;
 
-  const farmRefTotal = tegalsariVol + limpakuwusVol + manggalaVol + eduwisataVol || todayTotalGross;
-
-  const tegalsariPct = ((tegalsariVol / farmRefTotal) * 100).toFixed(1).replace('.', ',');
-  const limpakuwusPct = ((limpakuwusVol / farmRefTotal) * 100).toFixed(1).replace('.', ',');
-  const manggalaPct = ((manggalaVol / farmRefTotal) * 100).toFixed(1).replace('.', ',');
-  const eduwisataPct = ((eduwisataVol / farmRefTotal) * 100).toFixed(1).replace('.', ',');
+  const tegalsariPct = farmRefTotal > 0 && tegalsariVol > 0 ? ((tegalsariVol / farmRefTotal) * 100).toFixed(1).replace('.', ',') : '0';
+  const limpakuwusPct = farmRefTotal > 0 && limpakuwusVol > 0 ? ((limpakuwusVol / farmRefTotal) * 100).toFixed(1).replace('.', ',') : '0';
+  const manggalaPct = farmRefTotal > 0 && manggalaVol > 0 ? ((manggalaVol / farmRefTotal) * 100).toFixed(1).replace('.', ',') : '0';
+  const eduwisataPct = farmRefTotal > 0 && eduwisataVol > 0 ? ((eduwisataVol / farmRefTotal) * 100).toFixed(1).replace('.', ',') : '0';
 
   const rawChartData = chartFilter === '30' ? (farmStats.chart30Days || []) : (farmStats.chart7Days || []);
 

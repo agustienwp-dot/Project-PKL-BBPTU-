@@ -57,9 +57,9 @@ export async function GET(request) {
     // 4. Fetch Outflows (Hibah, Afkir, Outflow)
     const outflows = await prisma.milkOutflow.findMany({
       where: {
-        date: { lte: rangeEnd },
+        createdAt: { lte: rangeEnd },
       },
-      orderBy: { date: 'asc' },
+      orderBy: { createdAt: 'asc' },
     });
 
     // Helper date key formatter
@@ -85,7 +85,7 @@ export async function GET(request) {
     productions.forEach((p) => allDateKeysSet.add(toDateKey(p.date)));
     packagings.forEach((p) => allDateKeysSet.add(toDateKey(p.date)));
     sales.forEach((s) => allDateKeysSet.add(toDateKey(s.date)));
-    outflows.forEach((o) => allDateKeysSet.add(toDateKey(o.date)));
+    outflows.forEach((o) => allDateKeysSet.add(toDateKey(o.createdAt || o.date)));
 
     const sortedAllDateKeys = Array.from(allDateKeysSet).sort();
 
@@ -268,7 +268,7 @@ export async function GET(request) {
 
     // Populate Outflows (Hibah & Rusak / Afkir)
     outflows.forEach((o) => {
-      const key = toDateKey(o.date);
+      const key = toDateKey(o.createdAt || o.date);
       if (!dailyMap[key]) return;
 
       const qty = o.quantity || 0;

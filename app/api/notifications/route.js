@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+// Updated route sync check
 
 export async function GET(request) {
   try {

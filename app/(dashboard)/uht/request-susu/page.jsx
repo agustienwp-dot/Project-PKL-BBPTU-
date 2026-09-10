@@ -18,8 +18,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Package,
-  Info
+  Info,
+  Eye,
+  Printer
 } from 'lucide-react';
+import BeritaAcaraDocumentSusuFarm from '@/components/susu-farm/BeritaAcaraDocumentSusuFarm';
 
 export default function RequestSusuPengemasanPage() {
   const { user } = useAuth();
@@ -42,6 +45,127 @@ export default function RequestSusuPengemasanPage() {
 
   // Confirm Receipt State
   const [confirmingReq, setConfirmingReq] = useState(null);
+
+  // BAST Preview Modal State
+  const [selectedBaForPreview, setSelectedBaForPreview] = useState(null);
+  const [loadingBa, setLoadingBa] = useState(false);
+
+  const handlePreviewBast = async (req) => {
+    setLoadingBa(true);
+    try {
+      // 1. If req already has its attached BAST from API
+      if (req.bast && (req.bast.nomorBA || req.bast.nomorBa)) {
+        const bNo = req.bast.nomorBA || req.bast.nomorBa;
+        const isAppr = req.status === 'DISETUJUI' || req.status === 'DITERIMA' || req.status === 'SIAP_DITERIMA' || req.status === 'SELESAI';
+        setSelectedBaForPreview({
+          ...req.bast,
+          nomorBa: bNo,
+          nomorBA: bNo,
+          requestNo: req.requestNo,
+          type: 'PERMINTAAN_SUSU',
+          totalProduksi: req.volumeLiters,
+          diserahterimakan: req.volumeLiters,
+          volumeLiters: req.volumeLiters,
+          purpose: req.processingNeeds,
+          processingNeeds: req.processingNeeds,
+          priority: req.priority || 'Normal',
+          penerimaName: req.createdBy?.name || user?.name || 'Admin Pengemasan',
+          penerimaRole: 'Unit Pengolahan Susu (UHT)',
+          penyerahName: req.approvedByName || req.bast.penyerahName || 'Tim Kerja Layanan Pemasaran',
+          penyerahRole: 'Seksi Pemasaran',
+          farmLocation: 'Gudang Pemasaran / Cold Storage',
+          animalType: (req.processingNeeds || '').toLowerCase().includes('kambing') ? 'KAMBING' : 'SAPI',
+          status: isAppr ? 'DITERIMA' : 'MENUNGGU_KONFIRMASI',
+          confirmedByName: req.approvedByName || req.bast.confirmedByName || null,
+          notes: req.bast.notes || req.notes || `[Permintaan Susu ${req.requestNo}] Kebutuhan: ${req.processingNeeds}. Prioritas: ${req.priority || 'Normal'}.`
+        });
+        return;
+      }
+
+      // 2. Query /api/bast (unified BAST endpoint)
+      let baDoc = null;
+      try {
+        const res = await api.get(`/bast?type=PERMINTAAN_SUSU&search=${encodeURIComponent(req.requestNo)}`);
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          baDoc = res.data.data.find(d => 
+            (d.notes && d.notes.includes(req.requestNo)) || 
+            (d.nomorBa && (d.nomorBa.includes(req.requestNo) || d.nomorBa === req.bastNo)) ||
+            (d.nomorBA && (d.nomorBA.includes(req.requestNo) || d.nomorBA === req.bastNo))
+          );
+        }
+      } catch (err) {
+        console.warn('Could not fetch from /api/bast:', err);
+      }
+
+      const dObj = new Date(req.date || req.createdAt || Date.now());
+      const yyyy = dObj.getFullYear();
+      const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(dObj.getDate()).padStart(2, '0');
+      const dateCode = `${yyyy}${mm}${dd}`;
+      const bastNumber = baDoc?.nomorBA || baDoc?.nomorBa || req.bastNo || `BAST-REQ-${dateCode}-001`;
+      const isAppr = req.status === 'DISETUJUI' || req.status === 'DITERIMA' || req.status === 'SIAP_DITERIMA' || req.status === 'SELESAI';
+
+      setSelectedBaForPreview({
+        id: baDoc?.id || req.id,
+        nomorBa: bastNumber,
+        nomorBA: bastNumber,
+        requestNo: req.requestNo,
+        type: 'PERMINTAAN_SUSU',
+        date: req.date || req.createdAt || new Date(),
+        shift: 'Pagi',
+        farmLocation: 'Gudang Pemasaran / Cold Storage',
+        animalType: (req.processingNeeds || '').toLowerCase().includes('kambing') ? 'KAMBING' : 'SAPI',
+        unit: 'Liter',
+        totalProduksi: req.volumeLiters,
+        diserahterimakan: req.volumeLiters,
+        volumeLiters: req.volumeLiters,
+        purpose: req.processingNeeds,
+        processingNeeds: req.processingNeeds,
+        priority: req.priority || 'Normal',
+        penerimaName: req.createdBy?.name || user?.name || 'Admin Pengemasan',
+        penerimaRole: 'Unit Pengolahan Susu (UHT)',
+        penyerahName: req.approvedByName || baDoc?.penyerahName || 'Tim Kerja Layanan Pemasaran',
+        penyerahRole: 'Seksi Pemasaran',
+        status: isAppr ? 'DITERIMA' : 'MENUNGGU_KONFIRMASI',
+        confirmedByName: req.approvedByName || baDoc?.confirmedByName || null,
+        notes: baDoc?.notes || req.notes || `[Permintaan Susu ${req.requestNo}] Kebutuhan: ${req.processingNeeds}. Prioritas: ${req.priority || 'Normal'}.`
+      });
+    } catch (e) {
+      console.error('Error fetching BAST for request:', e);
+      const dObj = new Date(req.date || req.createdAt || Date.now());
+      const yyyy = dObj.getFullYear();
+      const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(dObj.getDate()).padStart(2, '0');
+      const bastNumber = req.bastNo || `BAST-REQ-${yyyy}${mm}${dd}-001`;
+      const isAppr = req.status === 'DISETUJUI' || req.status === 'DITERIMA' || req.status === 'SIAP_DITERIMA' || req.status === 'SELESAI';
+      setSelectedBaForPreview({
+        nomorBa: bastNumber,
+        nomorBA: bastNumber,
+        requestNo: req.requestNo,
+        type: 'PERMINTAAN_SUSU',
+        date: req.date || req.createdAt || new Date(),
+        shift: 'Pagi',
+        farmLocation: 'Gudang Pemasaran / Cold Storage',
+        animalType: (req.processingNeeds || '').toLowerCase().includes('kambing') ? 'KAMBING' : 'SAPI',
+        unit: 'Liter',
+        totalProduksi: req.volumeLiters,
+        diserahterimakan: req.volumeLiters,
+        volumeLiters: req.volumeLiters,
+        purpose: req.processingNeeds,
+        processingNeeds: req.processingNeeds,
+        priority: req.priority || 'Normal',
+        penerimaName: req.createdBy?.name || user?.name || 'Admin Pengemasan',
+        penerimaRole: 'Unit Pengolahan Susu (UHT)',
+        penyerahName: req.approvedByName || 'Tim Kerja Layanan Pemasaran',
+        penyerahRole: 'Seksi Pemasaran',
+        status: isAppr ? 'DITERIMA' : 'MENUNGGU_KONFIRMASI',
+        confirmedByName: req.approvedByName || null,
+        notes: req.notes || `[Permintaan Susu ${req.requestNo}] Kebutuhan: ${req.processingNeeds}. Prioritas: ${req.priority || 'Normal'}.`
+      });
+    } finally {
+      setLoadingBa(false);
+    }
+  };
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -249,7 +373,12 @@ export default function RequestSusuPengemasanPage() {
                 {filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/50 transition">
                     <td className="py-3.5 px-4 font-mono font-semibold text-slate-800">
-                      {req.requestNo}
+                      <div>{req.requestNo}</div>
+                      {req.bastNo && (
+                        <div className="text-[10px] text-emerald-700 font-mono font-medium">
+                          {req.bastNo}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
                       {req.date ? new Date(req.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
@@ -264,23 +393,27 @@ export default function RequestSusuPengemasanPage() {
                       {getStatusBadge(req.status)}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      {req.status === 'SIAP_DITERIMA' ? (
+                      <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => setConfirmingReq(req)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-sm transition"
+                          type="button"
+                          onClick={() => handlePreviewBast(req)}
+                          disabled={loadingBa}
+                          className="w-8 h-8 rounded-full text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
+                          title="Cetak Dokumen BAST Resmi"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Konfirmasi Penerimaan</span>
+                          <Printer className="w-4 h-4 text-emerald-700" />
                         </button>
-                      ) : req.status === 'DITOLAK' ? (
-                        <div className="text-xs text-red-600 font-medium max-w-xs text-right truncate" title={req.rejectionReason}>
-                          Alasan: {req.rejectionReason || 'Ditolak'}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">
-                          {req.status === 'DITERIMA' ? `Diterima (${req.receivedVolumeLiters || req.volumeLiters} L)` : 'Menunggu Pemasaran'}
-                        </span>
-                      )}
+                        {req.status === 'SIAP_DITERIMA' && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingReq(req)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-sm transition"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Konfirmasi Penerimaan</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -416,6 +549,24 @@ export default function RequestSusuPengemasanPage() {
                 {submitting ? 'Memproses...' : 'Ya, Konfirmasi Diterima'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Preview BAST */}
+      {selectedBaForPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setSelectedBaForPreview(null)}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            >
+              ✕
+            </button>
+            <BeritaAcaraDocumentSusuFarm
+              ba={selectedBaForPreview}
+              onClose={() => setSelectedBaForPreview(null)}
+            />
           </div>
         </div>
       )}

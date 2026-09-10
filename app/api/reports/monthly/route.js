@@ -12,31 +12,30 @@ export async function GET(request) {
     const productType = searchParams.get('productType') || 'ALL'; // Default to ALL if not specified
     const animalType = searchParams.get('animalType') || 'ALL'; // Default to ALL if not specified
 
-    // Date range for the requested month using pure UTC bounds
+    // Date range for the requested month with timezone buffer
     const daysInMonth = new Date(year, month, 0).getDate();
-    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-    const endDate = new Date(Date.UTC(year, month - 1, daysInMonth, 23, 59, 59, 999));
+    const queryStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0) - 48 * 60 * 60 * 1000);
+    const queryEnd = new Date(Date.UTC(year, month - 1, daysInMonth, 23, 59, 59, 999) + 48 * 60 * 60 * 1000);
 
-    // Fast bypass if DB is known to be offline (instant <2ms response)
     if (isDbOffline()) {
       throw new Error('DB_OFFLINE_CACHE');
     }
 
     const whereProd = {
-      date: { gte: startDate, lte: endDate },
+      date: { gte: queryStart, lte: queryEnd },
     };
     const whereOut = {
-      date: { gte: startDate, lte: endDate },
+      createdAt: { gte: queryStart, lte: queryEnd },
     };
 
     if (productType && productType !== 'ALL') {
-      whereProd.product_type = productType;
-      whereOut.product_type = productType;
+      whereProd.productType = productType;
+      whereOut.productType = productType;
     }
 
     if (animalType && animalType !== 'ALL') {
-      whereProd.animal_type = animalType;
-      whereOut.animal_type = animalType;
+      whereProd.animalType = animalType.toUpperCase();
+      whereOut.animalType = animalType.toUpperCase();
     }
 
     let monthProductions = [];
@@ -56,7 +55,7 @@ export async function GET(request) {
       monthOutflows = await prisma.milkOutflow.findMany({
         where: whereOut,
         include: { category: true },
-        orderBy: { date: 'asc' },
+        orderBy: { createdAt: 'asc' },
       });
     } catch (e) {
       console.error('monthOutflows findMany error:', e);
@@ -74,22 +73,35 @@ export async function GET(request) {
         };
       }
       const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return { year: 0, month: 0, day: 0 };
+      const iso = d.toISOString().slice(0, 10).split('-');
       return {
-        year: d.getFullYear(),
-        month: d.getMonth() + 1,
-        day: d.getDate(),
+        year: parseInt(iso[0], 10),
+        month: parseInt(iso[1], 10),
+        day: parseInt(iso[2], 10),
       };
     };
 
-    // Merge in-memory production store items
-    const mergedProductions = [...monthProductions];
+    // Filter strictly to the requested year and month
+    const validProductions = monthProductions.filter((p) => {
+      const parsed = parseDateObj(p.date);
+      return parsed.year === year && parsed.month === month;
+    });
+
+    const validOutflows = monthOutflows.filter((o) => {
+      const parsed = parseDateObj(o.createdAt || o.date);
+      return parsed.year === year && parsed.month === month;
+    });
+
+    // Merge in-memory production store items if present
+    const mergedProductions = [...validProductions];
     const existingIds = new Set(mergedProductions.map((p) => p.id));
     for (const memProd of (global.__inMemoryProductionList || [])) {
       if (!existingIds.has(memProd.id)) {
         const pDate = parseDateObj(memProd.date);
         if (pDate.year === year && pDate.month === month) {
-          const memAnimal = memProd.animal_type || memProd.animalType;
-          if (!animalType || animalType === 'ALL' || memAnimal === animalType) {
+          const memAnimal = (memProd.animalType || memProd.animal_type || 'SAPI').toUpperCase();
+          if (!animalType || animalType === 'ALL' || memAnimal === animalType.toUpperCase()) {
             mergedProductions.push(memProd);
             existingIds.add(memProd.id);
           }
@@ -131,15 +143,18 @@ export async function GET(request) {
     };
 
     mergedProductions.forEach((p) => {
-      const gross = parseFloat(p.gross_volume_liters ?? p.grossVolumeLiters ?? p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
-      const raw = parseFloat(p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
-      const pedet = parseFloat(p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0);
-      const afkir = parseFloat(p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0);
-      const soldFresh = parseFloat(p.sold_fresh_volume_liters ?? p.soldFreshVolumeLiters ?? 0);
-      const processed = parseFloat(p.processed_liters ?? p.processedLiters ?? 0) || raw;
-      const pkgQty = parseInt(p.packaged_qty ?? p.packagedQty ?? 0, 10) || Math.round(raw);
-      const aType = p.animal_type || p.animalType;
-      const fOrigin = p.farm_origin || p.farmOrigin;
+      const raw = parseFloat(p.rawVolumeLiters ?? p.raw_volume_liters ?? 0);
+      const pedet = parseFloat(p.pedetVolumeLiters ?? p.pedet_volume_liters ?? 0);
+      const afkir = parseFloat(p.afkirVolumeLiters ?? p.afkir_volume_liters ?? 0);
+      let gross = parseFloat(p.grossVolumeLiters ?? p.gross_volume_liters ?? 0);
+      if (gross <= 0 && raw > 0) {
+        gross = raw + pedet + afkir;
+      }
+      const soldFresh = parseFloat(p.soldFreshVolumeLiters ?? p.sold_fresh_volume_liters ?? 0);
+      const processed = parseFloat(p.processedLiters ?? p.processed_liters ?? 0) || raw;
+      const pkgQty = parseInt(p.packagedQty ?? p.packaged_qty ?? 0, 10) || Math.round(raw);
+      const aType = (p.animalType || p.animal_type || 'SAPI').toUpperCase();
+      const fOrigin = p.farmOrigin || p.farm_origin || 'Manggala';
 
       totalGrossLiters += gross;
       totalPedetLiters += pedet;
@@ -173,7 +188,7 @@ export async function GET(request) {
       }
       farmsMonthlyTotal.grandTotal += gross;
 
-      const pkg = p.packaging_type || p.packagingType || 'botol';
+      const pkg = p.packagingType || p.packaging_type || 'botol';
       if (packagingProducedTotals[pkg] !== undefined) {
         packagingProducedTotals[pkg] += pkgQty;
       } else {
@@ -181,11 +196,11 @@ export async function GET(request) {
       }
     });
 
-    monthOutflows.forEach((o) => {
+    validOutflows.forEach((o) => {
       const q = parseFloat(o.quantity || 0);
       totalOutflow += q;
 
-      const pkg = o.packaging_type || o.packagingType || 'botol';
+      const pkg = o.packagingType || o.packaging_type || 'botol';
       if (packagingOutflowTotals[pkg] !== undefined) {
         packagingOutflowTotals[pkg] += q;
       } else {
@@ -198,12 +213,12 @@ export async function GET(request) {
     for (let day = 1; day <= daysInMonth; day++) {
       const dayProds = mergedProductions.filter((p) => {
         const parsed = parseDateObj(p.date);
-        return parsed.day === day && parsed.month === month && parsed.year === year;
+        return parsed.day === day;
       });
 
-      const dayOuts = monthOutflows.filter((o) => {
-        const parsed = parseDateObj(o.date);
-        return parsed.day === day && parsed.month === month && parsed.year === year;
+      const dayOuts = validOutflows.filter((o) => {
+        const parsed = parseDateObj(o.createdAt || o.date);
+        return parsed.day === day;
       });
 
       let dayGrossLiters = 0;
@@ -230,15 +245,18 @@ export async function GET(request) {
       const dayPkgOut = { botol: 0, cup: 0, pack: 0 };
 
       dayProds.forEach((p) => {
-        const gross = parseFloat(p.gross_volume_liters ?? p.grossVolumeLiters ?? p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
-        const raw = parseFloat(p.raw_volume_liters ?? p.rawVolumeLiters ?? 0);
-        const pedet = parseFloat(p.pedet_volume_liters ?? p.pedetVolumeLiters ?? 0);
-        const afkir = parseFloat(p.afkir_volume_liters ?? p.afkirVolumeLiters ?? 0);
-        const soldFresh = parseFloat(p.sold_fresh_volume_liters ?? p.soldFreshVolumeLiters ?? 0);
-        const processed = parseFloat(p.processed_liters ?? p.processedLiters ?? 0) || raw;
-        const pkgQty = parseInt(p.packaged_qty ?? p.packagedQty ?? 0, 10) || Math.round(raw);
-        const aType = p.animal_type || p.animalType;
-        const fOrigin = p.farm_origin || p.farmOrigin;
+        const raw = parseFloat(p.rawVolumeLiters ?? p.raw_volume_liters ?? 0);
+        const pedet = parseFloat(p.pedetVolumeLiters ?? p.pedet_volume_liters ?? 0);
+        const afkir = parseFloat(p.afkirVolumeLiters ?? p.afkir_volume_liters ?? 0);
+        let gross = parseFloat(p.grossVolumeLiters ?? p.gross_volume_liters ?? 0);
+        if (gross <= 0 && raw > 0) {
+          gross = raw + pedet + afkir;
+        }
+        const soldFresh = parseFloat(p.soldFreshVolumeLiters ?? p.sold_fresh_volume_liters ?? 0);
+        const processed = parseFloat(p.processedLiters ?? p.processed_liters ?? 0) || raw;
+        const pkgQty = parseInt(p.packagedQty ?? p.packaged_qty ?? 0, 10) || Math.round(raw);
+        const aType = (p.animalType || p.animal_type || 'SAPI').toUpperCase();
+        const fOrigin = p.farmOrigin || p.farm_origin || 'Manggala';
 
         dayGrossLiters += gross;
         dayPedetLiters += pedet;
@@ -272,14 +290,14 @@ export async function GET(request) {
         }
         farmsBreakdown.grandTotal += gross;
 
-        const pkg = p.packaging_type || p.packagingType || 'botol';
+        const pkg = p.packagingType || p.packaging_type || 'botol';
         dayPkgProd[pkg] = (dayPkgProd[pkg] || 0) + pkgQty;
       });
 
       dayOuts.forEach((o) => {
         const q = parseFloat(o.quantity || 0);
         dayOutflow += q;
-        const pkg = o.packaging_type || o.packagingType || 'botol';
+        const pkg = o.packagingType || o.packaging_type || 'botol';
         dayPkgOut[pkg] = (dayPkgOut[pkg] || 0) + q;
       });
 
@@ -333,23 +351,9 @@ export async function GET(request) {
   } catch (error) {
     console.error('GET /api/reports/monthly error:', error);
     return NextResponse.json({
-      success: true,
-      data: {
-        month: 8,
-        year: 2026,
-        summary: {
-          totalGrossLiters: 0,
-          totalRawLiters: 0,
-          farmsMonthlyTotal: {
-            tegalsari: { pagi: 0, sore: 0, total: 0 },
-            limpakuwus: { pagi: 0, sore: 0, total: 0 },
-            manggala: { pagi: 0, sore: 0, total: 0 },
-            eduwisata: { pagi: 0, sore: 0, total: 0 },
-            grandTotal: 0,
-          },
-        },
-        dailyLogs: [],
-      },
-    });
+      success: false,
+      message: error?.message || 'Gagal memuat laporan bulanan',
+      data: null,
+    }, { status: 500 });
   }
 }

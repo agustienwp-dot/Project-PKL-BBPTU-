@@ -40,7 +40,7 @@ export async function GET(request) {
       include: {
         piutang: {
           include: {
-            pelunasan: true,
+            pelunasanPiutang: true,
           },
         },
         createdBy: {

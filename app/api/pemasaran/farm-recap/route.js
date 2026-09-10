@@ -26,30 +26,41 @@ export async function GET(request) {
     });
 
     // 2. Fetch Realtime Active BAST Documents from Database
-    const activeBasts = await prisma.bastDocument.findMany({
-      where: { status: { in: ['DIKIRIM_KE_FARM', 'DITERIMA'] } },
-      orderBy: { tanggal: 'asc' },
-    });
+    let activeBasts = [];
+    try {
+      const bastClient = prisma.beritaAcara || prisma.bastDocument;
+      if (bastClient) {
+        activeBasts = await bastClient.findMany({
+          where: { status: { in: ['DIKIRIM_KE_FARM', 'DITERIMA'] } },
+          orderBy: { date: 'asc' },
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching active BASTs in farm-recap:', e);
+      activeBasts = [];
+    }
 
     // Map BAST by Date & Animal Type
     const bastByDateMap = {};
     activeBasts.forEach((b) => {
-      const dStr = new Date(b.tanggal).toISOString().slice(0, 10);
-      const bAnimal = (b.sumber === 'SUSU_KAMBING' || (b.catatan && b.catatan.toLowerCase().includes('kambing'))) ? 'KAMBING' : 'SAPI';
+      const bDate = b.date || b.tanggal || new Date();
+      const dStr = new Date(bDate).toISOString().slice(0, 10);
+      const bAnimal = (b.animalType === 'KAMBING' || b.sumber === 'SUSU_KAMBING' || (b.notes && b.notes.toLowerCase().includes('kambing'))) ? 'KAMBING' : 'SAPI';
       const key = `${dStr}_${bAnimal}`;
       if (!bastByDateMap[key]) bastByDateMap[key] = [];
-      const tujuanLabel = b.instansiPenerima ? ` (${b.instansiPenerima})` : '';
-      const keperluanLabel = b.jenisPermintaan === 'HIBAH' ? 'Hibah' : (b.jenisPermintaan === 'PENGOLAHAN_UHT' ? 'Pengolahan UHT' : 'Distribusi');
+      const volume = b.diserahterimakan || b.totalProduksi || b.volumeLiters || 0;
+      const keperluanLabel = b.type || b.jenisPermintaan || 'Distribusi';
+      const tujuanLabel = b.receiverName || b.instansiPenerima ? ` (${b.receiverName || b.instansiPenerima})` : '';
 
       bastByDateMap[key].push({
         id: b.id,
-        nomorBast: b.nomorBast,
-        volumeLiters: b.volumeLiters || 0,
-        jenisPermintaan: b.jenisPermintaan || 'PENJUALAN_LANGSUNG',
-        instansiPenerima: b.instansiPenerima || '-',
-        catatan: b.catatan || '',
+        nomorBast: b.nomorBA || b.nomorBast,
+        volumeLiters: volume,
+        jenisPermintaan: keperluanLabel,
+        instansiPenerima: b.receiverName || b.instansiPenerima || '-',
+        catatan: b.notes || b.catatan || '',
         jenisTernak: bAnimal,
-        keteranganPemakaian: `${keperluanLabel}${tujuanLabel}: ${b.volumeLiters} L`,
+        keteranganPemakaian: `${keperluanLabel}${tujuanLabel}: ${volume} L`,
       });
     });
 
@@ -57,30 +68,37 @@ export async function GET(request) {
     const sessions = dbProductions.map((p) => {
       const dateObj = new Date(p.date);
       const dateStr = dateObj.toISOString().slice(0, 10);
-      const isPagi = dateObj.getHours() < 12;
+      const shiftDisplay = p.shift || (dateObj.getHours() < 12 ? 'Pagi' : 'Sore');
       const animalType = (p.animalType || 'SAPI').toUpperCase();
       const gross = parseFloat(p.grossVolumeLiters || p.produksi) || 0;
       const pedet = parseFloat(p.pedetVolumeLiters || p.setorPedet) || 0;
       const afkir = parseFloat(p.afkirVolumeLiters || p.rusakAfkir) || 0;
       const netKandang = Math.max(0, gross - pedet - afkir);
 
-      // Status: if >= 20th day of month, default to MENUNGGU_VERIFIKASI if not DITERIMA
-      const currentStatus = p.status === 'DITERIMA' ? 'DITERIMA' : (dateObj.getDate() >= 20 ? 'MENUNGGU_VERIFIKASI' : 'DITERIMA');
+      // Status serah terima dari Farm ke Pemasaran (otomatis DITERIMA saat masuk ke Pemasaran)
+      const currentStatus = (p.status === 'PERLU_KOREKSI') 
+        ? 'PERLU_KOREKSI' 
+        : (p.status === 'DRAFT' || p.handoverStatus === 'DRAFT' 
+          ? 'DRAFT' 
+          : 'DITERIMA');
 
       return {
         id: p.id,
         tanggal: dateStr,
         jenisTernak: animalType,
-        kegiatanPerah: isPagi ? 'Pagi' : 'Sore',
+        kegiatanPerah: shiftDisplay,
         produksiSusu: gross,
         susuPedet: pedet,
         susuAfkir: afkir,
         distribusiSegar: 0, // Semua distribusi tercatat melalui BAST
         susuSiapOlah: netKandang,
         status: currentStatus,
-        receivedAt: currentStatus === 'DITERIMA' ? p.date : null,
+        handoverStatus: p.handoverStatus,
+        farmOrigin: p.farmOrigin || 'Manggala',
+        receivedAt: currentStatus === 'DITERIMA' ? (p.updatedAt || p.date) : null,
         receivedByName: currentStatus === 'DITERIMA' ? 'Admin Pemasaran' : null,
-        notes: p.notes || `Perah ${isPagi ? 'Pagi' : 'Sore'} Susu ${animalType} tgl ${dateObj.getDate()} diserahkan ke pengolahan.`,
+        fotoTimbangan: p.fotoTimbangan || p.foto_timbangan || null,
+        notes: p.notes || `Perah ${shiftDisplay} Susu ${animalType} tgl ${dateObj.getDate()} diserahkan ke pengolahan.`,
         createdAt: p.createdAt || p.date,
       };
     });
@@ -154,6 +172,7 @@ export async function GET(request) {
           selisih: 0,
           statusRekonsiliasi: 'SEIMBANG',
           sessions: [],
+          photos: [],
           status: 'DITERIMA',
           notes: '',
         };
@@ -165,8 +184,8 @@ export async function GET(request) {
       day.totalAfkir += r.susuAfkir || 0;
       day.totalSusuSiapOlah += r.susuSiapOlah || 0;
 
-      if (r.status === 'MENUNGGU_VERIFIKASI') {
-        day.status = 'MENUNGGU_VERIFIKASI';
+      if (r.status === 'PERLU_KOREKSI') {
+        day.status = 'PERLU_KOREKSI';
       }
 
       if (r.kegiatanPerah === 'Pagi') {
@@ -179,6 +198,18 @@ export async function GET(request) {
         day.sorePedet += r.susuPedet || 0;
         day.soreAfkir += r.susuAfkir || 0;
         day.soreSiapOlah += r.susuSiapOlah || 0;
+      }
+
+      if (r.fotoTimbangan) {
+        day.photos.push({
+          id: r.id,
+          shift: r.kegiatanPerah,
+          foto: r.fotoTimbangan,
+          tanggal: r.tanggal,
+          jenisTernak: r.jenisTernak,
+          produksiSusu: r.produksiSusu,
+          susuSiapOlah: r.susuSiapOlah,
+        });
       }
 
       day.sessions.push(r);
@@ -312,10 +343,37 @@ export async function PUT(request) {
       where: { id },
       data: {
         status: newStatus,
+        handoverStatus: newStatus,
         notes: newNotes,
         updatedAt: new Date(),
       },
     });
+
+    // Notify Admin Farm
+    try {
+      const animalLabel = (existing.animalType || '').toUpperCase() === 'KAMBING' ? 'Kambing' : 'Sapi';
+      const notifTitle = action === 'RECEIVE'
+        ? `Susu ${animalLabel} Telah Diterima Pemasaran`
+        : `Susu ${animalLabel} Memerlukan Koreksi`;
+      const notifMsg = action === 'RECEIVE'
+        ? `Susu hasil perah (${existing.rawVolumeLiters} L) telah diverifikasi dan diterima oleh ${authUser?.name || 'Admin Pemasaran'}.`
+        : `Pemasaran meminta koreksi pada input produksi (${existing.rawVolumeLiters} L): ${receptionNotes || '-'}`;
+
+      await prisma.notification.create({
+        data: {
+          title: notifTitle,
+          message: notifMsg,
+          type: 'STOCK_ADDED',
+          targetRole: 'ADMIN_FARM',
+          senderId: authUser?.id || null,
+          senderName: authUser?.name || authUser?.email,
+          senderRole: 'ADMIN_PEMASARAN',
+          link: '/susu-farm/produksi',
+        }
+      });
+    } catch (notifErr) {
+      console.error('Error notifying farm in PUT farm-recap:', notifErr);
+    }
 
     return NextResponse.json({
       success: true,

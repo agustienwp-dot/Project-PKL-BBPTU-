@@ -43,6 +43,10 @@ export default function DashboardPage() {
       router.replace('/pemasaran/dashboard');
       return;
     }
+    if (user?.role === 'ADMIN_PENGEMASAN') {
+      router.replace('/uht/dashboard');
+      return;
+    }
     fetchDashboardData();
   }, [user, router]);
 
@@ -51,15 +55,14 @@ export default function DashboardPage() {
   }
 
   const farmStats = statsData?.farm || {};
-  const totalProduksi = farmStats.todayTotalLiters || farmStats.todayGrossLiters || 17600;
-  const susuSapi = farmStats.todaySapiLiters !== undefined ? farmStats.todaySapiLiters : 300;
-  const susuKambing = farmStats.todayKambingLiters !== undefined ? farmStats.todayKambingLiters : 17300;
-  const diserahTerimakan = farmStats.todayDiserahkanLiters !== undefined ? farmStats.todayDiserahkanLiters : 17249;
+  const totalProduksi = farmStats.todayTotalLiters ?? farmStats.todayGrossLiters ?? 0;
+  const susuSapi = farmStats.todaySapiLiters ?? farmStats.todaySapiGross ?? 0;
+  const susuKambing = farmStats.todayKambingLiters ?? farmStats.todayKambingGross ?? 0;
+  const diserahTerimakan = (farmStats.todaySapiRaw || 0) + (farmStats.todayKambingRaw || 0) || farmStats.todayRawLiters || 0;
 
-  const totalProdSafe = totalProduksi > 0 ? totalProduksi : 1;
-  const sapiPct = Math.round((susuSapi / totalProdSafe) * 100);
-  const kambingPct = Math.round((susuKambing / totalProdSafe) * 100);
-  const diserahkanPct = Math.round((diserahTerimakan / totalProdSafe) * 100);
+  const sapiPct = totalProduksi > 0 ? Math.round((susuSapi / totalProduksi) * 100) : 0;
+  const kambingPct = totalProduksi > 0 ? Math.round((susuKambing / totalProduksi) * 100) : 0;
+  const diserahkanPct = totalProduksi > 0 ? Math.round((diserahTerimakan / totalProduksi) * 100) : 0;
 
   const chartData = chartFilter === '30' ? (farmStats.chart30Days || []) : (farmStats.chart7Days || []);
   const maxChartVal = Math.max(...chartData.map(d => d.totalLiters || 0), 10);
@@ -279,35 +282,9 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              // Default sample logs matching screenshot
-              <>
-                <div className="space-y-1">
-                  <span className="font-extrabold text-slate-900 text-xs block">
-                    21:33 WIB
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    Seksi Pemasaran (Admin Farm Produksi) mengkonfirmasi penerimaan Berita Acara BA-20260820-004 sejumlah 2983 Kg.
-                  </p>
-                </div>
-
-                <div className="pt-3.5 space-y-1">
-                  <span className="font-extrabold text-slate-900 text-xs block">
-                    21:32 WIB
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    Seksi Pemasaran (Admin Farm Produksi) mengkonfirmasi penerimaan Berita Acara BA-20260820-004 sejumlah 2983 Kg.
-                  </p>
-                </div>
-
-                <div className="pt-3.5 space-y-1">
-                  <span className="font-extrabold text-slate-900 text-xs block">
-                    13:54 WIB
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    Admin Farm Produksi mencatat hasil perah pagi Susu Sapi & Susu Kambing sejumlah 17.600 Liter.
-                  </p>
-                </div>
-              </>
+              <div className="text-center py-8 text-slate-400 text-xs font-semibold">
+                Belum ada aktivitas terbaru hari ini.
+              </div>
             )}
           </div>
 

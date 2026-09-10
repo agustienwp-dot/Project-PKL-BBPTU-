@@ -181,10 +181,11 @@ export default function TerimaProdukOlahanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [res, salesRes, bastRes] = await Promise.all([
-        api.get('/packaged-products?sortOrder=asc'),
+      const [res, salesRes, bastRes, susuReqRes] = await Promise.all([
+        api.get('/packaged-products?sortOrder=asc').catch(() => ({ data: { data: [] } })),
         api.get('/milk-sales?sumber=OLAHAN').catch(() => ({ data: { data: [] } })),
         api.get('/bast').catch(() => ({ data: { data: [] } })),
+        api.get('/susu/request').catch(() => ({ data: { data: [] } })),
       ]);
       if (res.data?.success) {
         setPackagings(res.data.data || []);
@@ -192,9 +193,79 @@ export default function TerimaProdukOlahanPage() {
       if (salesRes.data?.success) {
         setSalesHistory(salesRes.data.data || []);
       }
-      if (bastRes.data?.success) {
-        setMilkRequests(bastRes.data.data || []);
-      }
+
+      const bastDocs = (bastRes.data?.success && Array.isArray(bastRes.data.data)) ? bastRes.data.data : [];
+      const susuReqs = (susuReqRes.data?.success && Array.isArray(susuReqRes.data.data)) ? susuReqRes.data.data : [];
+
+      const combined = [];
+      const seenIds = new Set();
+      const seenNos = new Set();
+
+      // 1. Add BASTs related to UHT / Pengolahan / Permintaan Susu
+      bastDocs.forEach((b) => {
+        const t = (b.type || b.jenisPermintaan || '').toUpperCase();
+        const pRole = (b.penerimaRole || '').toUpperCase();
+        const pName = (b.penerimaNama || b.receiverName || '').toUpperCase();
+        const sRole = (b.penyerahRole || '').toUpperCase();
+        const no = b.nomorBast || b.nomorBA || b.nomorBa || '';
+        const isUht =
+          t === 'PENGOLAHAN_UHT' ||
+          t === 'PERMINTAAN_SUSU' ||
+          t === 'REQUEST_SUSU' ||
+          no.startsWith('BAST-REQ-') ||
+          no.startsWith('BA-UHT-') ||
+          pRole.includes('UHT') ||
+          pRole.includes('PENGOLAHAN') ||
+          pName.includes('UHT') ||
+          sRole.includes('UHT') ||
+          sRole.includes('PENGOLAHAN');
+
+        if (isUht) {
+          combined.push(b);
+          seenIds.add(b.id);
+          if (no) seenNos.add(no);
+          const reqMatch = (b.notes || b.catatan || '').match(/REQ-\d{8}-\d{3}/i);
+          if (reqMatch) seenNos.add(reqMatch[0]);
+        }
+      });
+
+      // 2. Add MilkRequests not yet covered
+      susuReqs.forEach((r) => {
+        const rNo = r.requestNo || '';
+        const bNo = r.bastNo || '';
+        if (!seenNos.has(rNo) && (!bNo || !seenNos.has(bNo)) && !seenIds.has(r.id)) {
+          const isKambing = (r.processingNeeds || '').toLowerCase().includes('kambing');
+          const isDone = r.status === 'DISETUJUI' || r.status === 'SIAP_DITERIMA' || r.status === 'DITERIMA' || r.status === 'SELESAI';
+          combined.push({
+            id: r.id,
+            nomorBast: bNo || rNo,
+            nomorBa: bNo || rNo,
+            nomorBA: bNo || rNo,
+            requestNo: rNo,
+            tanggal: r.date || r.createdAt,
+            date: r.date || r.createdAt,
+            volumeLiters: r.volumeLiters,
+            diserahterimakan: r.volumeLiters,
+            totalProduksi: r.volumeLiters,
+            animalType: isKambing ? 'KAMBING' : 'SAPI',
+            animalName: isKambing ? 'SUSU KAMBING' : 'SUSU SAPI',
+            sumber: isKambing ? 'SUSU_KAMBING' : 'SUSU_SAPI',
+            jenisPermintaan: 'PENGOLAHAN_UHT',
+            type: 'PERMINTAAN_SUSU',
+            status: isDone ? 'DITERIMA' : 'MENUNGGU_KONFIRMASI',
+            targetOlahan: r.processingNeeds || 'Produksi Susu Olahan UHT',
+            notes: r.notes || '',
+            catatan: r.notes || '',
+            pengirimNama: 'Seksi Pemasaran',
+            penerimaNama: 'Unit Pengolahan (UHT)',
+            pengirimPetugas: r.approvedByName || 'Petugas Pemasaran',
+            penerimaPetugas: r.createdBy?.name || 'Admin Pengemasan',
+          });
+          if (rNo) seenNos.add(rNo);
+        }
+      });
+
+      setMilkRequests(combined);
     } catch (err) {
       console.error('Error fetching data:', err);
       setToast({ type: 'error', message: 'Gagal memuat data produk olahan UHT & penjualan.' });
@@ -208,7 +279,7 @@ export default function TerimaProdukOlahanPage() {
   }, []);
 
   const pendingRequestsCount = useMemo(() => {
-    return milkRequests.filter((r) => r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM').length;
+    return milkRequests.filter((r) => r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM' || r.status === 'MENUNGGU_PERSETUJUAN').length;
   }, [milkRequests]);
 
   const handleConfirmMilkRequest = async (id) => {
@@ -219,10 +290,18 @@ export default function TerimaProdukOlahanPage() {
       });
       if (res.data?.success) {
         setToast({ type: 'success', message: 'Permintaan susu segar berhasil disetujui & dialokasikan untuk Pengolahan!' });
-        fetchData();
+        await fetchData();
       }
     } catch (err) {
-      console.error('Error confirming milk request:', err);
+      console.error('Error confirming milk request with BAST endpoint, trying request approve:', err);
+      try {
+        const altRes = await api.put(`/susu/request/${id}`, { action: 'APPROVE' });
+        if (altRes.data?.success) {
+          setToast({ type: 'success', message: 'Permintaan susu segar berhasil disetujui & dialokasikan untuk Pengolahan!' });
+          await fetchData();
+          return;
+        }
+      } catch (altErr) {}
       setToast({ type: 'error', message: err.response?.data?.message || 'Gagal mengonfirmasi permintaan susu.' });
     } finally {
       setConfirmingRequestId(null);
@@ -241,24 +320,28 @@ export default function TerimaProdukOlahanPage() {
       }
     }
 
-    const isKambing = bast.sumber === 'SUSU_KAMBING' || (bast.catatan && bast.catatan.toLowerCase().includes('kambing'));
+    const isKambing = bast.sumber === 'SUSU_KAMBING' || bast.animalType === 'KAMBING' || (bast.catatan && bast.catatan.toLowerCase().includes('kambing')) || (bast.notes && bast.notes.toLowerCase().includes('kambing'));
     const animalName = isKambing ? 'SUSU KAMBING' : 'SUSU SAPI';
-    const vol = parseFloat(bast.volumeLiters) || 0;
+    const vol = parseFloat(bast.volumeLiters || bast.diserahterimakan || bast.totalProduksi) || 0;
 
     return {
       ...bast,
+      nomorBast: bast.nomorBast || bast.nomorBa || bast.nomorBA || bast.requestNo || 'BA-UHT-20260901-008',
+      tanggal: bast.tanggal || bast.date || bast.createdAt,
+      volumeLiters: vol,
+      totalProduksi: parsed.totalProduksi !== undefined ? parsed.totalProduksi : (bast.totalProduksi !== undefined ? bast.totalProduksi : vol),
+      diserahterimakan: vol,
       sesi: parsed.sesi || bast.sesi || 'PAGI',
       animalName: parsed.animalName || animalName,
-      targetOlahan: parsed.targetOlahan || bast.targetOlahan || 'Produksi Susu Pasteurisasi & Produk Olahan UHT',
-      totalProduksi: parsed.totalProduksi !== undefined ? parsed.totalProduksi : (bast.totalProduksi !== undefined ? bast.totalProduksi : vol),
+      targetOlahan: parsed.targetOlahan || bast.targetOlahan || bast.processingNeeds || 'Produksi Susu Pasteurisasi & Produk Olahan UHT',
       penggunaanCempe: parsed.penggunaanCempe !== undefined ? parsed.penggunaanCempe : (bast.penggunaanCempe !== undefined ? bast.penggunaanCempe : 0),
       afkir: parsed.afkir !== undefined ? parsed.afkir : (bast.afkir !== undefined ? bast.afkir : 0),
       lainLain: parsed.lainLain !== undefined ? parsed.lainLain : (bast.lainLain !== undefined ? bast.lainLain : '-'),
       pengirimNama: bast.pengirimNama || 'SEKSI PEMASARAN',
       penerimaNama: bast.penerimaNama || 'UNIT PENGOLAHAN (UHT)',
-      pengirimPetugas: parsed.pengirimPetugas || bast.pengirimPetugas || 'Petugas Pemasaran',
-      penerimaPetugas: parsed.penerimaPetugas || bast.penerimaPetugas || 'Petugas Pengolahan UHT',
-      notes: parsed.notes || (typeof bast.catatan === 'string' && !bast.catatan.startsWith('{') ? bast.catatan : ''),
+      pengirimPetugas: parsed.pengirimPetugas || bast.pengirimPetugas || bast.approvedByName || 'Petugas Pemasaran',
+      penerimaPetugas: parsed.penerimaPetugas || bast.penerimaPetugas || bast.createdBy?.name || 'Petugas Pengolahan UHT',
+      notes: parsed.notes || (typeof bast.catatan === 'string' && !bast.catatan.startsWith('{') ? bast.catatan : (bast.notes || '')),
     };
   };
 
@@ -567,14 +650,14 @@ export default function TerimaProdukOlahanPage() {
   // Raw Milk Requested for Processing
   const totalLitersDiserahkan = useMemo(() => {
     return milkRequests
-      .filter((r) => r.status === 'DITERIMA')
-      .reduce((acc, r) => acc + (parseFloat(r.volumeLiters) || 0), 0);
+      .filter((r) => r.status === 'DITERIMA' || r.status === 'DISETUJUI' || r.status === 'SIAP_DITERIMA' || r.status === 'SELESAI')
+      .reduce((acc, r) => acc + (parseFloat(r.volumeLiters || r.diserahterimakan) || 0), 0);
   }, [milkRequests]);
 
   const totalLitersMenunggu = useMemo(() => {
     return milkRequests
-      .filter((r) => r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM')
-      .reduce((acc, r) => acc + (parseFloat(r.volumeLiters) || 0), 0);
+      .filter((r) => r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM' || r.status === 'MENUNGGU_PERSETUJUAN')
+      .reduce((acc, r) => acc + (parseFloat(r.volumeLiters || r.diserahterimakan) || 0), 0);
   }, [milkRequests]);
 
   // Category stats helper for tabs
@@ -2257,7 +2340,7 @@ export default function TerimaProdukOlahanPage() {
                   >
                     <option value="ALL">Semua ({milkRequests.length})</option>
                     <option value="PENDING">Menunggu Persetujuan ({pendingRequestsCount})</option>
-                    <option value="CONFIRMED">Disetujui ({milkRequests.filter(r => r.status === 'DITERIMA').length})</option>
+                    <option value="CONFIRMED">Disetujui ({milkRequests.filter(r => r.status === 'DITERIMA' || r.status === 'DISETUJUI' || r.status === 'SIAP_DITERIMA' || r.status === 'SELESAI').length})</option>
                   </select>
                 </div>
               </div>
@@ -2272,8 +2355,10 @@ export default function TerimaProdukOlahanPage() {
             <div className="p-5 sm:p-6 overflow-y-auto space-y-3 flex-1">
               {(() => {
                 const filteredReqs = milkRequests.filter((r) => {
-                  if (milkReqTab === 'PENDING') return r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM';
-                  if (milkReqTab === 'CONFIRMED') return r.status === 'DITERIMA';
+                  const isPending = r.status === 'MENUNGGU_KONFIRMASI' || r.status === 'DIKIRIM_KE_FARM' || r.status === 'MENUNGGU_PERSETUJUAN';
+                  const isConfirmed = r.status === 'DITERIMA' || r.status === 'DISETUJUI' || r.status === 'SIAP_DITERIMA' || r.status === 'SELESAI';
+                  if (milkReqTab === 'PENDING') return isPending;
+                  if (milkReqTab === 'CONFIRMED') return isConfirmed;
                   return true;
                 });
 
@@ -2291,12 +2376,18 @@ export default function TerimaProdukOlahanPage() {
 
                 return filteredReqs.map((req) => {
                   const details = getBastDetails(req);
-                  const isPending = req.status === 'MENUNGGU_KONFIRMASI' || req.status === 'DIKIRIM_KE_FARM';
-                  const dateStr = req.tanggal ? new Date(req.tanggal).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  }) : '-';
+                  const isPending = req.status === 'MENUNGGU_KONFIRMASI' || req.status === 'DIKIRIM_KE_FARM' || req.status === 'MENUNGGU_PERSETUJUAN';
+                  const dateStr = req.tanggal
+                    ? new Date(req.tanggal).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })
+                    : (req.date ? new Date(req.date).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      }) : '-');
 
                   return (
                     <div
@@ -2311,15 +2402,15 @@ export default function TerimaProdukOlahanPage() {
                       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
                         <span
                           className="w-[215px] shrink-0 text-center font-mono text-xs font-bold py-1.5 px-2 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 truncate"
-                          title={req.nomorBast || 'BA-UHT-20260901-008'}
+                          title={req.nomorBast || req.nomorBa || req.requestNo || 'BA-UHT-20260901-008'}
                         >
-                          {req.nomorBast || 'BA-UHT-20260901-008'}
+                          {req.nomorBast || req.nomorBa || req.requestNo || 'BA-UHT-20260901-008'}
                         </span>
                         <span className="w-[90px] shrink-0 text-center text-xs font-bold text-slate-800">
                           {dateStr}
                         </span>
                         <span className="w-[115px] shrink-0 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
-                          {req.sumber === 'SUSU_KAMBING' ? 'Susu Kambing' : 'Susu Sapi'}
+                          {(req.sumber === 'SUSU_KAMBING' || req.animalType === 'KAMBING' || (req.targetOlahan && req.targetOlahan.toLowerCase().includes('kambing'))) ? 'Susu Kambing' : 'Susu Sapi'}
                         </span>
                         {isPending ? (
                           <span className="w-[95px] shrink-0 text-center text-xs font-bold text-amber-600 flex items-center justify-center">
@@ -2431,14 +2522,6 @@ export default function TerimaProdukOlahanPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                  selectedBastForPreview.status === 'DITERIMA'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
-                }`}>
-                  {selectedBastForPreview.status === 'DITERIMA' ? 'Disetujui' : 'Menunggu Konfirmasi'}
-                </span>
-
                 <button
                   type="button"
                   onClick={() => window.print()}
@@ -2479,120 +2562,115 @@ export default function TerimaProdukOlahanPage() {
                 {/* 2. JUDUL DOKUMEN */}
                 <div className="text-center space-y-1 pt-1">
                   <h3 className="text-sm sm:text-base font-black uppercase tracking-wider underline underline-offset-4 font-serif">
-                    BERITA ACARA SERAH TERIMA
+                    BERITA ACARA PERMINTAAN & SERAH TERIMA BAHAN BAKU SUSU SEGAR
                   </h3>
                   <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wide font-serif">
-                    SUSU LAYAK KONSUMSI
+                    UNIT PENGOLAHAN HASIL (UHT) & SEKSI PEMASARAN
                   </h4>
                   <p className="text-[11px] sm:text-xs text-slate-700 italic font-serif">
-                    Dari Seksi Pemasaran ke Unit Pengolahan (UHT)
+                    Dari Seksi Pemasaran Kepada Unit Pengolahan (UHT) & Pengemasan
                   </p>
                   <p className="text-xs font-bold font-mono text-slate-900 pt-1">
-                    Nomor: {selectedBastForPreview.nomorBast || 'BA-UHT-20260901-008'}
+                    Nomor: {selectedBastForPreview.nomorBast || selectedBastForPreview.nomorBa || 'BAST-REQ-20260910-001'} {selectedBastForPreview.requestNo ? `(No. Request: ${selectedBastForPreview.requestNo})` : ''}
                   </p>
                 </div>
 
                 {/* 3. METADATA BARIS */}
                 <div className="text-xs font-serif font-bold text-slate-900 space-y-1.5 pt-2 uppercase">
                   <div className="flex">
-                    <span className="w-28 sm:w-32">PAGI/SORE</span>
+                    <span className="w-36">SUMBER BAHAN</span>
                     <span className="mr-2">:</span>
-                    <span>
-                      {selectedBastForPreview.sesi || 'PAGI'} / {selectedBastForPreview.animalName || (selectedBastForPreview.sumber === 'SUSU_KAMBING' ? 'SUSU KAMBING' : 'SUSU SAPI')}
+                    <span className="font-semibold font-sans">Gudang Pemasaran / Cold Storage</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-36">JENIS KOMODITAS</span>
+                    <span className="mr-2">:</span>
+                    <span className="font-semibold font-sans font-mono">
+                      {selectedBastForPreview.animalType === 'KAMBING' || selectedBastForPreview.sumber === 'SUSU_KAMBING' ? 'SUSU SEGAR KAMBING' : 'SUSU SEGAR SAPI'}
                     </span>
                   </div>
                   <div className="flex">
-                    <span className="w-28 sm:w-32">TANGGAL</span>
+                    <span className="w-36">TANGGAL</span>
                     <span className="mr-2">:</span>
-                    <span>
+                    <span className="font-semibold font-sans">
                       {selectedBastForPreview.tanggal
                         ? new Date(selectedBastForPreview.tanggal).toLocaleDateString('id-ID', {
                             day: 'numeric',
                             month: 'long',
                             year: 'numeric',
                           })
-                        : '1 September 2026'}
+                        : new Date().toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
                     </span>
                   </div>
                 </div>
 
-                {/* 4. TABEL 5 KOLOM KOTAK BORDER HITAM */}
+                {/* 4. TABEL RINCIAN PERMINTAAN BAHAN BAKU */}
                 <div className="overflow-x-auto pt-2">
-                  <table className="w-full text-center border-2 border-black text-xs font-serif border-collapse">
+                  <table className="w-full text-left border-2 border-black text-xs font-sans border-collapse">
                     <thead>
-                      <tr className="border-b-2 border-black bg-slate-50 font-bold">
-                        <th className="p-3 border-r-2 border-black w-1/5">
-                          Total Produksi<br />
-                          <span className="text-[10px] font-normal">( Lt )</span>
-                        </th>
-                        <th className="p-3 border-r-2 border-black w-1/5">
-                          Penggunaan Cempe<br />
-                          <span className="text-[10px] font-normal">( Lt )</span>
-                        </th>
-                        <th className="p-3 border-r-2 border-black w-1/5">
-                          Afkir<br />
-                          <span className="text-[10px] font-normal">( Lt )</span>
-                        </th>
-                        <th className="p-3 border-r-2 border-black w-1/5">
-                          Lain-lain<br />
-                          <span className="text-[10px] font-normal">( Lt )</span>
-                        </th>
-                        <th className="p-3 w-1/5 font-black">
-                          Diserahterimakan<br />
-                          <span className="text-[10px] font-normal">( Lt )</span>
-                        </th>
+                      <tr className="border-b-2 border-black bg-slate-50 font-bold text-center">
+                        <th className="p-2.5 border-r-2 border-black w-12 text-center">No</th>
+                        <th className="p-2.5 border-r-2 border-black text-center">Uraian Bahan Baku</th>
+                        <th className="p-2.5 border-r-2 border-black w-36 text-center">Jumlah (Liter)</th>
+                        <th className="p-2.5 text-center">Peruntukan Pengolahan</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="font-bold text-sm sm:text-base h-24">
-                        <td className="p-3 border-r-2 border-black align-middle font-mono font-bold">
-                          {selectedBastForPreview.totalProduksi
-                            ? parseFloat(selectedBastForPreview.totalProduksi).toLocaleString('id-ID', { minimumFractionDigits: 1 })
-                            : parseFloat(selectedBastForPreview.volumeLiters || 0).toLocaleString('id-ID', { minimumFractionDigits: 1 })}
+                      <tr className="min-h-[60px]">
+                        <td className="p-3 border-r-2 border-black text-center align-middle font-bold">1</td>
+                        <td className="p-3 border-r-2 border-black align-middle font-bold text-black">
+                          Susu Segar {selectedBastForPreview.animalType === 'KAMBING' || selectedBastForPreview.sumber === 'SUSU_KAMBING' ? 'Kambing' : 'Sapi'} Bahan Baku
                         </td>
-                        <td className="p-3 border-r-2 border-black align-middle font-mono">
-                          {selectedBastForPreview.penggunaanCempe && parseFloat(selectedBastForPreview.penggunaanCempe) > 0
-                            ? parseFloat(selectedBastForPreview.penggunaanCempe).toLocaleString('id-ID', { minimumFractionDigits: 1 })
-                            : '-'}
+                        <td className="p-3 border-r-2 border-black text-center align-middle font-mono font-bold text-sm">
+                          {parseFloat(selectedBastForPreview.volumeLiters || selectedBastForPreview.totalProduksi || 0).toLocaleString('id-ID', { minimumFractionDigits: 1 })} Liter
                         </td>
-                        <td className="p-3 border-r-2 border-black align-middle font-mono">
-                          {selectedBastForPreview.afkir && parseFloat(selectedBastForPreview.afkir) > 0
-                            ? parseFloat(selectedBastForPreview.afkir).toLocaleString('id-ID', { minimumFractionDigits: 1 })
-                            : '-'}
-                        </td>
-                        <td className="p-3 border-r-2 border-black align-middle font-mono">
-                          {selectedBastForPreview.lainLain || '-'}
-                        </td>
-                        <td className="p-3 align-middle font-mono font-black text-base sm:text-lg bg-slate-50/50">
-                          {parseFloat(selectedBastForPreview.volumeLiters || 0).toLocaleString('id-ID', { minimumFractionDigits: 1 })}
+                        <td className="p-3 align-middle">
+                          <span className="font-semibold text-slate-800">
+                            {selectedBastForPreview.targetOlahan || selectedBastForPreview.purpose || selectedBastForPreview.processingNeeds || 'Pengolahan Produk Susu UHT / Pasteurisasi'}
+                          </span>
                         </td>
                       </tr>
+                      {(selectedBastForPreview.notes || selectedBastForPreview.catatan) && (
+                        <tr className="border-t-2 border-black bg-slate-50/50">
+                          <td colSpan={4} className="p-3 text-xs text-slate-800">
+                            <strong>Catatan Permintaan & Serah Terima:</strong> {selectedBastForPreview.notes || selectedBastForPreview.catatan}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
 
                 {/* 5. TANDA TANGAN DUA PIHAK */}
-                <div className="grid grid-cols-2 gap-8 text-center text-xs font-serif pt-8 pb-4">
-                  <div>
-                    <p className="font-medium text-slate-800">Yang menerima,</p>
-                    <p className="font-bold uppercase tracking-wide text-slate-950 mt-0.5">
-                      {selectedBastForPreview.penerimaNama || 'UNIT PENGOLAHAN (UHT)'}
-                    </p>
-                    <div className="h-20 sm:h-24 flex items-center justify-center">
-                      <span className="text-[10px] text-slate-300 italic no-print">( Tanda Tangan & Cap )</span>
+                <div className="grid grid-cols-2 gap-8 text-center text-xs font-sans pt-8 pb-4">
+                  <div className="flex flex-col justify-between h-40">
+                    <div>
+                      <p className="font-semibold text-slate-800">Yang Menerima / Pemohon,</p>
+                      <p className="font-bold uppercase tracking-wide text-slate-950 mt-0.5">
+                        {selectedBastForPreview.penerimaNama || 'UNIT PENGOLAHAN (UHT)'}
+                      </p>
+                    </div>
+                    <div className="h-16 flex items-center justify-center">
+                      <span className="text-[11px] text-slate-400 italic no-print">( Pemohon Bahan Baku )</span>
                     </div>
                     <p className="font-bold border-t border-slate-400 pt-1 inline-block min-w-[160px]">
                       ( {selectedBastForPreview.penerimaPetugas || 'Petugas Pengolahan UHT'} )
                     </p>
                   </div>
 
-                  <div>
-                    <p className="font-medium text-slate-800">Yang menyerahkan,</p>
-                    <p className="font-bold uppercase tracking-wide text-slate-950 mt-0.5">
-                      {selectedBastForPreview.pengirimNama || 'SEKSI PEMASARAN'}
-                    </p>
-                    <div className="h-20 sm:h-24 flex items-center justify-center">
-                      <span className="text-[10px] text-slate-300 italic no-print">( Tanda Tangan & Cap )</span>
+                  <div className="flex flex-col justify-between h-40">
+                    <div>
+                      <p className="font-semibold text-slate-800">Yang Menyerahkan / Menyetujui,</p>
+                      <p className="font-bold uppercase tracking-wide text-slate-950 mt-0.5">
+                        {selectedBastForPreview.pengirimNama || 'SEKSI PEMASARAN'}
+                      </p>
+                    </div>
+                    <div className="h-16 flex items-center justify-center">
+                      {/* Ruang tanda tangan fisik resmi */}
                     </div>
                     <p className="font-bold border-t border-slate-400 pt-1 inline-block min-w-[160px]">
                       ( {selectedBastForPreview.pengirimPetugas || 'Petugas Pemasaran'} )

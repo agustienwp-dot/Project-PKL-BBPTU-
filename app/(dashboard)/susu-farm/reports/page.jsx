@@ -274,6 +274,7 @@ export default function ReportsPage() {
         >
           <option value="SAPI">Susu Sapi</option>
           <option value="KAMBING">Susu Kambing</option>
+          <option value="ALL">Semua Ternak (Sapi & Kambing)</option>
         </select>
 
         {/* Month & Year Selectors */}

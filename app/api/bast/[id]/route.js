@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
   try {
     const authUser = getAuthUser(request);
-    const allowed = ['ADMIN_FARM', 'ADMIN_PEMASARAN', 'SUPERADMIN'];
+    const allowed = ['ADMIN_FARM', 'ADMIN_PEMASARAN', 'ADMIN_PENGEMASAN', 'SUPERADMIN'];
     if (!authUser || !requireRole(authUser, allowed)) {
       return NextResponse.json(
         { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
     }
 
     const { id } = params;
-    const doc = await prisma.bastDocument.findUnique({
+    const doc = await prisma.beritaAcara.findUnique({
       where: { id },
       include: {
         createdBy: {
@@ -58,7 +58,7 @@ export async function DELETE(request, { params }) {
     }
 
     const { id } = params;
-    const doc = await prisma.bastDocument.findUnique({ where: { id } });
+    const doc = await prisma.beritaAcara.findUnique({ where: { id } });
     if (!doc) {
       return NextResponse.json(
         { success: false, message: 'Surat BAST tidak ditemukan.' },
@@ -66,11 +66,11 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    await prisma.bastDocument.delete({ where: { id } });
+    await prisma.beritaAcara.delete({ where: { id } });
 
     return NextResponse.json({
       success: true,
-      message: `Surat BAST No. ${doc.nomorBast} berhasil dihapus.`,
+      message: `Surat BAST No. ${doc.nomorBA} berhasil dihapus.`,
     });
   } catch (error) {
     console.error('Error DELETE /api/bast/[id]:', error);
@@ -94,9 +94,9 @@ export async function PATCH(request, { params }) {
 
     const { id } = params;
     const body = await request.json().catch(() => ({}));
-    const { status, catatan, tanggal, volumeLiters, instansiPenerima, penerimaNama, sumber, jenisPermintaan } = body;
+    const { status, catatan, notes, tanggal, date, volumeLiters, instansiPenerima, penerimaNama, sumber, animalType, jenisPermintaan } = body;
 
-    const doc = await prisma.bastDocument.findUnique({ where: { id } });
+    const doc = await prisma.beritaAcara.findUnique({ where: { id } });
     if (!doc) {
       return NextResponse.json(
         { success: false, message: 'Surat BAST tidak ditemukan.' },
@@ -109,28 +109,44 @@ export async function PATCH(request, { params }) {
       updateData.status = status;
       updateData.confirmedAt = new Date();
     }
-    if (catatan !== undefined) updateData.catatan = catatan;
-    if (tanggal !== undefined) updateData.tanggal = new Date(tanggal);
-    if (volumeLiters !== undefined) updateData.volumeLiters = parseFloat(volumeLiters) || 0;
-    if (instansiPenerima !== undefined) updateData.instansiPenerima = instansiPenerima;
-    if (penerimaNama !== undefined) updateData.penerimaNama = penerimaNama;
-    if (sumber !== undefined) updateData.sumber = sumber;
-    if (jenisPermintaan !== undefined) updateData.jenisPermintaan = jenisPermintaan;
+    if (catatan !== undefined || notes !== undefined) {
+      updateData.notes = (catatan ?? notes)?.trim();
+    }
+    if (tanggal !== undefined || date !== undefined) {
+      updateData.date = new Date(tanggal || date);
+    }
+    if (volumeLiters !== undefined) {
+      const vol = parseFloat(volumeLiters) || 0;
+      updateData.diserahterimakan = vol;
+      updateData.totalProduksi = vol;
+    }
+    if (instansiPenerima !== undefined || penerimaNama !== undefined) {
+      const rec = (instansiPenerima || penerimaNama)?.trim();
+      updateData.penerimaName = rec;
+      updateData.receiverName = rec;
+      updateData.purpose = rec;
+    }
+    if (sumber !== undefined || animalType !== undefined) {
+      const anim = (animalType || (sumber === 'SUSU_KAMBING' ? 'KAMBING' : 'SAPI')).toUpperCase();
+      updateData.animalType = anim;
+    }
+    if (jenisPermintaan !== undefined) {
+      updateData.type = jenisPermintaan;
+    }
 
-    // Fallback if empty payload sent for backward compatibility (e.g. mark sent)
     if (Object.keys(updateData).length === 0) {
-      updateData.status = 'DIKIRIM_KE_FARM';
+      updateData.status = 'DITERIMA';
       updateData.confirmedAt = new Date();
     }
 
-    const updated = await prisma.bastDocument.update({
+    const updated = await prisma.beritaAcara.update({
       where: { id },
       data: updateData,
     });
 
     return NextResponse.json({
       success: true,
-      message: `Surat BAST No. ${doc.nomorBast} berhasil diperbarui!`,
+      message: `Surat BAST No. ${doc.nomorBA} berhasil diperbarui!`,
       data: updated,
     });
   } catch (error) {

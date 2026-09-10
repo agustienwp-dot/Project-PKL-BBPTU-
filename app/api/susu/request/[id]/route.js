@@ -76,6 +76,47 @@ export async function PUT(request, { params }) {
       updateData.approvedById = validUserId;
       updateData.approvedByName = authUser.name || 'Admin Pemasaran';
       message = `Request susu ${existing.requestNo} disetujui.`;
+
+      // Also update linked BeritaAcara document
+      try {
+        if (prisma.beritaAcara && typeof prisma.beritaAcara.updateMany === 'function') {
+          await prisma.beritaAcara.updateMany({
+            where: {
+              OR: [
+                { nomorBA: { contains: existing.requestNo } },
+                { notes: { contains: existing.requestNo } },
+              ]
+            },
+            data: {
+              status: 'DITERIMA',
+              readAt: now,
+              penerimaName: authUser.name || 'Admin Pemasaran',
+            }
+          });
+        }
+      } catch (baErr) {
+        console.error('Error updating linked BeritaAcara on approve:', baErr);
+      }
+
+      // Notify Admin Pengemasan
+      try {
+        if (prisma.notification && typeof prisma.notification.create === 'function') {
+          await prisma.notification.create({
+            data: {
+              title: `Permintaan Susu Disetujui: ${existing.volumeLiters} L`,
+              message: `Request susu ${existing.requestNo} (${existing.volumeLiters} Liter) telah disetujui oleh Seksi Pemasaran (${authUser.name || 'Admin Pemasaran'}). Bahan baku susu siap diolah!`,
+              type: 'REQUEST_SUSU',
+              targetRole: 'ADMIN_PENGEMASAN',
+              senderId: validUserId,
+              senderName: authUser.name || 'Admin Pemasaran',
+              senderRole: 'ADMIN_PEMASARAN',
+              link: '/uht/dashboard',
+            }
+          });
+        }
+      } catch (notifErr) {
+        console.error('Error creating notification on milk request approve:', notifErr);
+      }
     } else if (action === 'REJECT') {
       if (authUser.role !== 'ADMIN_PEMASARAN' && authUser.role !== 'SUPERADMIN') {
         return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Pemasaran yang dapat menolak request susu' }, { status: 403 });
@@ -86,6 +127,24 @@ export async function PUT(request, { params }) {
       updateData.status = 'DITOLAK';
       updateData.rejectionReason = rejectionReason.trim();
       message = `Request susu ${existing.requestNo} ditolak.`;
+
+      // Notify Admin Pengemasan
+      try {
+        if (prisma.notification && typeof prisma.notification.create === 'function') {
+          await prisma.notification.create({
+            data: {
+              title: `Permintaan Susu Ditolak: ${existing.requestNo}`,
+              message: `Request susu ${existing.requestNo} ditolak oleh Pemasaran: "${rejectionReason.trim()}".`,
+              type: 'REQUEST_SUSU',
+              targetRole: 'ADMIN_PENGEMASAN',
+              senderId: validUserId,
+              senderName: authUser.name || 'Admin Pemasaran',
+              senderRole: 'ADMIN_PEMASARAN',
+              link: '/uht/request-susu',
+            }
+          });
+        }
+      } catch (notifErr) {}
     } else if (action === 'DISPATCH' || action === 'PREPARE') {
       if (authUser.role !== 'ADMIN_PEMASARAN' && authUser.role !== 'SUPERADMIN') {
         return NextResponse.json({ success: false, message: 'Akses ditolak: Hanya Admin Pemasaran yang dapat memproses/menyerahkan susu' }, { status: 403 });

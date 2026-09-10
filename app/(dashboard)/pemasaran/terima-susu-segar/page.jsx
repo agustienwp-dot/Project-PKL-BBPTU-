@@ -29,7 +29,8 @@ import {
   Sparkles,
   Info,
   Check,
-  Clock
+  Clock,
+  Camera
 } from 'lucide-react';
 
 export default function TerimaSusuSegarPage() {
@@ -60,6 +61,36 @@ export default function TerimaSusuSegarPage() {
   const [showFreshConfirmModal, setShowFreshConfirmModal] = useState(false);
   const [freshNotes, setFreshNotes] = useState('');
   const [submittingFresh, setSubmittingFresh] = useState(false);
+
+  // Bukti Foto Modal States
+  const [dailyPhotoModal, setDailyPhotoModal] = useState(null);
+  const [sessionPhotoModal, setSessionPhotoModal] = useState(null);
+
+  const handleOpenDailyPhotos = (day) => {
+    const pagi = day.sessions?.find((s) => (s.kegiatanPerah || '').toLowerCase() === 'pagi');
+    const sore = day.sessions?.find((s) => (s.kegiatanPerah || '').toLowerCase() === 'sore');
+    const pagiPhotoObj = day.photos?.find((p) => (p.shift || '').toLowerCase() === 'pagi');
+    const sorePhotoObj = day.photos?.find((p) => (p.shift || '').toLowerCase() === 'sore');
+
+    setDailyPhotoModal({
+      tanggal: day.tanggal,
+      jenisTernak: day.jenisTernak || commodityTab,
+      pagi: {
+        foto: pagi?.fotoTimbangan || pagiPhotoObj?.foto || null,
+        produksiSusu: pagi?.produksiSusu || day.pagiGross || 0,
+        susuPedet: pagi?.susuPedet || day.pagiPedet || 0,
+        susuAfkir: pagi?.susuAfkir || day.pagiAfkir || 0,
+        susuSiapOlah: pagi?.susuSiapOlah || day.pagiSiapOlah || 0,
+      },
+      sore: {
+        foto: sore?.fotoTimbangan || sorePhotoObj?.foto || null,
+        produksiSusu: sore?.produksiSusu || day.soreGross || 0,
+        susuPedet: sore?.susuPedet || day.sorePedet || 0,
+        susuAfkir: sore?.susuAfkir || day.soreAfkir || 0,
+        susuSiapOlah: sore?.susuSiapOlah || day.soreSiapOlah || 0,
+      },
+    });
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -285,11 +316,11 @@ export default function TerimaSusuSegarPage() {
 
       {/* 3 Summary KPI Cards strictly for the active commodity */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Susu Segar Masuk */}
+        {/* Card 1: Produksi Susu Segar */}
         <div className="bg-white rounded-3xl p-6 border border-emerald-300 shadow-2xs space-y-3 hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">
-              1. Susu Segar Masuk
+              1. Produksi Susu Segar
             </span>
             <div className="p-2.5 bg-[#14532D] text-white rounded-2xl shadow-2xs">
               <Milk className="w-4 h-4 text-emerald-300" />
@@ -301,7 +332,7 @@ export default function TerimaSusuSegarPage() {
               <span className="text-xs font-bold text-slate-900 font-sans">Liter</span>
             </h3>
             <p className="text-[11px] text-slate-700 font-bold">
-              Total perah kandang ({commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'})
+              Total produksi susu segar dari farm ({commodityTab === 'KAMBING' ? 'Kambing' : 'Sapi'})
             </p>
           </div>
         </div>
@@ -495,11 +526,17 @@ export default function TerimaSusuSegarPage() {
                     <th className="px-3 py-3.5 text-right font-black text-white whitespace-nowrap">Diterima Pemasaran</th>
                     <th className="px-3 py-3.5 text-center font-bold text-white whitespace-nowrap">Rekonsiliasi</th>
                     <th className="px-3 py-3.5 text-center text-white font-bold whitespace-nowrap">Status</th>
+                    <th className="px-3 py-3.5 text-center text-white font-bold whitespace-nowrap">Bukti Foto</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {filteredDailyList.map((day, idx) => {
                     const netSiapOlah = Math.max(0, (day.totalGross || 0) - (day.totalPedet || 0) - (day.totalAfkir || 0));
+                    const pagi = day.sessions?.find((s) => (s.kegiatanPerah || '').toLowerCase() === 'pagi');
+                    const sore = day.sessions?.find((s) => (s.kegiatanPerah || '').toLowerCase() === 'sore');
+                    const pagiFoto = pagi?.fotoTimbangan || day.photos?.find((p) => (p.shift || '').toLowerCase() === 'pagi')?.foto;
+                    const soreFoto = sore?.fotoTimbangan || day.photos?.find((p) => (p.shift || '').toLowerCase() === 'sore')?.foto;
+                    const hasAnyFoto = Boolean(pagiFoto || soreFoto);
 
                     return (
                       <tr key={day.tanggal || idx} className="hover:bg-slate-50 transition-colors">
@@ -546,6 +583,25 @@ export default function TerimaSusuSegarPage() {
                             </span>
                           )}
                         </td>
+                        <td className="px-3 py-3.5 text-center whitespace-nowrap">
+                          {hasAnyFoto ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDailyPhotos(day)}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-100/90 hover:bg-emerald-200 text-emerald-700 hover:text-emerald-900 border border-emerald-300/80 shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer group"
+                              title="Lihat Bukti Foto (Pagi & Sore)"
+                            >
+                              <Eye className="w-4 h-4 text-emerald-700 group-hover:text-emerald-900" />
+                            </button>
+                          ) : (
+                            <span
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
+                              title="Belum ada foto timbangan"
+                            >
+                              <Eye className="w-4 h-4 text-slate-300" />
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -576,6 +632,7 @@ export default function TerimaSusuSegarPage() {
                       </span>
                     </td>
                     <td></td>
+                    <td className="px-3 py-3 text-center"></td>
                   </tr>
                 </tfoot>
               </table>
@@ -606,6 +663,7 @@ export default function TerimaSusuSegarPage() {
                   <th className="px-4 py-3.5 text-right font-bold text-white whitespace-nowrap">Afkir (L)</th>
                   <th className="px-4 py-3.5 text-right font-black text-white whitespace-nowrap">Susu Siap Olah</th>
                   <th className="px-4 py-3.5 text-center text-white font-bold whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3.5 text-center text-white font-bold whitespace-nowrap">Bukti Foto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -645,6 +703,37 @@ export default function TerimaSusuSegarPage() {
                             <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
                           </span>
                           <span>Diterima</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      {r.fotoTimbangan ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSessionPhotoModal({
+                              url: r.fotoTimbangan,
+                              title: `Bukti Foto Perah Sesi ${r.kegiatanPerah}`,
+                              date: r.tanggal,
+                              shift: r.kegiatanPerah,
+                              jenisTernak: r.jenisTernak,
+                              produksiSusu: r.produksiSusu,
+                              susuPedet: r.susuPedet,
+                              susuAfkir: r.susuAfkir,
+                              susuSiapOlah: r.susuSiapOlah,
+                            })
+                          }
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-100/90 hover:bg-emerald-200 text-emerald-700 hover:text-emerald-900 border border-emerald-300/80 shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer group"
+                          title={`Lihat Bukti Foto Sesi ${r.kegiatanPerah}`}
+                        >
+                          <Eye className="w-4 h-4 text-emerald-700 group-hover:text-emerald-900" />
+                        </button>
+                      ) : (
+                        <span
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
+                          title="Belum ada foto timbangan"
+                        >
+                          <Eye className="w-4 h-4 text-slate-300" />
                         </span>
                       )}
                     </td>
@@ -702,6 +791,196 @@ export default function TerimaSusuSegarPage() {
                 className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow"
               >
                 {submittingFresh ? 'Memproses...' : 'Sahkan Penerimaan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Pop-up 2 Kotak Foto Pagi & Sore (Data 1 Hari) - Tanpa Icon */}
+      {dailyPhotoModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setDailyPhotoModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-100 relative max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-base">
+                  Bukti Foto Timbangan Susu (Pagi & Sore)
+                </h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  Tanggal:{' '}
+                  <strong className="text-slate-800">
+                    {new Date(dailyPhotoModal.tanggal).toLocaleDateString('id-ID', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </strong>{' '}
+                  • Susu {dailyPhotoModal.jenisTernak === 'KAMBING' ? 'Kambing' : 'Sapi'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDailyPhotoModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+                title="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Grid 2 Kotak: Sesi Pagi & Sesi Sore */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* KOTAK 1: SESI PAGI */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/90 flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-3 py-1 rounded-xl bg-amber-100 text-amber-800 font-extrabold text-xs border border-amber-200 shadow-2xs">
+                    Sesi Pagi
+                  </span>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-slate-700">
+                      Siap Olah:{' '}
+                      <span className="font-black text-emerald-700 font-mono">
+                        {dailyPhotoModal.pagi.siapOlah} L
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-full h-64 sm:h-72 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
+                  {dailyPhotoModal.pagi.foto ? (
+                    <img
+                      src={dailyPhotoModal.pagi.foto}
+                      alt="Bukti Foto Sesi Pagi"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-400 p-4 text-center">
+                      <p className="text-xs font-semibold">Tidak ada bukti foto sesi pagi</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-500 flex items-center justify-between font-medium pt-1">
+                  <span>Perah Kotor: {dailyPhotoModal.pagi.produksiSusu} L</span>
+                  <span>Pedet: {dailyPhotoModal.pagi.susuPedet} L • Afkir: {dailyPhotoModal.pagi.susuAfkir} L</span>
+                </div>
+              </div>
+
+              {/* KOTAK 2: SESI SORE */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/90 flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-3 py-1 rounded-xl bg-indigo-100 text-indigo-800 font-extrabold text-xs border border-indigo-200 shadow-2xs">
+                    Sesi Sore
+                  </span>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-slate-700">
+                      Siap Olah:{' '}
+                      <span className="font-black text-emerald-700 font-mono">
+                        {dailyPhotoModal.sore.siapOlah} L
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-full h-64 sm:h-72 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
+                  {dailyPhotoModal.sore.foto ? (
+                    <img
+                      src={dailyPhotoModal.sore.foto}
+                      alt="Bukti Foto Sesi Sore"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-400 p-4 text-center">
+                      <p className="text-xs font-semibold">Tidak ada bukti foto sesi sore</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-500 flex items-center justify-between font-medium pt-1">
+                  <span>Perah Kotor: {dailyPhotoModal.sore.produksiSusu} L</span>
+                  <span>Pedet: {dailyPhotoModal.sore.susuPedet} L • Afkir: {dailyPhotoModal.sore.susuAfkir} L</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+              <span className="text-slate-500 text-[11px]">
+                Dokumentasi foto timbangan wadah susu perah sesi pagi dan sore yang dikirim Admin Farm.
+              </span>
+              <button
+                type="button"
+                onClick={() => setDailyPhotoModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pop-up Foto Sesi Tunggal (Tab Rincian) - Tanpa Icon */}
+      {sessionPhotoModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setSessionPhotoModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-100 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-sm">
+                  {sessionPhotoModal.title || 'Bukti Foto Timbangan Susu Farm'}
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Tanggal:{' '}
+                  <strong className="text-slate-800">
+                    {new Date(sessionPhotoModal.date).toLocaleDateString('id-ID', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </strong>{' '}
+                  • Sesi {sessionPhotoModal.shift} • Siap Olah: {sessionPhotoModal.susuSiapOlah} Liter
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSessionPhotoModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+                title="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="w-full h-80 sm:h-96 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
+              <img
+                src={sessionPhotoModal.url}
+                alt="Bukti Foto Timbangan"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1 text-xs">
+              <span className="text-slate-500 text-[11px]">
+                Bukti dokumentasi penimbangan wadah/susu sesi {sessionPhotoModal.shift} dari Admin Farm.
+              </span>
+              <button
+                type="button"
+                onClick={() => setSessionPhotoModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Tutup
               </button>
             </div>
           </div>

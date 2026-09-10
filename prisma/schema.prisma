@@ -102,8 +102,8 @@ model MilkProduction {
   receivedVolumeLiters  Float?          @map("received_volume_liters")
   berita_acaras         BeritaAcara[]
   packagings            MilkPackaging[]
-  milk_categories       MilkCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  users                 User?           @relation(fields: [createdById], references: [id])
+  category              MilkCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy             User?           @relation(fields: [createdById], references: [id])
   kirimKePI             Float           @default(0)
   produksi              Float           @default(0)
   rusakAfkir            Float           @default(0)
@@ -166,8 +166,8 @@ model MilkPackaging {
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
   production       MilkProduction? @relation(fields: [productionId], references: [id])
-  milk_categories  MilkCategory?   @relation(fields: [categoryId], references: [id])
-  users            User?           @relation(fields: [createdById], references: [id])
+  category         MilkCategory?   @relation(fields: [categoryId], references: [id])
+  createdBy        User?           @relation(fields: [createdById], references: [id])
 
   @@index([createdById], map: "packaged_products_createdById_fkey")
   @@index([categoryId], map: "packaged_products_categoryId_fkey")
@@ -186,8 +186,8 @@ model MilkOutflow {
   createdById     String?      @map("created_by_id")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
-  milk_categories MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  users           User?        @relation(fields: [createdById], references: [id])
+  category        MilkCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy       User?        @relation(fields: [createdById], references: [id])
 
   @@index([categoryId], map: "milk_outflows_categoryId_fkey")
   @@index([createdById], map: "milk_outflows_createdById_fkey")
@@ -219,7 +219,7 @@ model MilkSale {
   createdById      String?   @map("created_by_id")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
-  users            User?     @relation(fields: [createdById], references: [id])
+  createdBy        User?     @relation(fields: [createdById], references: [id])
 
   @@index([createdById], map: "milk_sales_createdById_fkey")
   @@map("milk_sales")

@@ -27,31 +27,9 @@ export default function NotificationDropdown() {
       }
     } catch (e) {
       console.error('Error fetching notifications:', e);
-      setNotifications([
-        {
-          id: 'n1',
-          title: 'Konfirmasi Admin Pemasaran',
-          desc: 'Berita Acara BA-20260819-003 disetujui & diterima oleh Seksi Pemasaran (10 Liter).',
-          time: '11:16 WIB',
-          isUnread: true,
-        },
-        {
-          id: 'n2',
-          title: 'Konfirmasi Admin Pengemasan',
-          desc: 'Hasil Produksi Susu Sapi (7,770 Liter Siap Olah) diserahkan ke Seksi Pengemasan.',
-          time: '11:15 WIB',
-          isUnread: true,
-        },
-        {
-          id: 'n3',
-          title: 'Distribusi Susu Segar',
-          desc: 'Penjualan langsung susu segar sebanyak 20 Liter telah dicatat oleh Seksi Pemasaran.',
-          time: '10:45 WIB',
-          isUnread: false,
-        }
-      ]);
+      setNotifications([]);
       if (!hasOpened) {
-        setUnreadCount(2);
+        setUnreadCount(0);
       }
     }
   };

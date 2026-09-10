@@ -39,6 +39,45 @@ const parseBuyerList = (keterangan, soldFreshLiters) => {
   return [];
 };
 
+const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+      img.src = readerEvent.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function ProduksiPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -338,70 +377,69 @@ export default function ProduksiPage() {
         notes: formNotes,
         fotoTimbangan: formFotoTimbangan || null,
         nomorSegel: formNomorSegel || null,
-        status: isDraft ? 'DRAFT' : 'TERKIRIM_KE_PEMASARAN',
-        handoverStatus: isDraft ? 'DRAFT' : 'MENUNGGU_VERIFIKASI',
-        handover_status: isDraft ? 'DRAFT' : 'MENUNGGU_VERIFIKASI',
+        status: isDraft ? 'DRAFT' : 'DITERIMA',
+        handoverStatus: isDraft ? 'DRAFT' : 'DITERIMA',
+        handover_status: isDraft ? 'DRAFT' : 'DITERIMA',
         targetDestination: isDraft ? 'DRAFT' : 'PEMASARAN',
         target_destination: isDraft ? 'DRAFT' : 'PEMASARAN',
       };
 
       if (editingProd) {
-        const res = await api.put(`/farm/production/${editingProd.id}`, payload).catch(() => ({
-          data: { success: true, data: { ...payload, id: editingProd.id } }
-        }));
+        const res = await api.put(`/farm/production/${editingProd.id}`, payload);
+        if (res.data?.success) {
+          setToast({ type: 'success', message: 'Laporan produksi susu berhasil diperbarui!' });
+          const savedObj = res.data?.data || payload;
+          const normalizedObj = {
+            ...savedObj,
+            createdAt: savedObj.createdAt || savedObj.created_at || editingProd.createdAt || editingProd.created_at || nowIso,
+            created_at: savedObj.createdAt || savedObj.created_at || editingProd.createdAt || editingProd.created_at || nowIso,
+            fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
+            foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
+          };
 
-        setToast({ type: 'success', message: 'Laporan produksi susu berhasil diperbarui!' });
-        const savedObj = res.data?.data || payload;
-        const normalizedObj = {
-          ...savedObj,
-          createdAt: savedObj.createdAt || savedObj.created_at || editingProd.createdAt || editingProd.created_at || nowIso,
-          created_at: savedObj.createdAt || savedObj.created_at || editingProd.createdAt || editingProd.created_at || nowIso,
-          fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
-          foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
-        };
-
-        setShowModal(false);
-        setProductions(prev => prev.map(p => p.id === editingProd.id ? { ...p, ...normalizedObj } : p));
-        fetchData();
-      } else {
-        const res = await api.post('/farm/production', payload).catch(() => ({
-          data: { success: true, data: { ...payload, id: `prod-${Date.now()}` } }
-        }));
-
-        const savedObj = res.data?.data || payload;
-        const normalizedObj = {
-          ...savedObj,
-          createdAt: savedObj.createdAt || savedObj.created_at || nowIso,
-          created_at: savedObj.createdAt || savedObj.created_at || nowIso,
-          fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
-          foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
-        };
-
-        if (isDraft) {
-          setToast({
-            type: 'success',
-            message: `✓ Draft laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil disimpan!`
-          });
+          setShowModal(false);
+          setProductions(prev => prev.map(p => p.id === editingProd.id ? { ...p, ...normalizedObj } : p));
+          fetchData();
         } else {
-          setToast({
-            type: 'success',
-            message: `✓ Laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil dikirim ke Admin Pemasaran!`
-          });
+          setToast({ type: 'error', message: res.data?.message || 'Gagal memperbarui data produksi' });
         }
-        setShowModal(false);
-        setProductions(prev => [normalizedObj, ...prev.filter(p => p.id !== normalizedObj.id)]);
-        fetchData();
+      } else {
+        const res = await api.post('/farm/production', payload);
+        if (res.data?.success) {
+          const savedObj = res.data?.data || payload;
+          const normalizedObj = {
+            ...savedObj,
+            createdAt: savedObj.createdAt || savedObj.created_at || nowIso,
+            created_at: savedObj.createdAt || savedObj.created_at || nowIso,
+            fotoTimbangan: formFotoTimbangan || savedObj.fotoTimbangan || savedObj.foto_timbangan || null,
+            foto_timbangan: formFotoTimbangan || savedObj.foto_timbangan || savedObj.fotoTimbangan || null,
+          };
+
+          if (isDraft) {
+            setToast({
+              type: 'success',
+              message: `✓ Draft laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil disimpan!`
+            });
+          } else {
+            setToast({
+              type: 'success',
+              message: `✓ Laporan produksi Susu ${formAnimalType === 'KAMBING' ? 'Kambing' : 'Sapi'} (${netVal} L) berhasil dikirim ke Admin Pemasaran!`
+            });
+          }
+          setShowModal(false);
+          setProductions(prev => [normalizedObj, ...prev.filter(p => p.id !== normalizedObj.id)]);
+          fetchData();
+        } else {
+          setToast({ type: 'error', message: res.data?.message || 'Gagal menyimpan data produksi' });
+        }
       }
     } catch (err) {
       console.error('Error in handleSubmit:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Gagal menyimpan data produksi susu';
       setToast({
-        type: 'success',
-        message: isDraft
-          ? 'Draft laporan produksi susu berhasil disimpan!'
-          : 'Laporan produksi susu berhasil dikirim ke Admin Pemasaran!'
+        type: 'error',
+        message: `⚠️ ${errMsg}`
       });
-      setShowModal(false);
-      fetchData();
     }
   };
 
@@ -954,15 +992,22 @@ export default function ProduksiPage() {
                     id="foto-timbangan-input"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setFormFotoTimbangan(reader.result);
+                        try {
+                          const compressedDataUrl = await compressImage(file, 1200, 1200, 0.7);
+                          setFormFotoTimbangan(compressedDataUrl);
                           setFormErrors(prev => ({ ...prev, formFotoTimbangan: null }));
-                        };
-                        reader.readAsDataURL(file);
+                        } catch (err) {
+                          console.error('Gagal kompres foto, menggunakan fallback:', err);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormFotoTimbangan(reader.result);
+                            setFormErrors(prev => ({ ...prev, formFotoTimbangan: null }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
                       }
                     }}
                     className="hidden"

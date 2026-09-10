@@ -207,7 +207,7 @@ export async function GET(request) {
     }
     if (search) {
       where.OR = [
-        { nomorBa: { contains: search } },
+        { nomorBA: { contains: search } },
         { farmLocation: { contains: search } },
         { location: { contains: search } },
         { penyerahName: { contains: search } },

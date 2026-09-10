@@ -4,10 +4,49 @@ import { getAuthUser, requireRole } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+function formatBastDoc(item) {
+  if (!item) return item;
+  const nomorBast = item.nomorBA || item.nomorBa || item.nomorBast;
+  const tanggal = item.date || item.tanggal || item.createdAt;
+  const volumeLiters = item.diserahterimakan ?? item.totalProduksi ?? item.volumeLiters ?? 0;
+  const jenisPermintaan = item.type || item.jenisPermintaan || 'HIBAH';
+  const instansiPenerima = item.receiverName || item.penerimaName || item.purpose || item.instansiPenerima || 'Instansi / Yayasan Penerima';
+  const penerimaNama = item.receiverName || item.penerimaName || instansiPenerima;
+  const pengirimNama = item.giverName || item.penyerahName || item.pengirimNama || 'Tim Kerja Layanan Pemasaran';
+  const catatan = item.notes || item.catatan || '';
+  const animalType = (item.animalType || item.animal_type || 'SAPI').toUpperCase();
+  const sumber = animalType === 'KAMBING' ? 'SUSU_KAMBING' : 'SUSU_SAPI';
+
+  return {
+    ...item,
+    id: item.id,
+    nomorBast,
+    nomorBa: nomorBast,
+    nomorBA: nomorBast,
+    tanggal,
+    date: tanggal,
+    volumeLiters,
+    diserahterimakan: volumeLiters,
+    totalProduksi: item.totalProduksi ?? volumeLiters,
+    jenisPermintaan,
+    type: jenisPermintaan,
+    instansiPenerima,
+    penerimaNama,
+    receiverName: penerimaNama,
+    pengirimNama,
+    giverName: pengirimNama,
+    catatan,
+    notes: catatan,
+    animalType,
+    sumber,
+    status: item.status || 'DITERIMA',
+  };
+}
+
 export async function GET(request) {
   try {
     const authUser = getAuthUser(request);
-    const allowed = ['ADMIN_FARM', 'ADMIN_PEMASARAN', 'SUPERADMIN'];
+    const allowed = ['ADMIN_FARM', 'ADMIN_PEMASARAN', 'ADMIN_PENGEMASAN', 'SUPERADMIN'];
     if (!authUser || !requireRole(authUser, allowed)) {
       return NextResponse.json(
         { success: false, message: 'Akses ditolak. Peran tidak diizinkan.' },
@@ -17,15 +56,29 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const type = searchParams.get('type');
+    const search = searchParams.get('search');
 
     const whereClause = {};
     if (status) {
       whereClause.status = status.toUpperCase();
     }
+    if (type) {
+      whereClause.type = type.toUpperCase();
+    }
+    if (search) {
+      whereClause.OR = [
+        { nomorBA: { contains: search } },
+        { notes: { contains: search } },
+        { penerimaName: { contains: search } },
+        { penyerahName: { contains: search } },
+        { purpose: { contains: search } },
+      ];
+    }
 
-    const docs = await prisma.bastDocument.findMany({
+    const docs = await prisma.beritaAcara.findMany({
       where: whereClause,
-      orderBy: { tanggal: 'asc' },
+      orderBy: { date: 'desc' },
       include: {
         createdBy: {
           select: { id: true, name: true, email: true },
@@ -33,10 +86,12 @@ export async function GET(request) {
       },
     });
 
+    const formatted = docs.map(formatBastDoc);
+
     return NextResponse.json({
       success: true,
       message: 'Berhasil mengambil daftar Surat BAST.',
-      data: docs,
+      data: formatted,
     });
   } catch (error) {
     console.error('Error GET /api/bast:', error);
@@ -50,7 +105,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const authUser = getAuthUser(request);
-    const allowed = ['ADMIN_PEMASARAN', 'ADMIN_FARM', 'SUPERADMIN'];
+    const allowed = ['ADMIN_PEMASARAN', 'ADMIN_FARM', 'ADMIN_PENGEMASAN', 'SUPERADMIN'];
     if (!authUser || !requireRole(authUser, allowed)) {
       return NextResponse.json(
         { success: false, message: 'Akses ditolak: Hanya Admin Pemasaran, Admin Farm, atau Superadmin yang dapat menerbitkan BAST.' },
@@ -78,17 +133,15 @@ export async function POST(request) {
     }
 
     const animal = (body.animalType || body.jenisTernak || (body.sumber === 'SUSU_KAMBING' ? 'KAMBING' : 'SAPI')).toUpperCase();
-    const sumberField = body.sumber || (animal === 'KAMBING' ? 'SUSU_KAMBING' : 'SUSU_SAPI');
-
     const isPemasaran = authUser.role === 'ADMIN_PEMASARAN' || !authUser.role?.includes('FARM');
     const isUhtReq = jenisPermintaan === 'PENGOLAHAN_UHT' || jenisPermintaan === 'PERMINTAAN_PENGOLAHAN_UHT';
 
-    const senderName = (pengirimNama || (isUhtReq ? 'Seksi Pemasaran' : (isPemasaran ? 'Admin Pemasaran' : 'Admin Farm Produksi'))).trim();
+    const senderName = (pengirimNama || (isUhtReq ? 'Seksi Pemasaran' : (isPemasaran ? 'Tim Kerja Layanan Pemasaran' : 'Admin Farm Produksi'))).trim();
     const senderRole = body.pengirimRole || authUser.role || (isPemasaran ? 'ADMIN_PEMASARAN' : 'ADMIN_FARM');
-    const receiverName = (body.penerimaNama || (isUhtReq ? 'Unit Pengolahan (UHT)' : (isPemasaran ? 'Unit Farm Produksi BBPTUHPT' : 'Bagian Pemasaran & Stok'))).trim();
-    const receiverRole = body.penerimaRole || (isUhtReq ? 'UNIT_PENGOLAHAN_UHT' : (isPemasaran ? 'ADMIN_FARM' : 'ADMIN_PEMASARAN'));
+    const receiverName = (body.penerimaNama || instansiPenerima || (isUhtReq ? 'Unit Pengolahan (UHT)' : 'Yayasan / Instansi Penerima')).trim();
+    const receiverRole = body.penerimaRole || (isUhtReq ? 'UNIT_PENGOLAHAN_UHT' : 'PENERIMA_HIBAH');
 
-    // Generate unique nomor BAST if not explicitly passed: BA-[TUJUAN]-[YYYYMMDD]-[XXX]
+    // Generate unique nomor BAST
     const dateObj = tanggal ? new Date(tanggal) : new Date();
     const year = dateObj.getFullYear();
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -97,57 +150,28 @@ export async function POST(request) {
 
     let nomorBast = body.nomorBast;
     if (!nomorBast) {
-      const rawTujuan = (
-        instansiPenerima ||
-        body.tujuan ||
-        (isUhtReq ? 'UHT' : (jenisPermintaan === 'HIBAH' ? 'HIBAH' : 'PEMASARAN'))
-      ).trim();
+      const bTypePrefix = jenisPermintaan === 'PEMBELIAN' ? 'BAST-PB' : (jenisPermintaan === 'SUSU_OLAHAN' ? 'BAST-OLAHAN' : 'BAST-HB');
 
-      const getTujuanCode = (str) => {
-        if (!str) return 'UMUM';
-        const clean = str.trim().toUpperCase();
-        if (/^[A-Z0-9]{2,8}$/.test(clean)) return clean;
-        
-        if (clean.includes('SPPG')) return 'SPPG';
-        if (clean.includes('EDUKASI') || clean.includes('EDUKAS')) return 'EDUKASI';
-        if (clean.includes('KANTIN')) return 'KANTIN';
-        if (clean.includes('UHT')) return 'UHT';
-        if (clean.includes('POSYANDU')) return 'POSYANDU';
-        if (clean.includes('YAYASAN') || clean.includes('PANTI')) return 'YAYASAN';
-        if (clean.includes('DINAS') || clean.includes('TAMU')) return 'DINAS';
-        if (clean.includes('UMUM')) return 'UMUM';
-
-        const words = clean.split(/[\s\-_/]+/).filter(Boolean);
-        if (words.length > 1) {
-          const initials = words.map(w => w[0]).join('');
-          if (initials.length >= 2 && initials.length <= 5) return initials;
-        }
-
-        return clean.replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'UMUM';
-      };
-
-      const codeTujuan = getTujuanCode(rawTujuan);
-
-      // Hitung urutan tahunan: ulang dari 1 per tahun
+      // Hitung urutan tahunan
       const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
       const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
 
-      const bastDocsInYear = await prisma.bastDocument.findMany({
+      const bastDocsInYear = await prisma.beritaAcara.findMany({
         where: {
-          tanggal: {
+          date: {
             gte: startOfYear,
             lte: endOfYear,
           },
         },
         select: {
-          nomorBast: true,
+          nomorBA: true,
         },
       });
 
       let maxSeq = 0;
       for (const d of bastDocsInYear) {
-        if (!d.nomorBast) continue;
-        const match = d.nomorBast.match(/[-/](\d{3,})$/);
+        if (!d.nomorBA) continue;
+        const match = d.nomorBA.match(/[-/](\d{3,})$/);
         if (match) {
           const num = parseInt(match[1], 10);
           if (!isNaN(num) && num > maxSeq && num < 100000) {
@@ -157,12 +181,12 @@ export async function POST(request) {
       }
 
       let nextSeq = Math.max(maxSeq + 1, 1);
-      nomorBast = `BA-${codeTujuan}-${dateStr}-${String(nextSeq).padStart(3, '0')}`;
+      nomorBast = `${bTypePrefix}-${dateStr}-${String(nextSeq).padStart(3, '0')}`;
 
-      // Pastikan unik jika terdapat collision
-      while (await prisma.bastDocument.findUnique({ where: { nomorBast } })) {
+      // Pastikan unik
+      while (await prisma.beritaAcara.findUnique({ where: { nomorBA: nomorBast } })) {
         nextSeq++;
-        nomorBast = `BA-${codeTujuan}-${dateStr}-${String(nextSeq).padStart(3, '0')}`;
+        nomorBast = `${bTypePrefix}-${dateStr}-${String(nextSeq).padStart(3, '0')}`;
       }
     }
 
@@ -172,55 +196,35 @@ export async function POST(request) {
       if (!userExists) validUserId = null;
     }
 
-    const newBast = await prisma.bastDocument.create({
+    const createdBa = await prisma.beritaAcara.create({
       data: {
-        nomorBast,
-        tanggal: dateObj,
-        sumber: sumberField,
-        volumeLiters: numVolume,
-        jenisPermintaan: jenisPermintaan || 'PENJUALAN_LANGSUNG',
-        instansiPenerima: instansiPenerima ? instansiPenerima.trim() : (isUhtReq ? 'Unit Pengolahan (UHT)' : null),
-        pengirimNama: senderName,
-        pengirimRole: senderRole,
-        penerimaNama: receiverName,
+        nomorBA: nomorBast,
+        type: jenisPermintaan || 'HIBAH',
+        date: dateObj,
+        animalType: animal,
+        unit: 'Liter',
+        totalProduksi: numVolume,
+        diserahterimakan: numVolume,
         penerimaRole: receiverRole,
-        status: body.status || 'MENUNGGU_KONFIRMASI',
-        catatan: catatan ? catatan.trim() : null,
+        penerimaName: receiverName,
+        receiverName: receiverName,
+        penyerahRole: senderRole,
+        penyerahName: senderName,
+        giverName: senderName,
+        status: body.status || 'DITERIMA',
+        notes: catatan ? catatan.trim() : null,
+        purpose: receiverName,
         productionId: productionId || null,
         createdById: validUserId,
       },
     });
 
-    // Create Notification for target role
-    try {
-      const targetRole = isPemasaran ? 'ADMIN_FARM' : 'ADMIN_PEMASARAN';
-      const targetLink = isPemasaran ? '/riwayat-produksi' : '/pemasaran/bast';
-      await prisma.notification.create({
-        data: {
-          title: `Permintaan Susu Segar: ${jenisPermintaan || 'BAST'} (${numVolume} L)`,
-          message: `${senderName} telah mengajukan permintaan susu segar sebanyak ${numVolume} Liter untuk ${jenisPermintaan || 'keperluan olahan/distribusi'}.`,
-          type: 'BAST_CREATED',
-          targetRole,
-          senderId: authUser.id,
-          senderName,
-          senderRole,
-          link: targetLink,
-          metadata: JSON.stringify({
-            bastId: newBast.id,
-            nomorBast,
-            volumeLiters: numVolume,
-            jenisPermintaan,
-          }),
-        },
-      });
-    } catch (notifErr) {
-      console.error('Error creating BAST notification:', notifErr);
-    }
+    const formatted = formatBastDoc(createdBa);
 
     return NextResponse.json({
       success: true,
       message: 'Berhasil menerbitkan Surat Berita Acara Serah Terima (BAST) Susu Segar!',
-      data: newBast,
+      data: formatted,
     });
   } catch (error) {
     console.error('Error POST /api/bast:', error);

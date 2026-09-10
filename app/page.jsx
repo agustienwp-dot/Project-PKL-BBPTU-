@@ -14,8 +14,12 @@ export default function RootPage() {
       if (user) {
         if (user.role === 'ADMIN_PEMASARAN') {
           router.replace('/pemasaran/dashboard');
+        } else if (user.role === 'ADMIN_PENGEMASAN') {
+          router.replace('/uht/dashboard');
+        } else if (user.role === 'ADMIN_FARM') {
+          router.replace('/susu-farm/dashboard');
         } else {
-          router.replace('/dashboard');
+          router.replace('/superadmin');
         }
       } else {
         router.replace('/login');

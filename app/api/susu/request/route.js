@@ -52,25 +52,43 @@ export async function GET(request) {
         },
         orderBy: { createdAt: 'desc' }
       });
+
+      // Attach linked BAST documents
+      let allBasts = [];
+      try {
+        allBasts = await prisma.beritaAcara.findMany({
+          where: { type: 'PERMINTAAN_SUSU' },
+          orderBy: { createdAt: 'desc' }
+        });
+      } catch (be) {}
+
+      const mappedItems = items.map((item) => {
+        const matchingBast = allBasts.find(b =>
+          (b.notes && b.notes.includes(item.requestNo)) ||
+          (b.nomorBA && b.nomorBA.includes(item.requestNo))
+        );
+        return {
+          ...item,
+          bastNo: matchingBast?.nomorBA || null,
+          bastId: matchingBast?.id || null,
+          bastStatus: matchingBast?.status || null,
+          bast: matchingBast || null,
+        };
+      });
+
+      // Keep memory cache synced with DB
+      if (!status || status === 'ALL') {
+        global.__inMemoryMilkRequestList = [...mappedItems];
+      }
+      return NextResponse.json({ success: true, data: mappedItems });
     } catch (e) {
       console.error('prisma.milkRequest.findMany error:', e);
-      items = [];
-    }
-
-    const dbIds = new Set(items.map((i) => i.id));
-    const allItems = [...items];
-
-    for (const memItem of (global.__inMemoryMilkRequestList || [])) {
-      if (!dbIds.has(memItem.id)) {
-        if (!status || status === 'ALL' || memItem.status === status) {
-          allItems.push(memItem);
-        }
+      let memItems = global.__inMemoryMilkRequestList || [];
+      if (status && status !== 'ALL') {
+        memItems = memItems.filter(i => i.status === status);
       }
+      return NextResponse.json({ success: true, data: memItems });
     }
-
-    allItems.sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
-
-    return NextResponse.json({ success: true, data: allItems });
   } catch (error) {
     console.error('GET /api/susu/request error:', error);
     return NextResponse.json({ success: true, data: global.__inMemoryMilkRequestList || [] });
@@ -144,12 +162,79 @@ export async function POST(request) {
       };
     }
 
+    // Auto-create BAST document for this milk request
+    const targetDateObj = date ? new Date(date) : new Date();
+    const yyyy = targetDateObj.getFullYear();
+    const mm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetDateObj.getDate()).padStart(2, '0');
+    const dateCode = `${yyyy}${mm}${dd}`;
+
+    let bastNo = `BAST-REQ-${dateCode}-001`;
+    try {
+      const bCount = (prisma.beritaAcara && typeof prisma.beritaAcara.count === 'function')
+        ? await prisma.beritaAcara.count()
+        : 0;
+      bastNo = `BAST-REQ-${dateCode}-${String(bCount + 1).padStart(3, '0')}`;
+
+      if (prisma.beritaAcara && typeof prisma.beritaAcara.create === 'function') {
+        await prisma.beritaAcara.create({
+          data: {
+            type: 'PERMINTAAN_SUSU',
+            nomorBA: bastNo,
+            date: targetDateObj,
+            shift: 'Pagi',
+            farmLocation: 'Gudang Pemasaran / Cold Storage',
+            animalType: pNeeds.toLowerCase().includes('kambing') ? 'KAMBING' : 'SAPI',
+            unit: 'Liter',
+            totalProduksi: vol,
+            penggunaanPedet: 0,
+            afkir: 0,
+            lainLain: 0,
+            diserahterimakan: vol,
+            penyerahRole: 'Seksi Pemasaran',
+            penyerahName: 'Tim Kerja Layanan Pemasaran',
+            penerimaRole: 'Unit Pengolahan Susu (UHT)',
+            penerimaName: authUser.name || 'Admin Pengemasan',
+            purpose: pNeeds,
+            status: 'MENUNGGU_KONFIRMASI',
+            notes: `[Permintaan Susu ${requestNo}] Kebutuhan: ${pNeeds}. Prioritas: ${prio}. ${notes || ''}`.trim(),
+            createdById: validUserId,
+          }
+        });
+      }
+    } catch (baErr) {
+      console.error('Error auto-creating BAST for milk request:', baErr);
+    }
+
+    // Auto-create notification for Admin Pemasaran
+    try {
+      if (prisma.notification && typeof prisma.notification.create === 'function') {
+        await prisma.notification.create({
+          data: {
+            title: `Permintaan Bahan Baku Susu: ${vol} L`,
+            message: `${authUser.name || 'Admin Pengemasan'} mengajukan permintaan ${vol} Liter susu segar (${pNeeds}) dengan dokumen BAST ${bastNo}.`,
+            type: 'REQUEST_SUSU',
+            targetRole: 'ADMIN_PEMASARAN',
+            senderId: validUserId,
+            senderName: authUser.name || 'Admin Pengemasan',
+            senderRole: 'ADMIN_PENGEMASAN',
+            link: '/pemasaran/berita-acara',
+          }
+        });
+      }
+    } catch (notifErr) {
+      console.error('Error creating notification for milk request:', notifErr);
+    }
+
     global.__inMemoryMilkRequestList.unshift(createdRecord);
 
     return NextResponse.json({
       success: true,
-      message: `Request susu (${requestNo}) berhasil dikirim ke Admin Pemasaran!`,
-      data: createdRecord
+      message: `Request susu (${requestNo}) dan dokumen ${bastNo} berhasil dikirim ke Admin Pemasaran!`,
+      data: {
+        ...createdRecord,
+        bastNo
+      }
     }, { status: 201 });
   } catch (error) {
     console.error('POST /api/susu/request error:', error);

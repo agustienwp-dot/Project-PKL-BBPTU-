@@ -367,12 +367,12 @@ export default function DashboardPemasaranPage() {
             <Milk className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Susu Masuk (Gross)</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Produksi Susu Segar</p>
             <h3 className="text-2xl font-black text-slate-800 mt-0.5">
               {totalProduksiGross.toLocaleString('id-ID')}{' '}
               <span className="text-xs font-semibold text-slate-500">Liter</span>
             </h3>
-            <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">Total perah Farm kandang</p>
+            <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">Total produksi susu segar dari farm</p>
           </div>
         </div>
 

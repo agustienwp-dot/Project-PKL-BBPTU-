@@ -84,6 +84,22 @@ function isRouteAllowed(role, pathname) {
     return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 
+  if (role === 'ADMIN_PENGEMASAN') {
+    const allowed = [
+      '/uht',
+      '/uht/dashboard',
+      '/uht/request-susu',
+      '/uht/pengemasan',
+      '/uht/stok-bahan',
+      '/uht/berita-acara',
+      '/uht/reports',
+      '/pengemasan',
+      '/riwayat-pengemasan',
+      '/profil'
+    ];
+    return allowed.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  }
+
   return false;
 }
 
